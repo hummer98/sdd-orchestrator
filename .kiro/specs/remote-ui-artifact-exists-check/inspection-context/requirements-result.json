@@ -1,0 +1,115 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GET_SPEC_DETAIL時にartifacts存在チェック: Artifact existence check implemented in createSpecDetailProvider using FileService.getArtifactInfo()",
+      "evidence": [
+        "remoteAccessHandlers.ts:584-598"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "存在するartifactのexistsをtrueに設定: exists: true set when file exists (via artifactInfos[i] !== null)",
+      "evidence": [
+        "remoteAccessHandlers.ts:592-598"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "存在しないartifactのexistsをfalseに設定: exists: false set when file doesn't exist (not null)",
+      "evidence": [
+        "remoteAccessHandlers.ts:592-598"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "FileServiceの既存メソッドを使用: Uses FileService.getArtifactInfo() existing method",
+      "evidence": [
+        "remoteAccessHandlers.ts:586"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "並列実行でパフォーマンス確保: Parallel execution via Promise.all() for 5 artifacts",
+      "evidence": [
+        "remoteAccessHandlers.ts:585"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "document-reviewタブ表示に影響なし: specJson.documentReview passed through unchanged",
+      "evidence": [
+        "No changes to documentReview handling"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "inspectionタブ表示に影響なし: specJson.inspection passed through unchanged",
+      "evidence": [
+        "No changes to inspection handling"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "markdownFilesタブ表示に影響なし: markdownFiles retrieved and passed through unchanged",
+      "evidence": [
+        "No changes to markdownFiles handling"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "inspection.md存在時にexists: true: inspection included in artifact check, sets exists: true when file exists",
+      "evidence": [
+        "remoteAccessHandlers.ts:584 includes 'inspection' in artifactNames array"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirement",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "inspection.md非存在時にexists: false: Sets exists: false when inspection.md doesn't exist",
+      "evidence": [
+        "remoteAccessHandlers.ts:598"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 10
+  }
+}

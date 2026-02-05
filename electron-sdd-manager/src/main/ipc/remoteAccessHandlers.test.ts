@@ -1066,3 +1066,244 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
     });
   });
 });
+
+// ============================================================
+// remote-ui-artifact-exists-check: Task 2.1 - Unit Tests
+// Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2
+// ============================================================
+
+describe('createSpecDetailProvider artifact existence check (Task 2.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset module cache to ensure fresh FileService mock
+    vi.resetModules();
+  });
+
+  describe('artifact existence check', () => {
+    it('should return exists: true for all artifacts when all files exist', async () => {
+      // Mock FileService.getArtifactInfo to return ArtifactInfo for all artifacts
+      const mockGetArtifactInfo = vi.fn().mockImplementation((_specPath: string, artifactName: string) => {
+        return Promise.resolve({ exists: true, updatedAt: '2026-02-05T00:00:00Z' });
+      });
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'tasks-approved', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      const result = await provider.getSpecDetail('my-spec');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.artifacts.requirements.exists).toBe(true);
+        expect(result.value.artifacts.design.exists).toBe(true);
+        expect(result.value.artifacts.tasks.exists).toBe(true);
+        expect(result.value.artifacts.research.exists).toBe(true);
+        expect(result.value.artifacts.inspection.exists).toBe(true);
+      }
+    });
+
+    it('should return correct exists values when only some artifacts exist', async () => {
+      // Mock FileService.getArtifactInfo to return exists for some, null for others
+      const mockGetArtifactInfo = vi.fn().mockImplementation((_specPath: string, artifactName: string) => {
+        // requirements and design exist, others don't
+        if (artifactName === 'requirements' || artifactName === 'design') {
+          return Promise.resolve({ exists: true, updatedAt: '2026-02-05T00:00:00Z' });
+        }
+        return Promise.resolve(null);
+      });
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'design-approved', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      const result = await provider.getSpecDetail('my-spec');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.artifacts.requirements.exists).toBe(true);
+        expect(result.value.artifacts.design.exists).toBe(true);
+        expect(result.value.artifacts.tasks.exists).toBe(false);
+        expect(result.value.artifacts.research.exists).toBe(false);
+        expect(result.value.artifacts.inspection.exists).toBe(false);
+      }
+    });
+
+    it('should return exists: false for all artifacts when none exist', async () => {
+      // Mock FileService.getArtifactInfo to return null for all artifacts
+      const mockGetArtifactInfo = vi.fn().mockResolvedValue(null);
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'spec-init', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      const result = await provider.getSpecDetail('my-spec');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.artifacts.requirements.exists).toBe(false);
+        expect(result.value.artifacts.design.exists).toBe(false);
+        expect(result.value.artifacts.tasks.exists).toBe(false);
+        expect(result.value.artifacts.research.exists).toBe(false);
+        expect(result.value.artifacts.inspection.exists).toBe(false);
+      }
+    });
+
+    it('should use FileService.getArtifactInfo for checking artifact existence (Requirement 1.4)', async () => {
+      const mockGetArtifactInfo = vi.fn().mockResolvedValue({ exists: true, updatedAt: '2026-02-05T00:00:00Z' });
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'tasks-approved', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      await provider.getSpecDetail('my-spec');
+
+      // Verify getArtifactInfo was called for each artifact type
+      expect(mockGetArtifactInfo).toHaveBeenCalledWith('/test/project/.kiro/specs/my-spec', 'requirements');
+      expect(mockGetArtifactInfo).toHaveBeenCalledWith('/test/project/.kiro/specs/my-spec', 'design');
+      expect(mockGetArtifactInfo).toHaveBeenCalledWith('/test/project/.kiro/specs/my-spec', 'tasks');
+      expect(mockGetArtifactInfo).toHaveBeenCalledWith('/test/project/.kiro/specs/my-spec', 'research');
+      expect(mockGetArtifactInfo).toHaveBeenCalledWith('/test/project/.kiro/specs/my-spec', 'inspection');
+    });
+
+    it('should execute artifact checks in parallel using Promise.all (Requirement 1.5)', async () => {
+      // Track the order of calls to verify parallel execution
+      const callOrder: string[] = [];
+      let resolveRequirements: () => void;
+      let resolveDesign: () => void;
+      let resolveTasks: () => void;
+      let resolveResearch: () => void;
+      let resolveInspection: () => void;
+
+      const mockGetArtifactInfo = vi.fn().mockImplementation((_specPath: string, artifactName: string) => {
+        callOrder.push(`start-${artifactName}`);
+        return new Promise((resolve) => {
+          if (artifactName === 'requirements') resolveRequirements = () => { callOrder.push(`end-${artifactName}`); resolve({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }); };
+          if (artifactName === 'design') resolveDesign = () => { callOrder.push(`end-${artifactName}`); resolve({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }); };
+          if (artifactName === 'tasks') resolveTasks = () => { callOrder.push(`end-${artifactName}`); resolve({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }); };
+          if (artifactName === 'research') resolveResearch = () => { callOrder.push(`end-${artifactName}`); resolve(null); };
+          if (artifactName === 'inspection') resolveInspection = () => { callOrder.push(`end-${artifactName}`); resolve(null); };
+        });
+      });
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'tasks-approved', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      const resultPromise = provider.getSpecDetail('my-spec');
+
+      // Wait a tick for all promises to be started
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // All 5 artifact checks should have started before any finished (parallel execution)
+      expect(callOrder.filter(c => c.startsWith('start-')).length).toBe(5);
+      expect(callOrder.filter(c => c.startsWith('end-')).length).toBe(0);
+
+      // Now resolve them in reverse order to prove order doesn't matter
+      resolveInspection!();
+      resolveResearch!();
+      resolveTasks!();
+      resolveDesign!();
+      resolveRequirements!();
+
+      const result = await resultPromise;
+      expect(result.ok).toBe(true);
+    });
+
+    it('should map ArtifactInfo | null to { exists: boolean } correctly', async () => {
+      // Test the conversion: ArtifactInfo -> { exists: true }, null -> { exists: false }
+      const mockGetArtifactInfo = vi.fn()
+        .mockResolvedValueOnce({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }) // requirements
+        .mockResolvedValueOnce(null) // design
+        .mockResolvedValueOnce({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }) // tasks
+        .mockResolvedValueOnce(null) // research
+        .mockResolvedValueOnce({ exists: true, updatedAt: '2026-02-05T00:00:00Z' }); // inspection
+      const mockResolveSpecPath = vi.fn().mockResolvedValue({ ok: true, value: '/test/project/.kiro/specs/my-spec' });
+      const mockReadSpecJson = vi.fn().mockResolvedValue({ ok: true, value: { phase: 'tasks-approved', approvals: {} } });
+      const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue({ ok: true, value: [] });
+
+      vi.doMock('../services/fileService', () => ({
+        FileService: vi.fn().mockImplementation(() => ({
+          getArtifactInfo: mockGetArtifactInfo,
+          resolveSpecPath: mockResolveSpecPath,
+          readSpecJson: mockReadSpecJson,
+          listMarkdownFilesInSpec: mockListMarkdownFilesInSpec,
+        })),
+      }));
+
+      const { createSpecDetailProvider } = await import('./remoteAccessHandlers');
+
+      const provider = createSpecDetailProvider('/test/project');
+      const result = await provider.getSpecDetail('my-spec');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Note: The order of mock returns depends on the order of Promise.all calls
+        // We need to verify the mapping logic, not the specific order
+        const artifacts = result.value.artifacts;
+        const existsCount = [
+          artifacts.requirements.exists,
+          artifacts.design.exists,
+          artifacts.tasks.exists,
+          artifacts.research.exists,
+          artifacts.inspection.exists,
+        ].filter(Boolean).length;
+        expect(existsCount).toBe(3); // 3 returned ArtifactInfo, 2 returned null
+      }
+    });
+  });
+});

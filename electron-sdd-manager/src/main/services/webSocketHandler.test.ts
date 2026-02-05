@@ -2258,6 +2258,199 @@ describe('WebSocketHandler - GET_SPEC_DETAIL Handler (remote-ui-react-migration 
         expect.stringContaining('"code":"INVALID_PAYLOAD"')
       );
     });
+
+    // ============================================================
+    // remote-ui-artifact-exists-check: Task 3.1 - Integration Tests
+    // Requirements: 1.1, 1.2, 1.3
+    // ============================================================
+
+    it('should return correct artifact exists values when some artifacts exist (remote-ui-artifact-exists-check Task 3.1)', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // Test case: requirements and design exist, others don't
+      const mockSpecDetail = {
+        name: 'test-feature',
+        path: '/project/.kiro/specs/test-feature',
+        phase: 'design-approved',
+        specJson: { feature_name: 'test-feature', phase: 'design-approved' },
+        metadata: {
+          name: 'test-feature',
+          path: '/project/.kiro/specs/test-feature',
+          phase: 'design-approved',
+        },
+        artifacts: {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: false },
+          research: { exists: false },
+          inspection: { exists: false },
+        },
+        taskProgress: null,
+        markdownFiles: [],
+      };
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetail }),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'test-feature' },
+        requestId: 'req-artifact-check',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      // Verify the response contains correct artifact exists values
+      const sentData = mockWs.send.mock.calls[0][0] as string;
+      const response = JSON.parse(sentData);
+
+      expect(response.type).toBe('SPEC_DETAIL');
+      expect(response.requestId).toBe('req-artifact-check');
+      expect(response.payload.artifacts.requirements.exists).toBe(true);
+      expect(response.payload.artifacts.design.exists).toBe(true);
+      expect(response.payload.artifacts.tasks.exists).toBe(false);
+      expect(response.payload.artifacts.research.exists).toBe(false);
+      expect(response.payload.artifacts.inspection.exists).toBe(false);
+    });
+
+    it('should return all artifacts exists: true when all files exist (remote-ui-artifact-exists-check Task 3.1)', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // All artifacts exist
+      const mockSpecDetail = {
+        name: 'complete-spec',
+        path: '/project/.kiro/specs/complete-spec',
+        phase: 'impl-complete',
+        specJson: { feature_name: 'complete-spec', phase: 'impl-complete' },
+        metadata: {
+          name: 'complete-spec',
+          path: '/project/.kiro/specs/complete-spec',
+          phase: 'impl-complete',
+        },
+        artifacts: {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: { exists: true },
+          inspection: { exists: true },
+        },
+        taskProgress: null,
+        markdownFiles: ['requirements.md', 'design.md', 'tasks.md', 'research.md', 'inspection.md'],
+      };
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetail }),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'complete-spec' },
+        requestId: 'req-all-artifacts',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      const sentData = mockWs.send.mock.calls[0][0] as string;
+      const response = JSON.parse(sentData);
+
+      expect(response.type).toBe('SPEC_DETAIL');
+      expect(response.payload.artifacts.requirements.exists).toBe(true);
+      expect(response.payload.artifacts.design.exists).toBe(true);
+      expect(response.payload.artifacts.tasks.exists).toBe(true);
+      expect(response.payload.artifacts.research.exists).toBe(true);
+      expect(response.payload.artifacts.inspection.exists).toBe(true);
+    });
+
+    it('should return all artifacts exists: false when no files exist (remote-ui-artifact-exists-check Task 3.1)', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // No artifacts exist (new spec)
+      const mockSpecDetail = {
+        name: 'new-spec',
+        path: '/project/.kiro/specs/new-spec',
+        phase: 'spec-init',
+        specJson: { feature_name: 'new-spec', phase: 'spec-init' },
+        metadata: {
+          name: 'new-spec',
+          path: '/project/.kiro/specs/new-spec',
+          phase: 'spec-init',
+        },
+        artifacts: {
+          requirements: { exists: false },
+          design: { exists: false },
+          tasks: { exists: false },
+          research: { exists: false },
+          inspection: { exists: false },
+        },
+        taskProgress: null,
+        markdownFiles: [],
+      };
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetail }),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'new-spec' },
+        requestId: 'req-no-artifacts',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      const sentData = mockWs.send.mock.calls[0][0] as string;
+      const response = JSON.parse(sentData);
+
+      expect(response.type).toBe('SPEC_DETAIL');
+      expect(response.payload.artifacts.requirements.exists).toBe(false);
+      expect(response.payload.artifacts.design.exists).toBe(false);
+      expect(response.payload.artifacts.tasks.exists).toBe(false);
+      expect(response.payload.artifacts.research.exists).toBe(false);
+      expect(response.payload.artifacts.inspection.exists).toBe(false);
+    });
   });
 });
 

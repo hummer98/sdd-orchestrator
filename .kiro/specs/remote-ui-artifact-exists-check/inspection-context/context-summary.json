@@ -1,0 +1,93 @@
+{
+  "spec_overview": "Remote UIでSpec詳細を取得した際に、artifacts（requirements, design, tasks, research, inspection）のexistsフィールドを実際のファイル存在チェックに基づいて設定する機能を実装する",
+  "key_components": [
+    {
+      "name": "createSpecDetailProvider",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "1.5", "3.1", "3.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "WebSocketHandler",
+      "target": "createSpecDetailProvider",
+      "type": "call"
+    },
+    {
+      "source": "createSpecDetailProvider",
+      "target": "FileService.getArtifactInfo",
+      "type": "call"
+    },
+    {
+      "source": "createSpecDetailProvider",
+      "target": "FileService.resolveSpecPath",
+      "type": "call"
+    },
+    {
+      "source": "createSpecDetailProvider",
+      "target": "FileService.readSpecJson",
+      "type": "call"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts",
+      "action": "UPDATE",
+      "reason": "createSpecDetailProviderでハードコードされたartifacts.existsを動的チェックに置き換え"
+    }
+  ],
+  "requirements_summary": {
+    "requirement_1": {
+      "title": "Spec Artifact存在チェック",
+      "criteria": [
+        "1.1: GET_SPEC_DETAIL時に各アーティファクトファイルの存在をチェック",
+        "1.2: 存在するartifactのexistsをtrueに設定",
+        "1.3: 存在しないartifactのexistsをfalseに設定",
+        "1.4: FileServiceの既存メソッドを使用",
+        "1.5: 並列実行でパフォーマンス確保"
+      ]
+    },
+    "requirement_2": {
+      "title": "既存動作の保持",
+      "criteria": [
+        "2.1: document-reviewタブ表示に影響なし",
+        "2.2: inspectionタブ表示に影響なし",
+        "2.3: markdownFilesタブ表示に影響なし"
+      ]
+    },
+    "requirement_3": {
+      "title": "Inspectionアーティファクト対応",
+      "criteria": [
+        "3.1: inspection.md存在時にexists: true",
+        "3.2: inspection.md非存在時にexists: false"
+      ]
+    }
+  },
+  "design_decisions": [
+    {
+      "id": "DD-001",
+      "title": "FileService.getArtifactInfoの再利用",
+      "rationale": "DRY原則の遵守、Electron版と同じロジックの共有"
+    },
+    {
+      "id": "DD-002",
+      "title": "Promise.allによる並列実行",
+      "rationale": "5つのartifact存在チェックを並列化してパフォーマンスを確保"
+    },
+    {
+      "id": "DD-003",
+      "title": "ArtifactInfo | null から { exists: boolean } への変換",
+      "rationale": "既存APIの戻り値型を変更せず、呼び出し側で変換"
+    }
+  ],
+  "tasks_summary": {
+    "total": 3,
+    "completed": 3,
+    "groups": [
+      {"group": "1", "title": "Artifact存在チェック機能の実装", "tasks": ["1.1"]},
+      {"group": "2", "title": "ユニットテスト", "tasks": ["2.1"]},
+      {"group": "3", "title": "統合テスト", "tasks": ["3.1"]}
+    ]
+  }
+}

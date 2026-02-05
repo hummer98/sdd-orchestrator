@@ -543,6 +543,7 @@ export function setupAgentLogsProvider(): void {
 /**
  * Create a SpecDetailProvider for WebSocketHandler
  * Requirements: remote-ui-react-migration Task 6.3
+ * remote-ui-artifact-exists-check: Task 1.1 - Add artifact existence check
  *
  * @param projectPath - Current project path
  */
@@ -577,6 +578,25 @@ export function createSpecDetailProvider(projectPath: string): SpecDetailProvide
         const markdownFilesResult = await fileService.listMarkdownFilesInSpec(specPath);
         const markdownFiles = markdownFilesResult.ok ? markdownFilesResult.value : [];
 
+        // remote-ui-artifact-exists-check: Task 1.1 - Check artifact existence
+        // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2
+        // Uses FileService.getArtifactInfo() with Promise.all() for parallel execution
+        const artifactNames = ['requirements', 'design', 'tasks', 'research', 'inspection'] as const;
+        const artifactInfos = await Promise.all(
+          artifactNames.map(name => fileService.getArtifactInfo(specPath, name))
+        );
+
+        // Map ArtifactInfo | null to { exists: boolean }
+        // Requirement 1.2: exists: true when file exists
+        // Requirement 1.3: exists: false when file doesn't exist (null returned)
+        const artifacts = {
+          requirements: { exists: artifactInfos[0] !== null },
+          design: { exists: artifactInfos[1] !== null },
+          tasks: { exists: artifactInfos[2] !== null },
+          research: { exists: artifactInfos[3] !== null },
+          inspection: { exists: artifactInfos[4] !== null },
+        };
+
         // Build SpecDetail in the format expected by Remote UI
         return {
           ok: true,
@@ -593,13 +613,7 @@ export function createSpecDetailProvider(projectPath: string): SpecDetailProvide
               updatedAt: specJson.updated_at,
               approvals: specJson.approvals,
             },
-            artifacts: {
-              requirements: { exists: false },
-              design: { exists: false },
-              tasks: { exists: false },
-              research: { exists: false },
-              inspection: { exists: false },
-            },
+            artifacts,
             taskProgress: null,
             markdownFiles,
           },

@@ -1,0 +1,146 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T10:30:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: createSpecDetailProviderでartifact存在チェックを実装"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: ユニットテスト"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: 統合テスト (WebSocket経由のGET_SPEC_DETAIL)"
+    },
+    {
+      "id": "import-createSpecDetailProvider",
+      "checkType": "import",
+      "target": "createSpecDetailProvider",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createSpecDetailProvider is defined and exported in remoteAccessHandlers.ts, imported in test files",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts:550",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.test.ts"
+      ]
+    },
+    {
+      "id": "usage-createSpecDetailProvider",
+      "checkType": "usage",
+      "target": "createSpecDetailProvider",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createSpecDetailProvider is used in setupSpecDetailProvider function (line 643) and tested in unit tests",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts:643"
+      ]
+    },
+    {
+      "id": "usage-FileService.getArtifactInfo",
+      "checkType": "usage",
+      "target": "FileService.getArtifactInfo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "FileService.getArtifactInfo is called in createSpecDetailProvider with Promise.all for parallel execution (Requirement 1.4, 1.5)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts:586"
+      ]
+    },
+    {
+      "id": "usage-Promise.all",
+      "checkType": "usage",
+      "target": "Promise.all",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Promise.all is used for parallel artifact existence checks (Requirement 1.5)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts:585"
+      ]
+    },
+    {
+      "id": "wiring-WebSocketHandler-createSpecDetailProvider",
+      "checkType": "wiring",
+      "target": "WebSocketHandler -> createSpecDetailProvider",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WebSocketHandler has setSpecDetailProvider method (line 585) and SpecDetailProvider interface (line 396) that is implemented by createSpecDetailProvider"
+    },
+    {
+      "id": "wiring-createSpecDetailProvider-FileService",
+      "checkType": "wiring",
+      "target": "createSpecDetailProvider -> FileService.getArtifactInfo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createSpecDetailProvider creates FileService instance and calls getArtifactInfo for each artifact type"
+    },
+    {
+      "id": "placeholder-remoteAccessHandlers",
+      "checkType": "placeholder",
+      "target": "remoteAccessHandlers.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER comments related to this spec found in remoteAccessHandlers.ts"
+    },
+    {
+      "id": "test-unit-2.1",
+      "checkType": "test-existence",
+      "target": "Task 2.1 Unit Tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Unit tests exist in remoteAccessHandlers.test.ts covering: all artifacts exist, some artifacts exist, no artifacts exist, FileService.getArtifactInfo usage, and parallel execution verification",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/ipc/remoteAccessHandlers.test.ts:1075-1309"
+      ]
+    },
+    {
+      "id": "test-integration-3.1",
+      "checkType": "test-existence",
+      "target": "Task 3.1 Integration Tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Integration tests exist in webSocketHandler.test.ts covering GET_SPEC_DETAIL with artifact existence checks",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-artifact-exists-check/electron-sdd-manager/src/main/services/webSocketHandler.test.ts:2263-2430"
+      ]
+    },
+    {
+      "id": "artifact-mapping",
+      "checkType": "implementation",
+      "target": "ArtifactInfo | null -> { exists: boolean } mapping",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Correct mapping implemented: ArtifactInfo (non-null) -> { exists: true }, null -> { exists: false } (Requirements 1.2, 1.3)"
+    },
+    {
+      "id": "artifact-types",
+      "checkType": "implementation",
+      "target": "All 5 artifact types checked",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 5 artifact types (requirements, design, tasks, research, inspection) are checked as specified in Requirements 1.1, 3.1, 3.2"
+    }
+  ],
+  "stats": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 14
+  }
+}

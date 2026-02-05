@@ -13,7 +13,7 @@
 
 import React, { useEffect, useCallback } from 'react';
 import MDEditor from '@uiw/react-md-editor';
-import { Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle, Edit, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import type { ApiClient, ProjectFileInfo } from '@shared/api/types';
@@ -50,13 +50,16 @@ export function RemoteProjectEditor({
   // Store
   // ---------------------------------------------------------------------------
 
+  // project-editor-dark-mode: Requirement 3.2 - ストアのmodeを使用するように変更
   const {
     content,
     isDirty,
     isSaving,
     error,
+    mode,
     loadFile,
     setContent,
+    setMode,
     save,
   } = useProjectEditorStore();
 
@@ -138,6 +141,7 @@ export function RemoteProjectEditor({
       className="flex flex-col h-full bg-white dark:bg-gray-900"
     >
       {/* Header */}
+      {/* project-editor-dark-mode: Requirement 3.2, 3.3 - 編集/プレビュー切り替えUI追加 */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -151,30 +155,62 @@ export function RemoteProjectEditor({
             />
           )}
         </div>
-        <button
-          data-testid="save-button"
-          onClick={handleSave}
-          disabled={!isDirty || isSaving}
-          className={clsx(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-            isDirty && !isSaving
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
-          )}
-        >
-          <Save className="w-4 h-4" />
-          {isSaving ? '保存中...' : '保存'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Mode toggle - Button group style (same as ArtifactEditor) */}
+          <div className="flex items-center" data-testid="mode-toggle-group">
+            <button
+              onClick={() => setMode('edit')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-l-md border',
+                mode === 'edit'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+              )}
+              aria-label="編集"
+              data-testid="edit-mode-button"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setMode('preview')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-r-md border-t border-r border-b',
+                mode === 'preview'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+              )}
+              aria-label="プレビュー"
+              data-testid="preview-mode-button"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
+          <button
+            data-testid="save-button"
+            onClick={handleSave}
+            disabled={!isDirty || isSaving}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              isDirty && !isSaving
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
+            )}
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? '保存中...' : '保存'}
+          </button>
+        </div>
       </header>
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden" data-color-mode="auto">
+      {/* project-editor-dark-mode: Requirement 1.2, 3.2 - darkモード固定、ストアのmodeを使用 */}
+      <div className="flex-1 overflow-hidden" data-color-mode="dark">
         <MDEditor
           value={content}
           onChange={handleContentChange}
           height="100%"
-          preview="edit"
-          hideToolbar={false}
+          preview={mode}
+          hideToolbar={mode === 'preview'}
           enableScroll={true}
           visibleDragbar={false}
         />

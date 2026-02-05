@@ -1,0 +1,224 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-05T08:30:00Z",
+  "checks": [
+    {
+      "id": "design-component-editorStore",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStore exists at expected path with mode property",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-editor-dark-mode/electron-sdd-manager/src/renderer/stores/editorStore.ts"
+      ]
+    },
+    {
+      "id": "design-component-projectEditorStore",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStore exists at expected path with mode property",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-editor-dark-mode/electron-sdd-manager/src/shared/stores/projectEditorStore.ts"
+      ]
+    },
+    {
+      "id": "design-component-ProjectFileEditor",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor exists at expected path",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-editor-dark-mode/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx"
+      ]
+    },
+    {
+      "id": "design-component-RemoteProjectEditor",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditor exists at expected path",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-editor-dark-mode/electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx"
+      ]
+    },
+    {
+      "id": "design-interface-editorStore-mode-default",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStore initial mode is 'preview' as specified in design (Requirement 2.1)",
+      "evidence": [
+        "Expected: mode: 'preview'",
+        "Actual: mode: 'preview' (line 77 in editorStore.ts)"
+      ]
+    },
+    {
+      "id": "design-interface-projectEditorStore-mode-default",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStore initial mode is 'preview' as specified in design (Requirement 2.2)",
+      "evidence": [
+        "Expected: mode: 'preview'",
+        "Actual: mode: 'preview' (line 119 in projectEditorStore.ts)"
+      ]
+    },
+    {
+      "id": "design-interface-ProjectFileEditor-dark-mode",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor has data-color-mode='dark' as specified in design (Requirement 1.1)",
+      "evidence": [
+        "Expected: data-color-mode=\"dark\"",
+        "Actual: <div className=\"flex-1 overflow-hidden\" data-color-mode=\"dark\"> (line 166 in ProjectFileEditor.tsx)"
+      ]
+    },
+    {
+      "id": "design-interface-RemoteProjectEditor-dark-mode",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditor has data-color-mode='dark' as specified in design (Requirement 1.2)",
+      "evidence": [
+        "Expected: data-color-mode=\"dark\"",
+        "Actual: <div className=\"flex-1 overflow-hidden\" data-color-mode=\"dark\"> (line 207 in RemoteProjectEditor.tsx)"
+      ]
+    },
+    {
+      "id": "design-interface-ProjectFileEditor-button-group",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor has button group UI with Edit/Preview buttons (Requirement 3.1, 3.3)",
+      "evidence": [
+        "Expected: Button group with Edit and Preview buttons",
+        "Actual: data-testid='mode-toggle-group' with edit-mode-button and preview-mode-button (lines 105-132 in ProjectFileEditor.tsx)"
+      ]
+    },
+    {
+      "id": "design-interface-RemoteProjectEditor-button-group",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditor has button group UI with Edit/Preview buttons (Requirement 3.2, 3.3)",
+      "evidence": [
+        "Expected: Button group with Edit and Preview buttons",
+        "Actual: data-testid='mode-toggle-group' with edit-mode-button and preview-mode-button (lines 160-187 in RemoteProjectEditor.tsx)"
+      ]
+    },
+    {
+      "id": "design-interface-UI-style-consistency",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Button group styles match ArtifactEditor pattern (Lucide icons, blue highlight for selected)",
+      "evidence": [
+        "ProjectFileEditor: Uses Edit, Eye from lucide-react, bg-blue-500 for selected state",
+        "RemoteProjectEditor: Uses Edit, Eye from lucide-react, bg-blue-500 for selected state",
+        "ArtifactEditor reference: Uses same pattern (lines 252-275 in ArtifactEditor.tsx)"
+      ]
+    },
+    {
+      "id": "steering-structure-editorStore",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStore is in renderer/stores/ per structure.md UI State rule",
+      "evidence": [
+        "Path: src/renderer/stores/editorStore.ts",
+        "structure.md: UI State -> src/renderer/stores/"
+      ]
+    },
+    {
+      "id": "steering-structure-projectEditorStore",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStore is in shared/stores/ per structure.md (required for Remote UI sharing)",
+      "evidence": [
+        "Path: src/shared/stores/projectEditorStore.ts",
+        "structure.md: Domain State (SSOT) -> src/shared/stores/",
+        "Design Decision DD-006: shared/stores/に配置（Remote UIでも同一のエディタ状態管理が必要）"
+      ]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Uses correct tech stack per tech.md (React, Zustand, Lucide React, @uiw/react-md-editor)",
+      "evidence": [
+        "tech.md: React 19, Zustand, Lucide React, @uiw/react-md-editor",
+        "Implementation uses: React hooks, Zustand create(), lucide-react icons (Edit, Eye), MDEditor"
+      ]
+    },
+    {
+      "id": "steering-product-scope",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals (UI/UX consistency, Remote UI support)",
+      "evidence": [
+        "product.md: Remote Access, Spec lifecycle management",
+        "Feature: Unifies editor UI across Electron and Remote UI"
+      ]
+    },
+    {
+      "id": "test-coverage-editorStore",
+      "category": "test-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStore.test.ts updated with preview mode tests",
+      "evidence": [
+        "Test: 'should be in preview mode initially' (line 47-50)",
+        "Test: mode: 'preview' in beforeEach reset (line 20)"
+      ]
+    },
+    {
+      "id": "test-coverage-projectEditorStore",
+      "category": "test-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStore.test.ts updated with preview mode tests",
+      "evidence": [
+        "Test: 'should be in preview mode' (line 111-114)",
+        "Test: 'should reset all editor state' expects mode: 'preview' (line 429)"
+      ]
+    },
+    {
+      "id": "test-coverage-ProjectFileEditor",
+      "category": "test-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor.test.tsx updated with button group UI tests",
+      "evidence": [
+        "Test: 'should render button group with Edit and Preview buttons' (lines 156-170)",
+        "Test: 'should switch to edit mode when Edit button is clicked' (lines 172-187)",
+        "Test: 'should switch to preview mode when Preview button is clicked' (lines 189-205)"
+      ]
+    },
+    {
+      "id": "test-coverage-RemoteProjectEditor",
+      "category": "test-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditor.test.tsx updated with mode toggle UI tests",
+      "evidence": [
+        "Test: 'should render button group with Edit and Preview buttons' (lines 439-458)",
+        "Test: 'should switch to edit mode when Edit button is clicked' (lines 460-484)",
+        "Test: 'should switch to preview mode when Preview button is clicked' (lines 486-512)"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 19
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "spec_overview": "ProjectFileEditorとRemoteProjectEditorのUI/UXをArtifactEditorと統一し、ダークモード固定・デフォルト表示モードpreview化・編集/プレビュー切り替えUIの統一を行う機能改善",
+  "key_components": [
+    {
+      "name": "editorStore",
+      "type": "store",
+      "path": "electron-sdd-manager/src/renderer/stores/editorStore.ts",
+      "requirements": ["2.1"]
+    },
+    {
+      "name": "projectEditorStore",
+      "type": "store",
+      "path": "electron-sdd-manager/src/shared/stores/projectEditorStore.ts",
+      "requirements": ["2.2"]
+    },
+    {
+      "name": "ProjectFileEditor",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx",
+      "requirements": ["1.1", "1.3", "3.1", "3.3"]
+    },
+    {
+      "name": "RemoteProjectEditor",
+      "type": "component",
+      "path": "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx",
+      "requirements": ["1.2", "1.3", "3.2", "3.3"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "ProjectFileEditor",
+      "target": "projectEditorStore",
+      "type": "import"
+    },
+    {
+      "source": "RemoteProjectEditor",
+      "target": "projectEditorStore",
+      "type": "import"
+    },
+    {
+      "source": "ArtifactEditor",
+      "target": "editorStore",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/editorStore.ts",
+      "action": "UPDATE",
+      "reason": "初期modeを'preview'に変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/stores/projectEditorStore.ts",
+      "action": "UPDATE",
+      "reason": "初期modeを'preview'に変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx",
+      "action": "UPDATE",
+      "reason": "data-color-mode変更、切り替えUI変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx",
+      "action": "UPDATE",
+      "reason": "data-color-mode変更、切り替えUI追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/editorStore.test.ts",
+      "action": "UPDATE",
+      "reason": "初期mode検証の期待値変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/stores/projectEditorStore.test.ts",
+      "action": "UPDATE",
+      "reason": "初期mode検証の期待値変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/ProjectFileEditor.test.tsx",
+      "action": "UPDATE",
+      "reason": "UI変更に伴うテスト更新"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.test.tsx",
+      "action": "UPDATE",
+      "reason": "切り替えUI追加に伴うテスト追加"
+    }
+  ],
+  "test_files": [
+    "electron-sdd-manager/src/renderer/stores/editorStore.test.ts",
+    "electron-sdd-manager/src/shared/stores/projectEditorStore.test.ts",
+    "electron-sdd-manager/src/renderer/components/ProjectFileEditor.test.tsx",
+    "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.test.tsx"
+  ],
+  "requirements_summary": {
+    "1": {
+      "title": "カラーモードのダークモード固定",
+      "criteria": ["1.1", "1.2", "1.3"]
+    },
+    "2": {
+      "title": "デフォルト表示モードのpreview化",
+      "criteria": ["2.1", "2.2", "2.3"]
+    },
+    "3": {
+      "title": "編集/プレビュー切り替えUIの統一",
+      "criteria": ["3.1", "3.2", "3.3"]
+    }
+  }
+}

@@ -100,28 +100,36 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Mode toggle */}
-          <button
-            onClick={() => setMode(mode === 'edit' ? 'preview' : 'edit')}
-            className={clsx(
-              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
-              'transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
-              'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            )}
-            aria-label={mode === 'edit' ? 'プレビュー' : '編集'}
-          >
-            {mode === 'edit' ? (
-              <>
-                <Eye className="w-4 h-4" />
-                プレビュー
-              </>
-            ) : (
-              <>
-                <Edit className="w-4 h-4" />
-                編集
-              </>
-            )}
-          </button>
+          {/* project-editor-dark-mode: Requirement 3.1, 3.3 - ボタングループスタイル（ArtifactEditorと同一） */}
+          {/* Mode toggle - Button group style */}
+          <div className="flex items-center" data-testid="mode-toggle-group">
+            <button
+              onClick={() => setMode('edit')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-l-md border',
+                mode === 'edit'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+              )}
+              aria-label="編集"
+              data-testid="edit-mode-button"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setMode('preview')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-r-md border-t border-r border-b',
+                mode === 'preview'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+              )}
+              aria-label="プレビュー"
+              data-testid="preview-mode-button"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Save button */}
           <button
@@ -154,7 +162,8 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
       )}
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden" data-color-mode="light">
+      {/* project-editor-dark-mode: Requirement 1.1 - カラーモードをdarkに固定 */}
+      <div className="flex-1 overflow-hidden" data-color-mode="dark">
         <MDEditor
           value={content}
           onChange={(value) => setContent(value || '')}

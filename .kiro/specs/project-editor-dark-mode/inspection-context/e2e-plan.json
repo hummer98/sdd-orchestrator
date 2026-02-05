@@ -1,0 +1,118 @@
+{
+  "feature": "project-editor-dark-mode",
+  "generatedAt": "2026-02-05T10:00:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "flow": "ProjectPaneでファイルを選択",
+      "expectedResult": "プレビューモードでダークテーマ表示",
+      "decision": "Create",
+      "reason": "No existing E2E test covers ProjectFileEditor dark mode display or default preview mode. New test required to verify data-color-mode='dark' and initial mode='preview' after file selection.",
+      "targetTests": []
+    },
+    {
+      "journeyId": "UJ-002",
+      "flow": "ProjectFileEditorでEditボタンクリック",
+      "expectedResult": "編集モードに切り替わる",
+      "decision": "Create",
+      "reason": "No existing E2E test covers ProjectFileEditor edit/preview mode toggle. New test required to verify button group UI (edit-mode-button, preview-mode-button) and mode switching behavior.",
+      "targetTests": []
+    },
+    {
+      "journeyId": "UJ-003",
+      "flow": "Remote UIでProjectファイルを選択",
+      "expectedResult": "プレビューモードでダークテーマ表示",
+      "decision": "Defer",
+      "reason": "E2E Required is No in Verification Contract. Remote UI testing is outside scope of this specification's E2E coverage.",
+      "targetTests": []
+    },
+    {
+      "journeyId": "UJ-004",
+      "flow": "RemoteProjectEditorでEditボタンクリック",
+      "expectedResult": "編集モードに切り替わる",
+      "decision": "Defer",
+      "reason": "E2E Required is No in Verification Contract. Remote UI testing is outside scope of this specification's E2E coverage.",
+      "targetTests": []
+    }
+  ],
+  "summary": {
+    "create": 2,
+    "execute": 0,
+    "defer": 2,
+    "total": 4
+  },
+  "existingTestsCoverage": {
+    "totalE2EFiles": 48,
+    "relevantFiles": [],
+    "notes": "No existing E2E tests cover ProjectFileEditor or ProjectPane components. Available data-testid selectors: project-file-editor, edit-mode-button, preview-mode-button, mode-toggle-group, dirty-indicator."
+  },
+  "newTestRequirements": [
+    {
+      "testName": "project-editor-dark-mode.e2e.spec.ts",
+      "journeys": ["UJ-001", "UJ-002"],
+      "testCases": [
+        {
+          "description": "ProjectFileEditor should display with dark theme (data-color-mode='dark')",
+          "journey": "UJ-001",
+          "selectors": ["[data-testid='project-file-editor']", "[data-color-mode='dark']"]
+        },
+        {
+          "description": "ProjectFileEditor should start in preview mode by default",
+          "journey": "UJ-001",
+          "selectors": ["[data-testid='preview-mode-button']"]
+        },
+        {
+          "description": "Edit button should switch to edit mode",
+          "journey": "UJ-002",
+          "selectors": ["[data-testid='edit-mode-button']"]
+        },
+        {
+          "description": "Preview button should switch to preview mode",
+          "journey": "UJ-002",
+          "selectors": ["[data-testid='preview-mode-button']"]
+        },
+        {
+          "description": "Mode toggle button group should have consistent styling with ArtifactEditor",
+          "journey": "UJ-002",
+          "selectors": ["[data-testid='mode-toggle-group']"]
+        }
+      ]
+    }
+  ],
+  "generatedTests": [
+    {
+      "journeyId": "UJ-001",
+      "testPath": "electron-sdd-manager/e2e-wdio/generated/project-editor-dark-mode.e2e.spec.ts",
+      "status": "EXCLUDED",
+      "validationResult": {
+        "passCount": 0,
+        "failCount": 3,
+        "exclusionReason": "Project tab switch does not trigger loadProjectFiles - project-file-list never appears. Issue: Tab click via JavaScript works but React state update (activeTab) not reflected in App.tsx useEffect that triggers loadProjectFiles. Requires architecture fix.",
+        "validatedAt": "2026-02-04T22:29:10Z",
+        "fixAttempted": true,
+        "fixDescription": "Added explicit waits (waitForClickable, waitForCondition), JavaScript click dispatch for tab switching, and increased timeouts. Tab switching works but file loading does not trigger."
+      }
+    },
+    {
+      "journeyId": "UJ-002",
+      "testPath": "electron-sdd-manager/e2e-wdio/generated/project-editor-dark-mode.e2e.spec.ts",
+      "status": "EXCLUDED",
+      "validationResult": {
+        "passCount": 0,
+        "failCount": 3,
+        "exclusionReason": "Depends on UJ-001 file list display which fails. Mode toggle buttons (edit-mode-button, preview-mode-button, mode-toggle-group) not accessible because ProjectFileEditor requires file selection first.",
+        "validatedAt": "2026-02-04T22:29:10Z",
+        "fixAttempted": true,
+        "fixDescription": "Same fix as UJ-001 - waiting improvements. Root cause is shared: project files not loading when switching to Project tab."
+      }
+    }
+  ],
+  "validationSummary": {
+    "validated": 2,
+    "stable": 0,
+    "flaky": 0,
+    "excluded": 2,
+    "validatedAt": "2026-02-04T22:29:10Z",
+    "notes": "Both tests excluded due to consistent failure (0/3 passes). Root cause: Clicking Project tab does not trigger file list loading. The DOM click event fires but App.tsx useState (activeTab) does not update correctly for E2E environment, so useEffect that calls loadProjectFiles is not triggered."
+  }
+}

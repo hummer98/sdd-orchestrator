@@ -1,0 +1,294 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T08:35:00Z",
+  "checks": [
+    {
+      "id": "task-1",
+      "checkType": "task-completion",
+      "target": "1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1 (ストア層のデフォルトモード変更) marked as complete"
+    },
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 (editorStoreの初期modeをpreviewに変更) marked as complete"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 (projectEditorStoreの初期modeをpreviewに変更) marked as complete"
+    },
+    {
+      "id": "task-2",
+      "checkType": "task-completion",
+      "target": "2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2 (ProjectFileEditorのUI変更) marked as complete"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 (data-color-modeをdarkに変更) marked as complete"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 (編集/プレビュー切り替えUIをボタングループスタイルに変更) marked as complete"
+    },
+    {
+      "id": "task-3",
+      "checkType": "task-completion",
+      "target": "3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3 (RemoteProjectEditorのUI変更) marked as complete"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 (data-color-modeをdarkに変更) marked as complete"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 (ストアのmodeを使用するように変更) marked as complete"
+    },
+    {
+      "id": "task-3.3",
+      "checkType": "task-completion",
+      "target": "3.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.3 (編集/プレビュー切り替えUIをヘッダーに追加) marked as complete"
+    },
+    {
+      "id": "task-4",
+      "checkType": "task-completion",
+      "target": "4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4 (テストの更新) marked as complete"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 (editorStore.test.tsの期待値を更新) marked as complete"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 (projectEditorStore.test.tsの期待値を更新) marked as complete"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 (ProjectFileEditor.test.tsxのUI変更に伴う更新) marked as complete"
+    },
+    {
+      "id": "task-4.4",
+      "checkType": "task-completion",
+      "target": "4.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.4 (RemoteProjectEditor.test.tsxに切り替えUIテストを追加) marked as complete"
+    },
+    {
+      "id": "impl-editorStore-mode",
+      "checkType": "implementation",
+      "target": "editorStore.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStoreの初期modeが'preview'に変更されていることを確認 (line 77)",
+      "evidence": ["electron-sdd-manager/src/renderer/stores/editorStore.ts:77"]
+    },
+    {
+      "id": "impl-projectEditorStore-mode",
+      "checkType": "implementation",
+      "target": "projectEditorStore.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStoreの初期modeが'preview'に変更されていることを確認 (line 119)",
+      "evidence": ["electron-sdd-manager/src/shared/stores/projectEditorStore.ts:119"]
+    },
+    {
+      "id": "impl-ProjectFileEditor-darkmode",
+      "checkType": "implementation",
+      "target": "ProjectFileEditor.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditorのdata-color-modeがdarkに設定されていることを確認 (line 166)",
+      "evidence": ["electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:166"]
+    },
+    {
+      "id": "impl-ProjectFileEditor-buttongroup",
+      "checkType": "implementation",
+      "target": "ProjectFileEditor.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditorにボタングループスタイルのEdit/Previewトグルが実装されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:105-132"
+      ]
+    },
+    {
+      "id": "impl-RemoteProjectEditor-darkmode",
+      "checkType": "implementation",
+      "target": "RemoteProjectEditor.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditorのdata-color-modeがdarkに設定されていることを確認 (line 207)",
+      "evidence": ["electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:207"]
+    },
+    {
+      "id": "impl-RemoteProjectEditor-storemode",
+      "checkType": "implementation",
+      "target": "RemoteProjectEditor.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditorがストアのmodeを使用していることを確認 (line 59, 212)",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:59",
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:212"
+      ]
+    },
+    {
+      "id": "impl-RemoteProjectEditor-buttongroup",
+      "checkType": "implementation",
+      "target": "RemoteProjectEditor.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditorにボタングループスタイルのEdit/Previewトグルが実装されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:159-187"
+      ]
+    },
+    {
+      "id": "import-clsx-ProjectFileEditor",
+      "checkType": "import",
+      "target": "clsx in ProjectFileEditor",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditorでclsxがインポートされていることを確認",
+      "evidence": ["electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:17"]
+    },
+    {
+      "id": "import-clsx-RemoteProjectEditor",
+      "checkType": "import",
+      "target": "clsx in RemoteProjectEditor",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditorでclsxがインポートされていることを確認",
+      "evidence": ["electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:17"]
+    },
+    {
+      "id": "import-lucide-ProjectFileEditor",
+      "checkType": "import",
+      "target": "Edit/Eye icons in ProjectFileEditor",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditorでEdit/Eyeアイコンがインポートされていることを確認",
+      "evidence": ["electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:15"]
+    },
+    {
+      "id": "import-lucide-RemoteProjectEditor",
+      "checkType": "import",
+      "target": "Edit/Eye icons in RemoteProjectEditor",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditorでEdit/Eyeアイコンがインポートされていることを確認",
+      "evidence": ["electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx:16"]
+    },
+    {
+      "id": "test-editorStore-preview",
+      "checkType": "test-update",
+      "target": "editorStore.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "editorStore.test.tsで初期modeが'preview'であることを検証するテストが更新されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/editorStore.test.ts:20",
+        "electron-sdd-manager/src/renderer/stores/editorStore.test.ts:47-50"
+      ]
+    },
+    {
+      "id": "test-projectEditorStore-preview",
+      "checkType": "test-update",
+      "target": "projectEditorStore.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectEditorStore.test.tsで初期modeが'preview'であることを検証するテストが更新されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/projectEditorStore.test.ts:110-114"
+      ]
+    },
+    {
+      "id": "test-ProjectFileEditor-buttongroup",
+      "checkType": "test-update",
+      "target": "ProjectFileEditor.test.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor.test.tsxにボタングループUIのテストが追加されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.test.tsx:155-205"
+      ]
+    },
+    {
+      "id": "test-RemoteProjectEditor-modetoggle",
+      "checkType": "test-update",
+      "target": "RemoteProjectEditor.test.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "RemoteProjectEditor.test.tsxに切り替えUIテストが追加されていることを確認",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.test.tsx:437-513"
+      ]
+    },
+    {
+      "id": "placeholder-check",
+      "checkType": "placeholder",
+      "target": "全ファイル",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "project-editor-dark-mode関連のTODO/PLACEHOLDERコメントは検出されませんでした"
+    }
+  ],
+  "stats": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 31
+  }
+}

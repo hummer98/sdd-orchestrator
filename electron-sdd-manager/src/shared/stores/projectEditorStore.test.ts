@@ -107,9 +107,10 @@ describe('projectEditorStore', () => {
       expect(state.error).toBeNull();
     });
 
-    it('should be in edit mode', () => {
+    // project-editor-dark-mode: Requirement 2.2 - デフォルト表示モードをpreviewに変更
+    it('should be in preview mode', () => {
       const state = getProjectEditorStore();
-      expect(state.mode).toBe('edit');
+      expect(state.mode).toBe('preview');
     });
 
     it('should not have external change detected', () => {
@@ -338,20 +339,21 @@ describe('projectEditorStore', () => {
     });
   });
 
+  // project-editor-dark-mode: mode is now 'preview' by default (Requirement 2.2)
   describe('setMode action', () => {
-    it('should change mode to preview', () => {
-      getProjectEditorStore().setMode('preview');
-
-      const state = getProjectEditorStore();
-      expect(state.mode).toBe('preview');
-    });
-
-    it('should change mode back to edit', () => {
-      getProjectEditorStore().setMode('preview');
+    it('should change mode to edit', () => {
       getProjectEditorStore().setMode('edit');
 
       const state = getProjectEditorStore();
       expect(state.mode).toBe('edit');
+    });
+
+    it('should change mode back to preview', () => {
+      getProjectEditorStore().setMode('edit');
+      getProjectEditorStore().setMode('preview');
+
+      const state = getProjectEditorStore();
+      expect(state.mode).toBe('preview');
     });
   });
 
@@ -405,6 +407,7 @@ describe('projectEditorStore', () => {
     });
   });
 
+  // project-editor-dark-mode: mode is now 'preview' by default (Requirement 2.2)
   describe('clearEditor action', () => {
     it('should reset all editor state', async () => {
       const mockApiClient = createMockApiClient({
@@ -413,7 +416,7 @@ describe('projectEditorStore', () => {
 
       await getProjectEditorStore().loadFile(mockApiClient, '/path/to/file.md', 'file.md');
       getProjectEditorStore().setContent('modified');
-      getProjectEditorStore().setMode('preview');
+      getProjectEditorStore().setMode('edit');
 
       getProjectEditorStore().clearEditor();
 
@@ -423,7 +426,7 @@ describe('projectEditorStore', () => {
       expect(state.content).toBe('');
       expect(state.originalContent).toBe('');
       expect(state.isDirty).toBe(false);
-      expect(state.mode).toBe('edit');
+      expect(state.mode).toBe('preview');
       expect(state.externalChangeDetected).toBe(false);
       expect(state.error).toBeNull();
     });

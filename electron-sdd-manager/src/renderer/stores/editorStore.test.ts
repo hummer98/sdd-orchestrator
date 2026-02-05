@@ -10,13 +10,14 @@ import { useEditorStore } from './editorStore';
 describe('useEditorStore', () => {
   beforeEach(() => {
     // Reset store state
+    // project-editor-dark-mode: mode is now 'preview' by default (Requirement 2.1)
     useEditorStore.setState({
       activeTab: 'requirements',
       content: '',
       originalContent: '',
       isDirty: false,
       isSaving: false,
-      mode: 'edit',
+      mode: 'preview',
       currentPath: null,
       // Bug fix: worktree-artifact-save - Added currentEntityType
       currentEntityType: 'spec',
@@ -42,9 +43,10 @@ describe('useEditorStore', () => {
       expect(state.isDirty).toBe(false);
     });
 
-    it('should be in edit mode initially', () => {
+    // project-editor-dark-mode: Requirement 2.1 - デフォルト表示モードをpreviewに変更
+    it('should be in preview mode initially', () => {
       const state = useEditorStore.getState();
-      expect(state.mode).toBe('edit');
+      expect(state.mode).toBe('preview');
     });
   });
 
@@ -221,14 +223,15 @@ describe('useEditorStore', () => {
   });
 
   describe('setMode', () => {
+    // project-editor-dark-mode: mode is now 'preview' by default
     it('should toggle between edit and preview modes', () => {
-      expect(useEditorStore.getState().mode).toBe('edit');
-
-      useEditorStore.getState().setMode('preview');
       expect(useEditorStore.getState().mode).toBe('preview');
 
       useEditorStore.getState().setMode('edit');
       expect(useEditorStore.getState().mode).toBe('edit');
+
+      useEditorStore.getState().setMode('preview');
+      expect(useEditorStore.getState().mode).toBe('preview');
     });
   });
 

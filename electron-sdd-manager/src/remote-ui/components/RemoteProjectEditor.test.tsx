@@ -433,4 +433,82 @@ describe('RemoteProjectEditor', () => {
       });
     });
   });
+
+  // project-editor-dark-mode: Task 4.4 - 切り替えUIテスト追加 (Requirement 3.2, 3.3)
+  describe('Mode toggle UI', () => {
+    it('should render button group with Edit and Preview buttons', async () => {
+      const mockReadProjectFile = vi.fn().mockResolvedValue({
+        ok: true,
+        value: '# Test',
+      });
+      mockApiClient.readProjectFile = mockReadProjectFile;
+
+      render(
+        <RemoteProjectEditor
+          file={mockFile}
+          apiClient={mockApiClient}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mode-toggle-group')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-mode-button')).toBeInTheDocument();
+        expect(screen.getByTestId('preview-mode-button')).toBeInTheDocument();
+      });
+    });
+
+    it('should switch to edit mode when Edit button is clicked', async () => {
+      const mockReadProjectFile = vi.fn().mockResolvedValue({
+        ok: true,
+        value: '# Test',
+      });
+      mockApiClient.readProjectFile = mockReadProjectFile;
+
+      render(
+        <RemoteProjectEditor
+          file={mockFile}
+          apiClient={mockApiClient}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('md-editor-textarea')).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByTestId('edit-mode-button');
+      fireEvent.click(editButton);
+
+      // Verify mode changed in store (preview is default, so clicking edit changes it to edit)
+      const { useProjectEditorStore } = await import('@shared/stores/projectEditorStore');
+      expect(useProjectEditorStore.getState().mode).toBe('edit');
+    });
+
+    it('should switch to preview mode when Preview button is clicked', async () => {
+      const mockReadProjectFile = vi.fn().mockResolvedValue({
+        ok: true,
+        value: '# Test',
+      });
+      mockApiClient.readProjectFile = mockReadProjectFile;
+
+      // Set mode to edit first
+      const { useProjectEditorStore } = await import('@shared/stores/projectEditorStore');
+      useProjectEditorStore.setState({ mode: 'edit' });
+
+      render(
+        <RemoteProjectEditor
+          file={mockFile}
+          apiClient={mockApiClient}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('md-editor-textarea')).toBeInTheDocument();
+      });
+
+      const previewButton = screen.getByTestId('preview-mode-button');
+      fireEvent.click(previewButton);
+
+      expect(useProjectEditorStore.getState().mode).toBe('preview');
+    });
+  });
 });

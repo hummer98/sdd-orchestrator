@@ -73,7 +73,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   originalContent: '',
   isDirty: false,
   isSaving: false,
-  mode: 'edit',
+  // project-editor-dark-mode: Requirement 2.1 - デフォルト表示モードをpreviewに変更
+  mode: 'preview',
   currentPath: null,
   // Bug fix: worktree-artifact-save - Store entityType for writeArtifact
   currentEntityType: 'spec',

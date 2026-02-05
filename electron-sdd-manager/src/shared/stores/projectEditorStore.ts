@@ -115,7 +115,8 @@ const initialState: ProjectEditorState = {
   isDirty: false,
   isSaving: false,
   error: null,
-  mode: 'edit',
+  // project-editor-dark-mode: Requirement 2.2 - デフォルト表示モードをpreviewに変更
+  mode: 'preview',
   externalChangeDetected: false,
 };
 

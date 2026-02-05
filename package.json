@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@wdio/cli": "^9.23.3"
+  }
+}

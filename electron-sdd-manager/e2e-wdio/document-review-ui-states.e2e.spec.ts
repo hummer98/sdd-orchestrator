@@ -26,6 +26,8 @@ import {
   resetAutoExecutionService,
   resetSpecStoreAutoExecution,
   resetAutoExecutionCoordinator,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path - Use dedicated fixture to avoid state contamination
@@ -353,16 +355,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show document review panel when tasks are approved', async () => {
@@ -419,16 +423,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show in_progress indicator in panel', async () => {
@@ -468,16 +474,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should enable reply button after review is complete', async () => {
@@ -500,16 +508,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should enable apply fix button when fixes are pending', async () => {
@@ -544,16 +554,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show round 2 in progress after fix applied', async () => {
@@ -576,16 +588,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show approved indicator in panel', async () => {
@@ -624,16 +638,18 @@ describe('Document Review UI States E2E', () => {
 
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should display correct round count for multi-round review', async () => {

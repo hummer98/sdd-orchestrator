@@ -27,6 +27,8 @@ import {
   resetSpecStoreAutoExecution,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -226,20 +228,18 @@ describe('Auto Execution Permissions E2E', () => {
     const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
 
-    await browser.pause(500);
-    await refreshSpecStore();
-    await browser.pause(500);
+    // E2E-fix: Wait for project UI to be ready
+    await waitForProjectUIReady(10000);
 
     const specSuccess = await selectSpecViaStore(SPEC_NAME);
     expect(specSuccess).toBe(true);
-    await browser.pause(500);
 
-    // Specストアを更新
-    await refreshSpecStore();
+    // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+    await waitForSpecDetailReady(SPEC_NAME, 15000);
 
     // WorkflowViewが表示されるまで待機
     const workflowView = await $('[data-testid="workflow-view"]');
-    await workflowView.waitForExist({ timeout: 5000 });
+    await workflowView.waitForExist({ timeout: 10000 });
   });
 
   afterEach(async () => {

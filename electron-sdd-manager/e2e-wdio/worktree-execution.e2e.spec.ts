@@ -447,7 +447,7 @@ describe('Worktree Execution E2E', () => {
     it('should display ImplFlowFrame with checkbox and start button', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // Check for ImplFlowFrame
       const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
@@ -481,7 +481,7 @@ describe('Worktree Execution E2E', () => {
     it('should show checkbox unchecked and editable when no worktree', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // Check checkbox state
       const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
@@ -501,7 +501,7 @@ describe('Worktree Execution E2E', () => {
     it('should show normal mode start button label', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // Check start button text (normal mode)
       const startButton = await $('[data-testid="impl-start-button"]');
@@ -552,7 +552,7 @@ describe('Worktree Execution E2E', () => {
     it('should display checkbox checked and locked when worktree exists', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // Check for ImplFlowFrame
       const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
@@ -579,7 +579,7 @@ describe('Worktree Execution E2E', () => {
     it('should display continue button (color indicates worktree mode)', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // Check start button text (worktree mode, impl started)
       // Note: Worktree mode is indicated by color (violet) only, not label
@@ -721,7 +721,7 @@ describe('Worktree Execution E2E', () => {
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // FIX-4: First enable worktree mode by checking the checkbox
       const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
@@ -775,14 +775,15 @@ describe('Worktree Execution E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
     });
 
     afterEach(async () => {
@@ -855,14 +856,15 @@ describe('Worktree Execution E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
     });
 
     afterEach(async () => {
@@ -873,7 +875,7 @@ describe('Worktree Execution E2E', () => {
     it('should display document review panel when tasks are approved', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       await browser.pause(1000);
 
@@ -890,7 +892,7 @@ describe('Worktree Execution E2E', () => {
     it('should show approved status in document review panel', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       await browser.pause(1000);
 

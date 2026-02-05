@@ -31,6 +31,7 @@ import {
   debugGetAllAgents,
   stopAutoExecution,
   logBrowserConsole,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/auto-exec-test');
@@ -120,6 +121,8 @@ describe('Agent Log Streaming E2E Test', () => {
     expect(specSuccess).toBe(true);
     await browser.pause(500);
 
+    // Wait for spec detail to be fully loaded before proceeding
+    await waitForSpecDetailReady(SPEC_NAME, 15000);
     await refreshSpecStore();
 
     // Wait for agent-list-panel to appear

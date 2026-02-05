@@ -31,6 +31,8 @@ import {
   resetSpecStoreAutoExecution,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -318,18 +320,19 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should verify initial state shows all prerequisite phases approved', async () => {
@@ -436,18 +439,19 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should execute tasks then document-review then impl in sequence', async () => {
@@ -520,18 +524,19 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show impl phase in the workflow UI', async () => {

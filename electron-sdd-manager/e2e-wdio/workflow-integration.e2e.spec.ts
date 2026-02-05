@@ -173,11 +173,16 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
     });
 
     it('should display all phase items', async () => {
-      const phases = ['requirements', 'design', 'tasks', 'impl'];
-      for (const phase of phases) {
+      // requirements, design, tasks use PhaseItem (data-testid="phase-item-{phase}")
+      // impl uses ImplPhasePanel (data-testid="impl-phase-panel")
+      const displayPhases = ['requirements', 'design', 'tasks'];
+      for (const phase of displayPhases) {
         const phaseItem = await $(`[data-testid="phase-item-${phase}"]`);
         expect(await phaseItem.isExisting()).toBe(true);
       }
+      // ImplPhasePanel has a different data-testid
+      const implPanel = await $('[data-testid="impl-phase-panel"]');
+      expect(await implPanel.isExisting()).toBe(true);
     });
 
     it('should display requirements phase button', async () => {
@@ -302,16 +307,25 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
     });
 
     it('should have all phase buttons in correct order', async () => {
-      const phases = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
       const phasePanel = await $('[data-testid="phase-execution-panel"]');
 
       if (await phasePanel.isExisting()) {
-        for (const phase of phases) {
+        // PhaseItem-based phases: requirements, design, tasks, deploy
+        for (const phase of ['requirements', 'design', 'tasks', 'deploy']) {
           const phaseItem = await $(`[data-testid="phase-item-${phase}"]`);
-          // All phases should have items, even if buttons are disabled
           if (await phaseItem.isExisting()) {
             expect(await phaseItem.isDisplayed()).toBe(true);
           }
+        }
+        // ImplPhasePanel has a separate data-testid
+        const implPanel = await $('[data-testid="impl-phase-panel"]');
+        if (await implPanel.isExisting()) {
+          expect(await implPanel.isDisplayed()).toBe(true);
+        }
+        // InspectionPanel has a separate data-testid
+        const inspectionPanel = await $('[data-testid="inspection-panel"]');
+        if (await inspectionPanel.isExisting()) {
+          expect(await inspectionPanel.isDisplayed()).toBe(true);
         }
       }
     });

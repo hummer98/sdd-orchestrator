@@ -116,18 +116,19 @@ async function selectBugViaStore(bugName: string): Promise<boolean> {
     browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.bugStore?.getState) {
-          const bugStore = stores.bugStore.getState();
+        // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
+        if (stores?.bug?.getState) {
+          const bugStore = stores.bug.getState();
           const bug = bugStore.bugs.find((b: any) => b.name === name);
           if (bug) {
             await bugStore.selectBug(bug);
             done(true);
           } else {
-            console.error('[E2E] Bug not found:', name);
+            console.error('[E2E] Bug not found:', name, 'Available:', bugStore.bugs.map((b: any) => b.name));
             done(false);
           }
         } else {
-          console.error('[E2E] bugStore not available');
+          console.error('[E2E] bugStore not available (check __STORES__.bug)');
           done(false);
         }
       } catch (e) {
@@ -165,28 +166,31 @@ async function setBugAutoExecutionPermissions(permissions: Record<string, boolea
 }
 
 /**
- * Helper: Get bug auto-execution status from BugAutoExecutionService
+ * Helper: Get bug auto-execution status via IPC
+ * bug-auto-execution-per-bug-state: Uses electronAPI.bugAutoExecutionStatus() IPC
+ * which queries the Main Process BugAutoExecutionCoordinator directly.
  */
 async function getBugAutoExecutionStatus(): Promise<{
   isAutoExecuting: boolean;
   autoExecutionStatus: string;
   currentAutoPhase: string | null;
 }> {
-  return browser.execute(() => {
+  return browser.executeAsync(async (bugDir: string, done: (result: any) => void) => {
     try {
-      const service = (window as any).__BUG_AUTO_EXECUTION_SERVICE__;
-      if (!service) {
-        return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
+      const result = await (window as any).electronAPI.bugAutoExecutionStatus({ bugPath: bugDir });
+      if (result) {
+        done({
+          isAutoExecuting: result.status === 'running',
+          autoExecutionStatus: result.status,
+          currentAutoPhase: result.currentPhase,
+        });
+      } else {
+        done({ isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null });
       }
-      return {
-        isAutoExecuting: service.isAutoExecuting(),
-        autoExecutionStatus: service.getStatus(),
-        currentAutoPhase: service.getCurrentPhase(),
-      };
     } catch (e) {
-      return { isAutoExecuting: false, autoExecutionStatus: 'error', currentAutoPhase: null };
+      done({ isAutoExecuting: false, autoExecutionStatus: 'error', currentAutoPhase: null });
     }
-  });
+  }, BUG_DIR);
 }
 
 /**
@@ -226,7 +230,8 @@ async function waitForCondition(
 async function refreshBugStore(): Promise<void> {
   await browser.executeAsync((done) => {
     const stores = (window as any).__STORES__;
-    const refreshFn = stores?.bugStore?.getState()?.refreshBugs;
+    // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
+    const refreshFn = stores?.bug?.getState()?.refreshBugs;
     if (refreshFn) {
       refreshFn().then(() => done()).catch(() => done());
     } else {
@@ -254,14 +259,17 @@ async function clearAgentStore(): Promise<void> {
 }
 
 /**
- * Helper: Reset BugAutoExecutionService state
+ * Helper: Reset bug auto-execution state
+ * bug-auto-execution-per-bug-state: Reset via IPC (bugAutoExecutionReset)
  */
 async function resetBugAutoExecutionService(): Promise<void> {
-  await browser.execute(() => {
-    const service = (window as any).__BUG_AUTO_EXECUTION_SERVICE__;
-    if (service?.stop) {
-      service.stop();
+  await browser.executeAsync(async (done: () => void) => {
+    try {
+      await (window as any).electronAPI?.bugAutoExecutionReset?.();
+    } catch {
+      // ignore
     }
+    done();
   });
   await browser.pause(300);
 }
@@ -305,7 +313,8 @@ async function waitForBugDetail(): Promise<boolean> {
   return waitForCondition(async () => {
     const hasDetail = await browser.execute(() => {
       const stores = (window as any).__STORES__;
-      return stores?.bugStore?.getState()?.bugDetail !== null;
+      // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
+      return stores?.bug?.getState()?.bugDetail !== null;
     });
     return hasDetail;
   }, 5000, 100, 'bugDetail-loaded');
@@ -504,9 +513,10 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Debug: Check bugStore state before clicking
+      // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
       const bugStoreState = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const bugStore = stores?.bugStore?.getState();
+        const bugStore = stores?.bug?.getState();
         return {
           selectedBug: bugStore?.selectedBug?.name ?? null,
           hasBugDetail: bugStore?.bugDetail !== null,

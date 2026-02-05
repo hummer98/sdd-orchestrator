@@ -13,7 +13,11 @@
  * Requirements: 2.1, 2.2, 2.3, 3.2, 4.2, 6.1, 6.2
  */
 
+import * as path from 'path';
 import { waitForProjectUIReady } from './helpers/auto-execution.helpers';
+
+// Fallback fixture path when SDD_PROJECT_PATH is not set
+const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/docs-viewer-test');
 
 /**
  * Helper: Dismiss any modal overlays (z-50 dialogs) that may block interactions.
@@ -110,6 +114,7 @@ async function waitForTestId(testId: string, timeout = 5000): Promise<WebdriverI
 describe('Project Docs Viewer E2E', () => {
   // Project is pre-selected via SDD_PROJECT_PATH environment variable in wdio.conf.ts
   // Usage: SDD_PROJECT_PATH=... npm run test:e2e -- --spec e2e-wdio/project-docs-viewer.e2e.spec.ts
+  // Fallback: If SDD_PROJECT_PATH is not set, select project via store IPC
   before(async () => {
     // Ensure window is large enough for all UI elements
     await browser.electron.execute((electron) => {
@@ -121,7 +126,33 @@ describe('Project Docs Viewer E2E', () => {
     });
     await browser.pause(500);
 
-    // Wait for project UI to fully initialize (project already selected via env)
+    // Check if project is already selected (via SDD_PROJECT_PATH)
+    const currentProject = await browser.execute(() => {
+      const stores = (window as any).__STORES__;
+      return stores?.project?.getState()?.currentProject;
+    });
+
+    if (!currentProject) {
+      // Fallback: select project via store selectProject (IPC)
+      console.log('[E2E] SDD_PROJECT_PATH not set, selecting project via store...');
+      await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+        try {
+          const stores = (window as any).__STORES__;
+          if (stores?.project?.getState) {
+            await stores.project.getState().selectProject(projPath);
+            const result = stores.project.getState().lastSelectResult;
+            done(result?.success || false);
+          } else {
+            done(false);
+          }
+        } catch (e) {
+          console.error('[E2E] selectProject fallback error:', e);
+          done(false);
+        }
+      }, FIXTURE_PROJECT_PATH);
+    }
+
+    // Wait for project UI to fully initialize
     await waitForProjectUIReady(15000);
 
     // Dismiss any auto-opened dialogs (e.g., RemoteAccessDialog when Claude CLI not found)

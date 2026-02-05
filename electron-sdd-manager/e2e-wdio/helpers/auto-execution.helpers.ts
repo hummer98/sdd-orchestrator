@@ -37,8 +37,10 @@ export interface SelectProjectResult {
 /**
  * Helper: Select project using Zustand store action
  *
- * Now properly checks the IPC result via lastSelectResult in projectStore.
- * Returns detailed error information for debugging.
+ * @deprecated SDD_PROJECT_PATH 環境変数を使用してください。
+ * この関数はRenderer→IPC→Main経路を使うため不安定です。
+ * wdio.conf.ts の appEnv で SDD_PROJECT_PATH を設定する方法が推奨されます。
+ * 例: SDD_PROJECT_PATH="$(pwd)/e2e-wdio/fixtures/test-project" npm run test:e2e -- --spec ...
  */
 export async function selectProjectViaStore(projectPath: string): Promise<boolean> {
   const result = await selectProjectViaStoreDetailed(projectPath);
@@ -47,6 +49,9 @@ export async function selectProjectViaStore(projectPath: string): Promise<boolea
 
 /**
  * Helper: Select project with detailed result
+ *
+ * @deprecated SDD_PROJECT_PATH 環境変数を使用してください。
+ * この関数はRenderer→IPC→Main経路を使うため不安定です。
  */
 export async function selectProjectViaStoreDetailed(projectPath: string): Promise<SelectProjectResult> {
   return new Promise((resolve) => {
@@ -280,10 +285,10 @@ export async function setAutoExecutionPermissions(
         },
       });
 
-      // Refresh spec store to pick up changes
-      if (specStore.refreshSpecs) {
-        await specStore.refreshSpecs();
-      }
+      // Wait for file watcher to detect spec.json change and update specStore
+      // refreshSpecs was removed (File Watcher handles updates automatically)
+      // Use a small delay to allow the file watcher event to propagate
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       done(true);
     } catch (e) {

@@ -17,12 +17,21 @@ describe('Diagnostic Test', () => {
     console.log('[DIAG] Initial testids:', JSON.stringify(initialTestIds));
     
     // Step 2: Select project
+    // Store API: selectProject (async, IPC経由) を使用
     console.log('[DIAG] Step 2: Selecting project');
-    const projectResult = await browser.execute((projectPath: string) => {
-      const stores = (window as any).__STORES__;
-      if (!stores?.project?.getState) return { error: 'project store not available' };
-      stores.project.getState().setCurrentProject(projectPath);
-      return { success: true };
+    const projectResult = await browser.executeAsync(async (projectPath: string, done: (result: any) => void) => {
+      try {
+        const stores = (window as any).__STORES__;
+        if (!stores?.project?.getState) {
+          done({ error: 'project store not available' });
+          return;
+        }
+        await stores.project.getState().selectProject(projectPath);
+        const lastResult = stores.project.getState().lastSelectResult;
+        done(lastResult?.success ? { success: true } : { error: lastResult?.error || 'selectProject failed' });
+      } catch (e) {
+        done({ error: String(e) });
+      }
     }, FIXTURE_PATH);
     console.log('[DIAG] Project selection result:', JSON.stringify(projectResult));
     

@@ -25,6 +25,8 @@ import {
   stopAutoExecution,
   resetAutoExecutionCoordinator,
   setDocumentReviewFlag,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -362,19 +364,19 @@ describe('Auto Execution Resume E2E Tests', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
 
-      await refreshSpecStore();
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // document-review-skip-removal: Use 'run' with pre-approved documentReview in fixture
       // instead of 'skip'. The fixture already has documentReview.status = 'approved'
@@ -536,19 +538,19 @@ describe('Auto Execution Resume E2E Tests', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
 
-      await refreshSpecStore();
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
 
       // document-review-skip-removal: Use 'run' with pre-approved documentReview in fixture
       await setDocumentReviewFlag('run');
@@ -644,19 +646,19 @@ describe('Auto Execution Resume E2E Tests', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
 
-      await refreshSpecStore();
+      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should verify initial state shows document-review as approved', async () => {

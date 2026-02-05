@@ -15,7 +15,6 @@ import { browser, expect } from '@wdio/globals';
 import * as path from 'node:path';
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import {
-  selectProjectViaStore,
   selectSpecViaStore,
   waitForCondition,
   waitForProjectUIReady,
@@ -231,11 +230,25 @@ describe('Mermaid Preview E2E', () => {
     });
     console.log('[E2E] Initial project state:', JSON.stringify(projectState));
 
-    // If project is not yet selected (SDD_PROJECT_PATH not used), select it via store
+    // If project is not yet selected (SDD_PROJECT_PATH not used), select it via store IPC
     if (!projectState?.currentProject) {
       console.log('[E2E] Project not pre-selected, selecting via store...');
-      const selected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
-      console.log('[E2E] selectProjectViaStore result:', selected);
+      const selected = await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+        try {
+          const stores = (window as any).__STORES__;
+          if (stores?.project?.getState) {
+            await stores.project.getState().selectProject(projPath);
+            const result = stores.project.getState().lastSelectResult;
+            done(result?.success || false);
+          } else {
+            done(false);
+          }
+        } catch (e) {
+          console.error('[E2E] selectProject error:', e);
+          done(false);
+        }
+      }, FIXTURE_PROJECT_PATH);
+      console.log('[E2E] selectProject result:', selected);
       expect(selected).toBe(true);
 
       // Wait for project UI to be ready

@@ -27,6 +27,8 @@ import {
   resetSpecStoreAutoExecution,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -328,18 +330,19 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should trigger document review when tasks completed', async () => {
@@ -417,18 +420,19 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should show document review panel when tasks are approved', async () => {
@@ -496,18 +500,19 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should complete auto-execution and reset UI when impl is NOGO after document-review-reply', async () => {
@@ -614,18 +619,19 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
+
+      // E2E-fix: Wait for project UI to be ready
+      await waitForProjectUIReady(10000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
+
+      // E2E-fix: Wait for spec detail to be ready
+      await waitForSpecDetailReady(SPEC_NAME, 15000);
 
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      await workflowView.waitForExist({ timeout: 10000 });
     });
 
     it('should NOT set approved after autofix and should trigger next review round', async () => {

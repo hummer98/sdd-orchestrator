@@ -11,7 +11,6 @@
 
 import * as path from 'path';
 import {
-  selectProjectViaStore,
   selectSpecViaStore,
   waitForCondition,
   waitForSpecDetailReady,
@@ -21,13 +20,42 @@ import {
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const TEST_SPEC_ID = 'test-feature';
 
+/**
+ * Helper: Select project via store IPC (inline, avoids deprecated selectProjectViaStore)
+ */
+async function selectProject(projectPath: string): Promise<boolean> {
+  return browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (stores?.project?.getState) {
+        await stores.project.getState().selectProject(projPath);
+        const result = stores.project.getState().lastSelectResult;
+        done(result?.success || false);
+      } else {
+        done(false);
+      }
+    } catch (e) {
+      console.error('[E2E] selectProject error:', e);
+      done(false);
+    }
+  }, projectPath);
+}
+
 describe('Additional Markdown Files E2E', () => {
   before(async () => {
-    // Select project via store
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
-    if (!projectSuccess) {
-      console.error('[E2E] Failed to select project');
-      return;
+    // Check if project is already selected (via SDD_PROJECT_PATH)
+    const currentProject = await browser.execute(() => {
+      const stores = (window as any).__STORES__;
+      return stores?.project?.getState()?.currentProject;
+    });
+
+    if (!currentProject) {
+      // Select project via store IPC
+      const projectSuccess = await selectProject(FIXTURE_PROJECT_PATH);
+      if (!projectSuccess) {
+        console.error('[E2E] Failed to select project');
+        return;
+      }
     }
 
     // Wait for project UI to be ready

@@ -125,6 +125,7 @@ function resetFixtures(): void {
 
 /**
  * Get all specs from the store
+ * Note: specs array only contains { name }, phase and worktree come from specJsonMap
  */
 async function getAllSpecsFromStore(): Promise<
   Array<{ name: string; phase: string; worktree?: { path?: string; branch?: string } }>
@@ -132,16 +133,23 @@ async function getAllSpecsFromStore(): Promise<
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.spec?.getState) return [];
-    return stores.spec.getState().specs.map((s: any) => ({
-      name: s.name,
-      phase: s.phase,
-      worktree: s.worktree,
-    }));
+    const state = stores.spec.getState();
+    const specs = state.specs || [];
+    const specJsonMap = state.specJsonMap;
+    return specs.map((s: any) => {
+      const specJson = specJsonMap?.get?.(s.name);
+      return {
+        name: s.name,
+        phase: specJson?.phase || null,
+        worktree: specJson?.worktree || undefined,
+      };
+    });
   });
 }
 
 /**
  * Get currently selected spec from the store
+ * Note: metadata only has { name }, phase and worktree come from specJson
  */
 async function getSelectedSpecFromStore(): Promise<{
   name: string;
@@ -151,12 +159,15 @@ async function getSelectedSpecFromStore(): Promise<{
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.spec?.getState) return null;
-    const spec = stores.spec.getState().specDetail?.metadata;
-    if (!spec) return null;
+    const specDetail = stores.spec.getState().specDetail;
+    if (!specDetail) return null;
+    const metadata = specDetail.metadata;
+    const specJson = specDetail.specJson;
+    if (!metadata) return null;
     return {
-      name: spec.name,
-      phase: spec.phase,
-      worktree: spec.worktree,
+      name: metadata.name,
+      phase: specJson?.phase || null,
+      worktree: specJson?.worktree || undefined,
     };
   });
 }
@@ -219,12 +230,13 @@ async function waitForCondition(
 
 /**
  * Get bugs list from bugStore
+ * Note: __STORES__ key is 'bug', not 'bugStore'
  */
 async function getBugsFromStore(): Promise<Array<{ name: string; phase: string }>> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.bugStore?.getState) return [];
-    return stores.bugStore.getState().bugs.map((b: any) => ({
+    if (!stores?.bug?.getState) return [];
+    return stores.bug.getState().bugs.map((b: any) => ({
       name: b.name,
       phase: b.phase,
     }));

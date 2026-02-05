@@ -39,7 +39,7 @@ async function executeProjectCommand(
     async (cmd: string, ttl: string) => {
       try {
         const stores = (window as any).__STORES__;
-        const projectPath = stores?.project?.getState()?.projectPath;
+        const projectPath = stores?.project?.getState()?.currentProject;
         if (!projectPath) {
           return { success: false, error: 'No project selected' };
         }
@@ -101,7 +101,7 @@ async function waitForProjectReady(): Promise<boolean> {
     async () => {
       const projectPath = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        return stores?.project?.getState()?.projectPath;
+        return stores?.project?.getState()?.currentProject;
       });
       return projectPath === FIXTURE_PROJECT_PATH;
     },
@@ -165,7 +165,7 @@ describe('Project Agent Startup E2E', () => {
       // Check if project is selected
       const projectPath = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        return stores?.project?.getState()?.projectPath;
+        return stores?.project?.getState()?.currentProject;
       });
 
       if (!projectPath) {
@@ -193,7 +193,7 @@ describe('Project Agent Startup E2E', () => {
     it('should have agent in store after successful start', async () => {
       const projectPath = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        return stores?.project?.getState()?.projectPath;
+        return stores?.project?.getState()?.currentProject;
       });
 
       if (!projectPath) {
@@ -218,7 +218,7 @@ describe('Project Agent Startup E2E', () => {
     it('should show ProjectAgentPanel', async () => {
       const projectPath = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        return stores?.project?.getState()?.projectPath;
+        return stores?.project?.getState()?.currentProject;
       });
 
       if (!projectPath) {
@@ -243,7 +243,7 @@ describe('Project Agent Startup E2E', () => {
       await browser.execute(() => {
         const stores = (window as any).__STORES__;
         if (stores?.project?.setState) {
-          stores.project.setState({ projectPath: null });
+          stores.project.setState({ currentProject: null });
         }
       });
 

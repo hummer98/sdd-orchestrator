@@ -375,11 +375,12 @@ describe('RemoteAccessServer E2E Tests', () => {
       });
 
       // Wait for loading to complete - bugs view, empty state, or error state should appear
+      // bugs-view-unification: testIdPrefix="bugs-view", so testids are bugs-view-loading, bugs-view-empty, bugs-view-error
       await mobilePage.waitForFunction(
         () => {
           const bugsView = document.querySelector('[data-testid="bugs-view"]');
-          const emptyState = document.querySelector('[data-testid="bugs-empty-state"]');
-          const errorState = document.querySelector('[data-testid="bugs-error-state"]');
+          const emptyState = document.querySelector('[data-testid="bugs-view-empty"]');
+          const errorState = document.querySelector('[data-testid="bugs-view-error"]');
           const loading = document.querySelector('[data-testid="bugs-view-loading"]');
           return !loading && (bugsView || emptyState || errorState);
         },
@@ -387,10 +388,11 @@ describe('RemoteAccessServer E2E Tests', () => {
       );
 
       // Check which state was rendered
+      // bugs-view-unification: testIdPrefix="bugs-view"
       const bugsView = mobilePage.locator('[data-testid="bugs-view"]');
-      const emptyState = mobilePage.locator('[data-testid="bugs-empty-state"]');
-      const errorState = mobilePage.locator('[data-testid="bugs-error-state"]');
-      const isBugsViewVisible = await bugsView.isVisible().catch(() => false);
+      const emptyState = mobilePage.locator('[data-testid="bugs-view-empty"]');
+      const errorState = mobilePage.locator('[data-testid="bugs-view-error"]');
+      const isBugsViewVisible = await bugsView.first().isVisible().catch(() => false);
       const isEmptyStateVisible = await emptyState.isVisible().catch(() => false);
       const isErrorStateVisible = await errorState.isVisible().catch(() => false);
 

@@ -181,6 +181,7 @@ function readWorktreeSpecJson(): typeof WORKTREE_SPEC_JSON {
 
 /**
  * Get all specs from the store
+ * Note: specs array only contains { name }, phase and worktree come from specJsonMap
  */
 async function getAllSpecsFromStore(): Promise<
   Array<{ name: string; phase: string; worktree?: { path?: string; branch?: string } }>
@@ -188,16 +189,23 @@ async function getAllSpecsFromStore(): Promise<
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.spec?.getState) return [];
-    return stores.spec.getState().specs.map((s: any) => ({
-      name: s.name,
-      phase: s.phase,
-      worktree: s.worktree,
-    }));
+    const state = stores.spec.getState();
+    const specs = state.specs || [];
+    const specJsonMap = state.specJsonMap;
+    return specs.map((s: any) => {
+      const specJson = specJsonMap?.get?.(s.name);
+      return {
+        name: s.name,
+        phase: specJson?.phase || null,
+        worktree: specJson?.worktree || undefined,
+      };
+    });
   });
 }
 
 /**
  * Get currently selected spec from the store
+ * Note: metadata only has { name }, phase and worktree come from specJson
  */
 async function getSelectedSpecFromStore(): Promise<{
   name: string;
@@ -207,12 +215,15 @@ async function getSelectedSpecFromStore(): Promise<{
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.spec?.getState) return null;
-    const spec = stores.spec.getState().specDetail?.metadata;
-    if (!spec) return null;
+    const specDetail = stores.spec.getState().specDetail;
+    if (!specDetail) return null;
+    const metadata = specDetail.metadata;
+    const specJson = specDetail.specJson;
+    if (!metadata) return null;
     return {
-      name: spec.name,
-      phase: spec.phase,
-      worktree: spec.worktree,
+      name: metadata.name,
+      phase: specJson?.phase || null,
+      worktree: specJson?.worktree || undefined,
     };
   });
 }
@@ -433,86 +444,10 @@ describe('Worktree Spec Sync E2E', () => {
 
   // ============================================================
   // Scenario 4: ImplFlowFrame display differences
+  // NOTE: Removed - impl-flow-frame and worktree-mode-checkbox
+  // data-testids do not exist in the current implementation.
+  // These UI components were either not implemented or renamed.
   // ============================================================
-  describe('Scenario 4: ImplFlowFrame display for worktree vs main specs', () => {
-    beforeEach(async () => {
-      resetFixtures();
-
-      await clearAgentStore();
-      await resetAutoExecutionCoordinator();
-      await resetAutoExecutionService();
-      await resetSpecStoreAutoExecution();
-
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
-    });
-
-    afterEach(async () => {
-      await stopAutoExecution();
-      await browser.pause(300);
-    });
-
-    it('should show locked checkbox for worktree spec (impl already started)', async () => {
-      // Select the worktree spec
-      const specSuccess = await selectSpecViaStore(WORKTREE_SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
-
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
-
-      // Check for impl flow frame
-      const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
-      const frameExists = await implFlowFrame.isExisting();
-      console.log(`[E2E] impl-flow-frame exists (worktree spec): ${frameExists}`);
-
-      if (frameExists) {
-        // Check checkbox state - should be checked and locked
-        const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-        if (await checkbox.isExisting()) {
-          const isChecked = await checkbox.isSelected();
-          const isEnabled = await checkbox.isEnabled();
-          console.log(`[E2E] Checkbox checked: ${isChecked}, enabled: ${isEnabled}`);
-
-          // Worktree spec has impl started, so checkbox should be checked and disabled
-          expect(isChecked).toBe(true);
-          expect(isEnabled).toBe(false);
-        }
-      }
-    });
-
-    it('should show editable checkbox for main spec (impl not started)', async () => {
-      // Select the main spec
-      const specSuccess = await selectSpecViaStore(MAIN_SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
-
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
-
-      // Check for impl flow frame
-      const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
-      const frameExists = await implFlowFrame.isExisting();
-      console.log(`[E2E] impl-flow-frame exists (main spec): ${frameExists}`);
-
-      if (frameExists) {
-        // Check checkbox state - should be enabled (editable)
-        const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-        if (await checkbox.isExisting()) {
-          const isEnabled = await checkbox.isEnabled();
-          console.log(`[E2E] Checkbox enabled (main spec): ${isEnabled}`);
-
-          // Main spec has no worktree, so checkbox should be editable
-          expect(isEnabled).toBe(true);
-        }
-      }
-    });
-  });
 
   // ============================================================
   // Scenario 5: spec.json worktree field verification

@@ -84,8 +84,26 @@ describe('Spec Workflow E2E', () => {
   // ============================================================
   // CreateSpecDialog
   // Requirements: 新規Spec作成
+  // create-spec-dialog-simplify: ダイアログが簡素化され、名前入力は削除された。
+  // 説明のみの入力フォームとspec-planボタンに変更されている。
+  // data-testid も変更されたため、テストを更新。
   // ============================================================
   describe('CreateSpecDialogコンポーネント', () => {
+    afterEach(async () => {
+      // ダイアログが開いている場合は確実に閉じる（backdrop click or Escape）
+      await browser.execute(() => {
+        const backdrop = document.querySelector('.fixed.inset-0.z-50');
+        if (backdrop) {
+          // Click the backdrop overlay to close the dialog
+          const backdropOverlay = backdrop.querySelector('.absolute.inset-0');
+          if (backdropOverlay instanceof HTMLElement) {
+            backdropOverlay.click();
+          }
+        }
+      });
+      await browser.pause(300);
+    });
+
     it('新規作成ボタンをクリックするとダイアログが開く', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
       const createButton = await $('[data-testid="create-button"]');
@@ -93,64 +111,51 @@ describe('Spec Workflow E2E', () => {
       if ((await specsTab.isExisting()) && (await createButton.isExisting())) {
         await specsTab.click();
         await createButton.click();
+        await browser.pause(300);
 
-        const dialog = await $('[data-testid="create-spec-dialog"]');
-        if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const isDisplayed = await dialog.isDisplayed();
-          expect(isDisplayed).toBe(true);
-
-          // ダイアログを閉じる
-          const closeButton = await $('[data-testid="close-button"]');
-          if (await closeButton.isExisting()) {
-            await closeButton.click();
+        // create-spec-dialog-simplify: ダイアログにdata-testidがないため、
+        // ダイアログの見出し「新規仕様を作成」の存在で判定する
+        const dialogTitle = await browser.execute(() => {
+          const h2s = document.querySelectorAll('h2');
+          for (const h2 of h2s) {
+            if (h2.textContent?.includes('新規仕様を作成')) return true;
           }
-        }
+          return false;
+        });
+        expect(dialogTitle).toBe(true);
       }
     });
 
-    it('Spec名入力フィールドが存在する', async () => {
+    it('説明入力フィールド（textarea）が存在する', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await specsTab.isExisting()) && (await createButton.isExisting())) {
         await specsTab.click();
         await createButton.click();
+        await browser.pause(300);
 
-        const dialog = await $('[data-testid="create-spec-dialog"]');
-        if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const specNameInput = await $('[data-testid="spec-name-input"]');
-          const exists = await specNameInput.isExisting();
-          expect(exists).toBe(true);
-
-          // ダイアログを閉じる
-          const closeButton = await $('[data-testid="close-button"]');
-          if (await closeButton.isExisting()) {
-            await closeButton.click();
-          }
-        }
+        // create-spec-dialog-simplify: spec-name-inputは削除された。
+        // 代わりに説明用のtextareaが存在する（id="spec-description"）
+        const descriptionTextarea = await $('#spec-description');
+        const exists = await descriptionTextarea.isExisting();
+        expect(exists).toBe(true);
       }
     });
 
-    it('説明入力フィールドが存在する', async () => {
+    it('Worktreeモードスイッチが存在する', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await specsTab.isExisting()) && (await createButton.isExisting())) {
         await specsTab.click();
         await createButton.click();
+        await browser.pause(300);
 
-        const dialog = await $('[data-testid="create-spec-dialog"]');
-        if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const descriptionInput = await $('[data-testid="spec-description-input"]');
-          const exists = await descriptionInput.isExisting();
-          expect(exists).toBe(true);
-
-          // ダイアログを閉じる
-          const closeButton = await $('[data-testid="close-button"]');
-          if (await closeButton.isExisting()) {
-            await closeButton.click();
-          }
-        }
+        // spec-worktree-early-creation: worktreeモードスイッチの存在確認
+        const worktreeSwitch = await $('[data-testid="worktree-mode-switch"]');
+        const exists = await worktreeSwitch.isExisting();
+        expect(exists).toBe(true);
       }
     });
   });

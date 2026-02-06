@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.71.0] - 2026-02-06
+
+### Added
+- tRPCインフラストラクチャ基盤の実装
+- /e2e:run コマンド・エージェント追加とsteering更新
+
+### Fixed
+- 全コマンドテンプレートの位置引数を0-basedに修正
+- spec-auto-impl コマンドとworkerエージェントをインストール対象に追加
+- ダークモード時のシーケンス図テキスト視認性を改善
+- E2Eテスト26件の自動修正
+- auto-execution-impl-phase テストから deprecated selectProjectViaStore を除去
+
+### Changed
+- 専用workerエージェント導入と並列制御改善
+- renderer-unified-loggingアーキテクチャをsteeringに追記
+
 ## [0.70.0] - 2026-02-06
 
 ### Added

@@ -25,9 +25,11 @@ If you are in a worktree (check `spec.json` for `worktree` field):
 
 ## Overview
 
-This command executes all pending implementation tasks for a spec autonomously, using parallel batch execution. It parses tasks.md, groups tasks by (P) markers, and executes each group in parallel using the Task tool to invoke spec-tdd-impl-agent subagents.
+This command executes all pending implementation tasks for a spec autonomously, using parallel batch execution. It parses tasks.md, groups tasks by (P) markers, and executes each group in parallel using the Task tool to invoke `spec-auto-impl-worker-agent` subagents.
 
-**Key Design Decision (DD-002)**: Parent agent (this command) is responsible for updating tasks.md. Subagents do NOT update tasks.md directly to avoid file conflicts.
+**Key Design Decisions**:
+- **DD-002**: Parent agent (this command) is responsible for updating tasks.md and spec.json. Subagents do NOT update these files directly to avoid file conflicts.
+- **DD-003**: Maximum concurrency is capped at `MAX_CONCURRENCY = 3`. Parallel batches with more tasks are split into chunks.
 
 ## Parse Arguments
 
@@ -69,40 +71,58 @@ If validation fails:
 - [ ] 2.1 Integrate A and B   -> Group 1: [2.1] (sequential)
 
 ### Phase 3: Testing
-- [ ] 3.1 (P) Test module A   -> Group 2: [3.1, 3.2, 3.3] (parallel)
+- [ ] 3.1 (P) Test module A   -> Group 2: [3.1, 3.2, 3.3] (parallel, chunked)
 - [ ] 3.2 (P) Test module B
 - [ ] 3.3 (P) Test module C
 ```
 
+## Concurrency Control
+
+**MAX_CONCURRENCY = 3**
+
+When a parallel group has more than 3 tasks, split into chunks:
+
+```
+Group with 7 (P) tasks: [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
+  -> Chunk 1: [1.1, 1.2, 1.3] (parallel, wait for all)
+  -> Chunk 2: [1.4, 1.5, 1.6] (parallel, wait for all)
+  -> Chunk 3: [1.7]           (single)
+```
+
+Each chunk is treated as a mini-batch: invoke, wait, collect, then proceed to next chunk.
+
 ## Batch Execution Loop
 
-Execute batches until all tasks complete:
+Execute batches until all tasks complete or a failure occurs:
 
 ```
 for each group (batch) in order:
     1. Get pending (unchecked) tasks in this group
     2. If no pending tasks, skip to next group
-    3. Invoke Task tool for each pending task (parallel)
-    4. Wait for all Task tool calls to complete
-    5. Collect completion reports from subagents
-    6. Update tasks.md with completed tasks (bulk update)
+    3. Split tasks into chunks of MAX_CONCURRENCY (3)
+    4. For each chunk:
+       a. Invoke Task tool for each task in chunk (parallel)
+       b. Wait for ALL Task tool calls in chunk to complete
+       c. Collect completion reports from subagents
+    5. Update tasks.md with all completed tasks in this group (bulk update)
+    6. If any task in this group failed:
+       - Stop execution (do not proceed to next group)
+       - Report status to user
     7. Continue to next group
 ```
 
 ## Invoke Subagents (Parallel)
 
-For each pending task in the current batch, invoke spec-tdd-impl-agent:
-
-**CRITICAL**: Include explicit instruction that subagent must NOT update tasks.md.
+For each pending task in the current chunk, invoke `spec-auto-impl-worker-agent`:
 
 ```
 Task(
-  subagent_type="spec-tdd-impl-agent",
-  description="Execute TDD implementation for task {task.id}",
+  subagent_type="spec-auto-impl-worker-agent",
+  description="Impl task {task.id}: {task.short_description}",
   prompt="""
 Feature: $1
 Spec directory: .kiro/specs/$1/
-Target tasks: {task.id}
+Target task: {task.id}
 
 File patterns to read:
 - .kiro/specs/$1/*.{json,md}
@@ -110,71 +130,89 @@ File patterns to read:
 
 TDD Mode: strict (test-first)
 
-IMPORTANT CONSTRAINTS:
-- Execute ONLY task {task.id}
-- Do NOT update tasks.md (parent agent handles this)
-- Report completion status at the end:
-  - Task ID: {task.id}
-  - Status: completed | failed
-  - Error: (if failed) error message
+Execute ONLY task {task.id}. Return TASK_REPORT at the end.
 """
 )
 ```
 
+**Note**: The `spec-auto-impl-worker-agent` is specifically designed for this workflow — it will NOT update tasks.md or spec.json, and returns a structured TASK_REPORT.
+
 ## Collect Results and Update tasks.md
 
-After all subagents in a batch complete:
+After all subagents in a group complete:
 
-1. Parse each subagent's completion report:
-   - Extract task ID and status
-   - Record any errors
+1. Parse each subagent's TASK_REPORT:
+   - Extract task_id and status
+   - Record files_modified and any errors
 
 2. Update tasks.md for completed tasks:
    - Change `- [ ] {task.id}` to `- [x] {task.id}` for completed tasks
    - Keep `- [ ]` for failed tasks
 
 3. If any task failed:
-   - Stop execution
+   - Mark successful tasks as completed in tasks.md first
+   - Stop execution (do not proceed to next group)
    - Report which tasks succeeded and which failed
    - Suggest user to investigate and retry
 
 ## Error Handling
 
-### Partial Completion (GAP-T1)
+### Strategy: Complete-then-Stop
 
-If some tasks in a batch fail:
+Error handling follows a two-level strategy:
+
+**Within a group (batch/chunk)**: Always wait for ALL subagents to finish, even if some fail. This avoids wasting work from subagents that are already running.
+
+**Between groups**: If any task in the previous group failed, STOP. Do not proceed to the next group, since later groups may depend on earlier work.
+
+### Partial Completion
+
+If some tasks in a group fail:
 1. Mark successful tasks as completed in tasks.md
 2. Keep failed tasks unchecked
-3. Stop batch execution
+3. Stop execution after this group
 4. Report detailed status to user
 5. User can re-run command to continue from failed tasks
 
 ### Subagent Timeout
 
-If a subagent doesn't respond:
-- Treat as failed task
-- Continue with other tasks in batch
-- Report timeout in final summary
+If a subagent doesn't return a TASK_REPORT:
+- Treat as failed task (status: failed, error: "No TASK_REPORT returned")
+- Other subagents in the same chunk are NOT affected
+- Follow the same complete-then-stop strategy
+
+## Update spec.json on Completion
+
+After ALL tasks are completed successfully (no failures):
+
+1. Read `.kiro/specs/$1/spec.json`
+2. Update:
+   - `status`: `"implementation_complete"`
+   - `updated_at`: current UTC timestamp (use `date -u +"%Y-%m-%dT%H:%M:%SZ"`)
+3. Write updated spec.json
+
+If execution stopped due to failures, do NOT update spec.json status.
 
 ## Output Format
 
 ### During Execution
 
 ```
-[Batch 1/3] Executing 3 parallel tasks: 1.1, 1.2, 1.3
+[Group 1/3] Executing 2 parallel tasks: 1.1, 1.2
   - Task 1.1: Completed
   - Task 1.2: Completed
-  - Task 1.3: Completed
-[Batch 1/3] Complete. Updating tasks.md...
+[Group 1/3] Complete. Updating tasks.md...
 
-[Batch 2/3] Executing 1 sequential task: 2.1
+[Group 2/3] Executing 1 sequential task: 2.1
   - Task 2.1: Completed
-[Batch 2/3] Complete. Updating tasks.md...
+[Group 2/3] Complete. Updating tasks.md...
 
-[Batch 3/3] Executing 2 parallel tasks: 3.1, 3.2
+[Group 3/3] Executing 3 parallel tasks (chunk 1/2): 3.1, 3.2, 3.3
   - Task 3.1: Completed
   - Task 3.2: Failed - Test compilation error
-[Batch 3/3] Partial completion. Updating tasks.md...
+  - Task 3.3: Completed
+[Group 3/3] Partial completion. Updating tasks.md...
+Stopping: 1 failed task(s) in group 3.
 ```
 
 ### Final Summary
@@ -182,18 +220,19 @@ If a subagent doesn't respond:
 ```
 ## Execution Summary
 
-- Total batches: 3
-- Completed tasks: 5 (1.1, 1.2, 1.3, 2.1, 3.1)
+- Total groups: 3
+- Groups completed: 2 (full), 1 (partial)
+- Completed tasks: 5 (1.1, 1.2, 2.1, 3.1, 3.3)
 - Failed tasks: 1 (3.2)
-- Remaining tasks: 1
+- Remaining tasks: 0 unchecked
 
 ### Failed Task Details
 - Task 3.2: Test compilation error in myTest.test.ts
 
 ### Next Steps
 1. Investigate failed task 3.2
-2. Fix the issue
-3. Re-run `/kiro:spec-auto-impl $1` to continue
+2. Fix the issue manually or with `/kiro:spec-impl $1 3.2`
+3. Re-run `/kiro:spec-auto-impl $1` to continue remaining tasks
 ```
 
 ## Usage Examples

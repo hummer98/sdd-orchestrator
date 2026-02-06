@@ -25,6 +25,7 @@
 
 import * as path from 'path';
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
@@ -42,29 +43,6 @@ let remotePage: Page;
 // ============================================================
 // Helper Functions
 // ============================================================
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Start remote server via IPC
@@ -278,7 +256,7 @@ describe('WebSocket Command Execution E2E', () => {
   // ========================================
   before(async () => {
     // 1. Select fixture project
-    const selected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const selected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     expect(selected).toBe(true);
     await browser.pause(1000);
   });

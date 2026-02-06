@@ -14,34 +14,10 @@
  */
 
 import * as path from 'path';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        // Try both old and new store naming conventions
-        const projectStore = stores?.project?.getState || stores?.projectStore?.getState;
-        if (projectStore) {
-          await projectStore().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__.project not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select spec using Zustand specStore action
@@ -103,7 +79,7 @@ describe('Metrics Display Feature', () => {
   describe('Metrics Retrieval (Requirement 5.2)', () => {
     before(async () => {
       // Select the fixture project
-      const result = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const result = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(result).toBe(true);
       await browser.pause(1000);
     });
@@ -151,7 +127,7 @@ describe('Metrics Display Feature', () => {
       // Full workflow testing is done in workflow-integration tests
 
       // Select the fixture project
-      await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       await browser.pause(1000);
 
       // Try to select a spec to see the phase panel
@@ -186,7 +162,7 @@ describe('Metrics Display Feature', () => {
   describe('Metrics Reload on Spec Switch (Requirement 5.4)', () => {
     it('should reload metrics when switching specs', async () => {
       // Select the fixture project
-      await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       await browser.pause(1000);
 
       // Get all spec items

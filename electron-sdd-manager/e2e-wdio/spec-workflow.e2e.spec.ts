@@ -15,7 +15,7 @@
  */
 
 import * as path from 'path';
-import { selectProjectViaStore } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
@@ -23,7 +23,7 @@ const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 describe('Spec Workflow E2E', () => {
   // プロジェクト選択をテストグループの前に実行
   before(async () => {
-    const success = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const success = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     if (!success) {
       console.warn('[E2E] Failed to select project, some tests may fail');
     }
@@ -70,12 +70,16 @@ describe('Spec Workflow E2E', () => {
         const firstItem = await specListItems.$('li');
         if (await firstItem.isExisting()) {
           await firstItem.click();
-          await browser.pause(300);
+          await browser.pause(500);
 
-          // 選択状態のクラスまたはaria属性を確認
-          const classList = await firstItem.getAttribute('class');
-          // 選択時には bg-blue-100 などのクラスが付与される
-          expect(typeof classList).toBe('string');
+          // クリック後のDOM再レンダリングにより要素参照がstaleになるため再取得
+          const updatedList = await $('[data-testid="spec-list-items"]');
+          if (await updatedList.isExisting()) {
+            const updatedFirstItem = await updatedList.$('li');
+            const classList = await updatedFirstItem.getAttribute('class');
+            // 選択時には bg-blue-100 などのクラスが付与される
+            expect(typeof classList).toBe('string');
+          }
         }
       }
     });

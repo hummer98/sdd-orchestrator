@@ -8,32 +8,10 @@
  */
 
 import * as path from 'path';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select bug using Zustand bugStore action
@@ -112,7 +90,7 @@ async function setUseWorktreeState(value: boolean): Promise<boolean> {
 describe('Bugs Worktree Support E2E Tests', () => {
   beforeEach(async () => {
     // Select fixture project
-    const selected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const selected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     if (!selected) {
       console.warn('[E2E] Failed to select project, some tests may fail');
     }

@@ -11,34 +11,10 @@
  */
 
 import * as path from 'path';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- * This triggers the full store workflow including specStore and bugStore sync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        // Access stores exposed on window (see stores/index.ts)
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select bug using Zustand bugStore action
@@ -247,7 +223,7 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Fixtureプロジェクトが利用可能', async () => {
-      const success = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const success = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(success).toBe(true);
     });
   });
@@ -258,7 +234,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('Bug未選択時の空ペイン表示', () => {
     beforeEach(async () => {
       // プロジェクトを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -313,7 +289,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('Bug選択時の3ペイン連動', () => {
     beforeEach(async () => {
       // プロジェクトを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -392,7 +368,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('BugArtifactEditorドキュメントタブ', () => {
     beforeEach(async () => {
       // プロジェクトを選択してBugを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -513,7 +489,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('BugWorkflowView5フェーズ表示', () => {
     beforeEach(async () => {
       // プロジェクトを選択してBugを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -568,7 +544,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('タブ切り替え時の選択状態維持', () => {
     beforeEach(async () => {
       // プロジェクトを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
     });
@@ -648,7 +624,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('UIレイアウト一貫性', () => {
     beforeEach(async () => {
       // プロジェクトを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
     });
@@ -691,7 +667,7 @@ describe('Bugs Pane Integration E2E', () => {
   describe('フェーズ実行ボタン動作（インフラ確認）', () => {
     beforeEach(async () => {
       // プロジェクトを選択してBugを選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 

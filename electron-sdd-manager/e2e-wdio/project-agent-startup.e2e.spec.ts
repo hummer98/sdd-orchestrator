@@ -18,7 +18,7 @@
 
 import * as path from 'path';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   refreshSpecStore,
   clearAgentStore,
   waitForCondition,
@@ -116,7 +116,7 @@ async function waitForProjectReady(): Promise<boolean> {
  */
 async function selectProjectWithRetry(maxRetries: number = 3): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
-    await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     await browser.pause(1000);
     await refreshSpecStore();
     await browser.pause(500);

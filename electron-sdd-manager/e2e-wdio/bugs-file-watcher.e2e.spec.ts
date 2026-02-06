@@ -13,32 +13,10 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
 const BUGS_DIR = path.join(FIXTURE_PATH, '.kiro/bugs');
-
-/**
- * Helper: Select project using Zustand store action
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Get bugs list from bugStore
@@ -162,7 +140,7 @@ describe('Bugs File Watcher E2E', () => {
   describe('Bugs Watcher Registration', () => {
     it('should have bugs watcher active after project selection', async () => {
       // プロジェクト選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -176,7 +154,7 @@ describe('Bugs File Watcher E2E', () => {
   describe('Bugs List Auto Update via File Watcher', () => {
     it('should detect existing bugs after project selection', async () => {
       // プロジェクト選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -191,7 +169,7 @@ describe('Bugs File Watcher E2E', () => {
 
     it('should update bugs list when new bug folder is created', async () => {
       // 1. プロジェクト選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -363,7 +341,7 @@ describe('Bugs File Watcher E2E', () => {
       await browser.pause(500);
 
       // 2. プロジェクト選択
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 

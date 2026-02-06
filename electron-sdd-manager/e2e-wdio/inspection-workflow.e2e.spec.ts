@@ -24,7 +24,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -385,7 +385,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -444,7 +444,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('one_round_go');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -493,7 +493,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('one_round_nogo');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -538,7 +538,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('one_round_nogo_fixed');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -581,7 +581,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('multi_round_eventual_go');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -632,7 +632,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -728,7 +728,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -777,7 +777,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -879,7 +879,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -932,7 +932,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('one_round_nogo_fixed');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -1008,7 +1008,7 @@ describe('Inspection Workflow E2E', () => {
     beforeEach(async () => {
       setFixtureState('no_inspection');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready

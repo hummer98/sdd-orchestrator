@@ -13,33 +13,11 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const SPECS_DIR = path.join(FIXTURE_PATH, '.kiro/specs');
 const WORKTREES_SPECS_DIR = path.join(FIXTURE_PATH, '.kiro/worktrees/specs');
-
-/**
- * Helper: Select project using Zustand store action
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Wait for condition with debug logging
@@ -164,7 +142,7 @@ describe('File Watcher Root Monitoring E2E', () => {
     cleanupTestSpecs();
 
     // Select project
-    const success = await selectProjectViaStore(FIXTURE_PATH);
+    const success = await ensureProjectSelected(FIXTURE_PATH);
     if (!success) {
       console.warn('[E2E] Failed to select project, some tests may fail');
     }

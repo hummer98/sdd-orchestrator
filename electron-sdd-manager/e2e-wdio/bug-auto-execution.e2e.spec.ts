@@ -12,6 +12,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/bug-auto-exec-test');
@@ -83,29 +84,6 @@ function resetFixture(): void {
       }
     }
   }
-}
-
-/**
- * Helper: Select project using Zustand store action
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
 }
 
 /**
@@ -365,7 +343,7 @@ describe('Bug Auto Execution E2E Tests', () => {
     await clearSelectedSpecViaStore();
 
     // Select project
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+    const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
     await browser.pause(500);
 

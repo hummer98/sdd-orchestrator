@@ -16,7 +16,7 @@
 
 import * as path from 'path';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   waitForCondition,
 } from './helpers/auto-execution.helpers';
 
@@ -506,7 +506,7 @@ describe('Schedule Task E2E Tests', () => {
   // Setup before all tests
   before(async () => {
     // Select project
-    const projectSelected = await selectProjectViaStore(FIXTURE_PATH);
+    const projectSelected = await ensureProjectSelected(FIXTURE_PATH);
     expect(projectSelected).toBe(true);
     await browser.pause(1000);
   });

@@ -19,34 +19,10 @@
  */
 
 import * as path from 'path';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- * This triggers the full store workflow including specStore sync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        // Access stores exposed on window (see stores/index.ts)
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select spec using Zustand specStore action
@@ -102,7 +78,7 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
     it('should have fixture project available', async () => {
       // Use browser.execute since fs.existsSync doesn't work in browser context
       // Instead, verify by attempting to select the project
-      const success = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const success = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(success).toBe(true);
     });
   });
@@ -113,13 +89,13 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
   describe('Project Selection', () => {
     it('should open fixture project via store action', async () => {
       // Use Zustand store action to open the fixture project
-      const success = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const success = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(success).toBe(true);
     });
 
     it('should display test-feature spec in SpecList', async () => {
       // Select project first
-      await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      await ensureProjectSelected(FIXTURE_PROJECT_PATH);
 
       // Wait for SpecList to update
       await browser.pause(1500);
@@ -143,7 +119,7 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
   describe('UI Elements for Workflow', () => {
     beforeEach(async () => {
       // Select project and spec before each test in this suite
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -202,7 +178,7 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
   describe('Phase Execution Flow', () => {
     beforeEach(async () => {
       // Select project and spec before each test
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -296,7 +272,7 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
   describe('Multi-Phase Workflow', () => {
     beforeEach(async () => {
       // Select project and spec before each test
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 

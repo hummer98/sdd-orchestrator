@@ -15,7 +15,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -385,7 +385,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       await resetSpecStoreAutoExecution();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -493,7 +493,7 @@ describe('Auto Execution Impl Flow E2E', () => {
   describe('Scenario 3: Impl complete with all tasks → inspection executes', () => {
     beforeEach(async () => {
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -584,7 +584,7 @@ describe('Auto Execution Impl Flow E2E', () => {
   describe('Scenario 4: Impl complete with all tasks → inspection NOGO', () => {
     beforeEach(async () => {
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -683,7 +683,7 @@ describe('Auto Execution Impl Flow E2E', () => {
   describe('Scenario 5: Impl complete with incomplete tasks', () => {
     beforeEach(async () => {
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready

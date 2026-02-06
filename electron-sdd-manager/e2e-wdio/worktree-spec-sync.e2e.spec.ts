@@ -21,7 +21,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   refreshSpecStore,
   clearAgentStore,
@@ -257,7 +257,7 @@ describe('Worktree Spec Sync E2E', () => {
       await resetSpecStoreAutoExecution();
 
       // Select project
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();
@@ -309,7 +309,7 @@ describe('Worktree Spec Sync E2E', () => {
       await resetAutoExecutionService();
       await resetSpecStoreAutoExecution();
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();
@@ -393,7 +393,7 @@ describe('Worktree Spec Sync E2E', () => {
       await resetAutoExecutionService();
       await resetSpecStoreAutoExecution();
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();

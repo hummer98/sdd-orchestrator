@@ -14,33 +14,11 @@
  */
 
 import * as path from 'path';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const EVENT_LOG_TEST_SPEC_NAME = 'event-log-test';
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select spec using Zustand specStore action
@@ -81,7 +59,7 @@ describe('Event Log Feature', () => {
   describe('Event Log Button Display (Requirement 3.1, 3.2)', () => {
     it('should display event log button in footer when spec is selected', async () => {
       // Select the fixture project
-      const result = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const result = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(result).toBe(true);
       await browser.pause(1000);
 
@@ -108,7 +86,7 @@ describe('Event Log Feature', () => {
   describe('Event Log Modal (Requirement 3.3)', () => {
     it('should open modal when event log button is clicked', async () => {
       // Select the fixture project
-      await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       await browser.pause(1000);
 
       // Try to find and click event log button
@@ -139,7 +117,7 @@ describe('Event Log Feature', () => {
 
     it('should close modal when close button is clicked', async () => {
       // Select the fixture project
-      await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       await browser.pause(1000);
 
       // Open modal

@@ -15,7 +15,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -161,7 +161,7 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
     await resetSpecStoreAutoExecution();
 
     // Select project and spec
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const projectSuccess = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     expect(projectSuccess).toBe(true);
 
     // E2E-fix: Wait for project UI to be ready

@@ -22,32 +22,10 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/permission-control-test');
-
-/**
- * Helper: Select project using Zustand store
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select spec using Zustand store

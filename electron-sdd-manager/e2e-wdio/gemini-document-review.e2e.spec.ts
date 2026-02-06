@@ -17,7 +17,7 @@
 
 import * as path from 'path';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   waitForCondition,
   fullAutoExecutionCleanup,
@@ -44,7 +44,7 @@ describe('Gemini Document Review - engineId Propagation', function () {
     await fullAutoExecutionCleanup();
 
     // Select the fixture project
-    const projectSelected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
     if (!projectSelected) {
       console.log('[E2E] Failed to select project, test may fail');
     }

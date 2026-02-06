@@ -13,7 +13,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -362,7 +362,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       resetFixtureToRequirementsCompleted();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -536,7 +536,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       resetFixtureToDesignCompleted();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -644,7 +644,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       resetFixtureToDocumentReviewCompleted();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready

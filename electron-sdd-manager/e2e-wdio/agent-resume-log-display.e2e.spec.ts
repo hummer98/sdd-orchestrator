@@ -20,7 +20,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -117,7 +117,7 @@ describe('Agent Resume Log Display E2E Test', () => {
     await resetAutoExecutionCoordinator();
     await resetAutoExecutionService();
 
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+    const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
 
     await browser.pause(500);

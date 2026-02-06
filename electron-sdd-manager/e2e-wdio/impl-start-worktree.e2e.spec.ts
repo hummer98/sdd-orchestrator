@@ -16,33 +16,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const WORKTREE_SPEC_NAME = 'worktree-test-feature';
-
-/**
- * Helper: Select project using Zustand store action via executeAsync
- */
-async function selectProjectViaStore(projectPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.project?.getState) {
-          await stores.project.getState().selectProject(projPath);
-          done(true);
-        } else {
-          console.error('[E2E] __STORES__ not available on window');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectProject error:', e);
-        done(false);
-      }
-    }, projectPath).then(resolve);
-  });
-}
 
 /**
  * Helper: Select spec using Zustand specStore action
@@ -241,7 +219,7 @@ describe('Impl Start Worktree E2E', () => {
       createTestSpec(WORKTREE_SPEC_NAME);
 
       // Select project and spec
-      const projectSelected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSelected).toBe(true);
 
       // Wait for specs to load
@@ -278,7 +256,7 @@ describe('Impl Start Worktree E2E', () => {
       fs.writeFileSync(specJsonPath, JSON.stringify(specJson, null, 2));
 
       // Select project and spec
-      const projectSelected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSelected).toBe(true);
 
       await browser.pause(1000);
@@ -314,7 +292,7 @@ describe('Impl Start Worktree E2E', () => {
 
       try {
         // Select project and spec
-        const projectSelected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+        const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
         expect(projectSelected).toBe(true);
 
         await browser.pause(1000);
@@ -362,7 +340,7 @@ describe('Impl Start Worktree E2E', () => {
       checkoutBranch('main') || checkoutBranch('master');
 
       // Select project and spec
-      const projectSelected = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+      const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
       expect(projectSelected).toBe(true);
 
       await browser.pause(1000);

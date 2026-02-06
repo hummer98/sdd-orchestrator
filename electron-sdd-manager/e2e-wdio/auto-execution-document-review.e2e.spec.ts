@@ -16,7 +16,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -328,7 +328,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
   describe('Scenario 2: Document Review triggered with default permissions', () => {
     beforeEach(async () => {
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -418,7 +418,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       await resetSpecStoreAutoExecution();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -498,7 +498,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       await resetSpecStoreAutoExecution();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -617,7 +617,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       await resetSpecStoreAutoExecution();
 
       // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready

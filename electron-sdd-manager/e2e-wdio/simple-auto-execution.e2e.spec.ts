@@ -12,7 +12,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -119,7 +119,7 @@ describe('Simple Auto Execution E2E Test', () => {
     await resetAutoExecutionService();
 
     // プロジェクトを選択
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+    const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
 
     // E2E-fix: プロジェクトUIが完全にロードされるまで待機

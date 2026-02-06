@@ -7,7 +7,7 @@
  * Usage:
  * ```typescript
  * import {
- *   selectProjectViaStore,
+ *   ensureProjectSelected,
  *   selectSpecViaStore,
  *   getAutoExecutionStatus,
  *   setAutoExecutionPermissions,
@@ -83,6 +83,30 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
       }
     }, projectPath).then(resolve);
   });
+}
+
+/**
+ * Helper: Ensure a project is selected
+ *
+ * SDD_PROJECT_PATH環境変数による起動時自動選択を優先し、
+ * 未選択の場合のみストア経由でフォールバック選択を行う。
+ *
+ * @param projectPath フォールバック時に選択するプロジェクトパス
+ * @returns true if project is selected
+ */
+export async function ensureProjectSelected(projectPath: string): Promise<boolean> {
+  // Check if project is already selected (via SDD_PROJECT_PATH at startup)
+  const currentProject = await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    return stores?.project?.getState()?.currentProject;
+  });
+
+  if (currentProject) {
+    return true;
+  }
+
+  // Fallback: select via store IPC (Renderer→IPC→Main)
+  return selectProjectViaStore(projectPath);
 }
 
 /**
@@ -759,8 +783,8 @@ export async function standardE2ESetup(
   await fullAutoExecutionCleanup();
   await browser.pause(100);
 
-  // 2. Select project
-  const projectSelected = await selectProjectViaStore(projectPath);
+  // 2. Ensure project is selected (SDD_PROJECT_PATH優先、フォールバックあり)
+  const projectSelected = await ensureProjectSelected(projectPath);
   if (!projectSelected) {
     console.error('[E2E] standardE2ESetup: Failed to select project');
     return false;

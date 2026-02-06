@@ -19,7 +19,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
+  ensureProjectSelected,
   selectSpecViaStore,
   refreshSpecStore,
   clearAgentStore,
@@ -353,7 +353,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('pending');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -421,7 +421,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('in_progress');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -472,7 +472,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('in_progress_review_complete');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -506,7 +506,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('in_progress_fix_pending');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -552,7 +552,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('in_progress_fix_applied');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -586,7 +586,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('approved');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready
@@ -636,7 +636,7 @@ describe('Document Review UI States E2E', () => {
     beforeEach(async () => {
       setFixtureState('multi_round');
 
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
 
       // E2E-fix: Wait for project UI to be ready

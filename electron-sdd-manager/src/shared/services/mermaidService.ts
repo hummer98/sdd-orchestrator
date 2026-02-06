@@ -58,6 +58,20 @@ export class MermaidService {
     mermaid.initialize({
       startOnLoad: false,
       theme: darkMode ? 'dark' : 'default',
+      ...(darkMode && {
+        themeVariables: {
+          // Sequence diagram: actor/signal text visibility on dark background
+          actorTextColor: '#e5e7eb',
+          signalTextColor: '#e5e7eb',
+          noteBkgColor: '#374151',
+          noteTextColor: '#e5e7eb',
+          // Flowchart/general: node and label text
+          nodeBorder: '#6b7280',
+          mainBkg: '#1f2937',
+          nodeTextColor: '#e5e7eb',
+          labelTextColor: '#e5e7eb',
+        },
+      }),
       securityLevel: 'loose',
       // Suppress console errors from mermaid
       logLevel: 'fatal',

@@ -178,6 +178,13 @@ describe('MermaidService', () => {
       expect(mockMermaid.initialize).toHaveBeenCalledWith(
         expect.objectContaining({
           theme: 'dark',
+          themeVariables: expect.objectContaining({
+            actorTextColor: '#e5e7eb',
+            signalTextColor: '#e5e7eb',
+            noteTextColor: '#e5e7eb',
+            nodeTextColor: '#e5e7eb',
+            labelTextColor: '#e5e7eb',
+          }),
         })
       );
     });
@@ -189,11 +196,9 @@ describe('MermaidService', () => {
 
       await service.render(code, 'test-id-light', false);
 
-      expect(mockMermaid.initialize).toHaveBeenCalledWith(
-        expect.objectContaining({
-          theme: 'default',
-        })
-      );
+      const initCall = mockMermaid.initialize.mock.calls[0][0];
+      expect(initCall.theme).toBe('default');
+      expect(initCall.themeVariables).toBeUndefined();
     });
 
     it('should reinitialize when darkMode changes', async () => {

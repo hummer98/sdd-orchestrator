@@ -13,17 +13,18 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（22種類）
+ * cc-sdd コマンド一覧（23種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
-  // Spec Workflow (8)
+  // Spec Workflow (9)
   'spec-init',
   'spec-plan',
   'spec-requirements',
   'spec-design',
   'spec-tasks',
   'spec-impl',
+  'spec-auto-impl',
   'spec-status',
   'spec-quick',
   // Ask Commands (2)
@@ -50,13 +51,14 @@ export const CC_SDD_COMMANDS = [
 ] as const;
 
 /**
- * cc-sdd エージェント一覧（14種類）
+ * cc-sdd エージェント一覧（15種類）
  * Claude Code subagent として使用されるエージェント定義ファイル
  */
 export const CC_SDD_AGENTS = [
-  // Spec Agents (4)
+  // Spec Agents (5)
   'spec-design',
   'spec-impl',
+  'spec-auto-impl-worker',
   'spec-requirements',
   'spec-tasks',
   // Steering Agents (3)

@@ -20,7 +20,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectProjectViaStore,
   selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
@@ -317,12 +316,8 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to all phases completed (including document-review approved)
       resetFixtureToAllPhasesCompleted();
 
-      // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-
-      // E2E-fix: Wait for project UI to be ready
-      await waitForProjectUIReady(10000);
+      // Project is pre-selected via SDD_PROJECT_PATH environment variable
+      await waitForProjectUIReady(15000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
@@ -436,12 +431,12 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to design completed (tasks, document-review, impl not done yet)
       resetFixtureToDesignCompleted();
 
-      // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
+      // Project is pre-selected via SDD_PROJECT_PATH environment variable
+      await waitForProjectUIReady(15000);
 
-      // E2E-fix: Wait for project UI to be ready
-      await waitForProjectUIReady(10000);
+      // Refresh spec store to pick up fixture changes
+      await refreshSpecStore();
+      await browser.pause(500);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);
@@ -521,12 +516,8 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to all phases completed
       resetFixtureToAllPhasesCompleted();
 
-      // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-
-      // E2E-fix: Wait for project UI to be ready
-      await waitForProjectUIReady(10000);
+      // Project is pre-selected via SDD_PROJECT_PATH environment variable
+      await waitForProjectUIReady(15000);
 
       const specSuccess = await selectSpecViaStore(SPEC_NAME);
       expect(specSuccess).toBe(true);

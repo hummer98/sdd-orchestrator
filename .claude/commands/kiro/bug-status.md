@@ -19,24 +19,24 @@ argument-hint: [bug-name]
 Display the status of bug fix workflow for specified bug or all bugs.
 
 ## Parse Arguments
-- Bug name: `$1` (optional)
+- Bug name: `$0` (optional)
 
 ## Execution Logic
 
-### If bug name provided (`$1` present):
-1. Read `.kiro/bugs/$1/` directory contents
+### If bug name provided (`$0` present):
+1. Read `.kiro/bugs/$0/` directory contents
 2. Check existence of each workflow file:
    - `report.md` → Reported
    - `analysis.md` → Analyzed
    - `fix.md` → Fixed
    - `verification.md` → Verified
 3. Check `bug.json` for worktree mode:
-   - Read `.kiro/bugs/$1/bug.json`
+   - Read `.kiro/bugs/$0/bug.json`
    - If `worktree` field exists, display worktree indicator
    - Show worktree path and branch name if in worktree mode
 4. Determine current phase and next action
 
-### If no bug name (`$1` empty):
+### If no bug name (`$0` empty):
 1. List all directories in `.kiro/bugs/`
 2. For each bug, determine status based on existing files
 3. Display summary table of all bugs

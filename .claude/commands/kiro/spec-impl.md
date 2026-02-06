@@ -10,7 +10,7 @@ argument-hint: <feature-name> [task-numbers]
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -23,23 +23,23 @@ If you are in a worktree (check `spec.json` for `worktree` field):
 </environment_context>
 
 ## Parse Arguments
-- Feature name: `$1`
-- Task numbers: `$2` (optional)
+- Feature name: `$0`
+- Task numbers: `$1` (optional)
   - Format: "1.1" (single task) or "1,2,3" (multiple tasks)
   - If not provided: Execute all pending tasks
 
 ## Validate
 Check that tasks have been generated:
-- Verify `.kiro/specs/$1/` exists
-- Verify `.kiro/specs/$1/tasks.md` exists
+- Verify `.kiro/specs/$0/` exists
+- Verify `.kiro/specs/$0/tasks.md` exists
 
 If validation fails, inform user to complete tasks generation first.
 
 ## Task Selection Logic
 
-**Parse task numbers from `$2`** (perform this in Slash Command before invoking Subagent):
-- If `$2` provided: Parse task numbers (e.g., "1.1", "1,2,3")
-- Otherwise: Read `.kiro/specs/$1/tasks.md` and find all unchecked tasks (`- [ ]`)
+**Parse task numbers from `$1`** (perform this in Slash Command before invoking Subagent):
+- If `$1` provided: Parse task numbers (e.g., "1.1", "1,2,3")
+- Otherwise: Read `.kiro/specs/$0/tasks.md` and find all unchecked tasks (`- [ ]`)
 
 ## Invoke Subagent
 
@@ -52,12 +52,12 @@ Task(
   subagent_type="spec-tdd-impl-agent",
   description="Execute TDD implementation",
   prompt="""
-Feature: $1
-Spec directory: .kiro/specs/$1/
+Feature: $0
+Spec directory: .kiro/specs/$0/
 Target tasks: {parsed task numbers or "all pending"}
 
 File patterns to read:
-- .kiro/specs/$1/*.{json,md}
+- .kiro/specs/$0/*.{json,md}
 - .kiro/steering/*.md
 
 TDD Mode: strict (test-first)
@@ -72,11 +72,11 @@ Show Subagent summary to user, then provide next step guidance:
 ### Task Execution
 
 **Execute specific task(s)**:
-- `/kiro:spec-impl $1 1.1` - Single task
-- `/kiro:spec-impl $1 1,2,3` - Multiple tasks
+- `/kiro:spec-impl $0 1.1` - Single task
+- `/kiro:spec-impl $0 1,2,3` - Multiple tasks
 
 **Execute all pending**:
-- `/kiro:spec-impl $1` - All unchecked tasks
+- `/kiro:spec-impl $0` - All unchecked tasks
 
 **Before Starting Implementation**:
 - **IMPORTANT**: Clear conversation history and free up context before running `/kiro:spec-impl`

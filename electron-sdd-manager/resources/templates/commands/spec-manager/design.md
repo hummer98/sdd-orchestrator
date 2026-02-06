@@ -17,7 +17,7 @@ argument-hint: <feature-name>
 
 <instructions>
 ## Parse Arguments
-- Feature name: `$1`
+- Feature name: `$0`
 
 ## Core Task
 Generate comprehensive technical design based on requirements.
@@ -27,13 +27,13 @@ Generate comprehensive technical design based on requirements.
 ### Step 0: Expand File Patterns
 Use Glob tool to expand file patterns and read all files:
 - Glob `.kiro/steering/*.md` to get all steering files
-- Glob `.kiro/specs/$1/*.{json,md}` to get all spec files
+- Glob `.kiro/specs/$0/*.{json,md}` to get all spec files
 - Read each file from glob results
 
 ### Step 1: Load Context
 **Read all necessary context**:
-- `.kiro/specs/$1/spec.json` - for language setting
-- `.kiro/specs/$1/requirements.md` - for requirements
+- `.kiro/specs/$0/spec.json` - for language setting
+- `.kiro/specs/$0/requirements.md` - for requirements
 - `.kiro/steering/*.md` - for project context and tech stack
 - `.kiro/settings/templates/specs/design.md` - for template structure
 
@@ -45,7 +45,7 @@ Use Glob tool to expand file patterns and read all files:
 - Define data models and flows
 
 ### Step 3: Write Output
-- Write generated design to `.kiro/specs/$1/design.md`
+- Write generated design to `.kiro/specs/$0/design.md`
 - Follow template structure
 - Include architecture diagrams (Mermaid)
 - Include requirements traceability

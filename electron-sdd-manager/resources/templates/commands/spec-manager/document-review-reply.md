@@ -10,7 +10,7 @@ argument-hint: <feature-name> [review-number] [--autofix | --fix]
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -32,22 +32,22 @@ Evaluate each item from document-review with a neutral perspective and generate 
 
 ## Parse Arguments
 
-- Feature name: `$1` (required)
-- Review number: `$2` (optional, defaults to latest)
+- Feature name: `$0` (required)
+- Review number: `$1` (optional, defaults to latest)
 - Mode flags (optional):
   - `--autofix`: Generate reply AND apply modifications automatically
   - `--fix`: Apply modifications based on existing reply file (no new review)
 
 ## Validate
 
-1. Verify `.kiro/specs/$1/` exists
-2. If `$2` specified:
-   - Verify `.kiro/specs/$1/document-review-$2.md` exists
-3. If `$2` not specified:
+1. Verify `.kiro/specs/$0/` exists
+2. If `$1` specified:
+   - Verify `.kiro/specs/$0/document-review-$1.md` exists
+3. If `$1` not specified:
    - Find latest `document-review-*.md` by number
    - Report which review is being addressed
 4. If `--fix` flag:
-   - Verify `.kiro/specs/$1/document-review-{n}-reply.md` exists
+   - Verify `.kiro/specs/$0/document-review-{n}-reply.md` exists
    - If not exists, inform user and abort
 
 If validation fails, inform user.
@@ -91,13 +91,13 @@ Skip to **Output Summary** section after applying fixes.
 
 #### Target Review
 
-- `.kiro/specs/$1/document-review-{n}.md` - The review to respond to
+- `.kiro/specs/$0/document-review-{n}.md` - The review to respond to
 
 #### Reference Documents
 
-- `.kiro/specs/$1/requirements.md`
-- `.kiro/specs/$1/design.md`
-- `.kiro/specs/$1/tasks.md`
+- `.kiro/specs/$0/requirements.md`
+- `.kiro/specs/$0/design.md`
+- `.kiro/specs/$0/tasks.md`
 
 #### Existing Code (as needed)
 
@@ -136,7 +136,7 @@ For each Critical/Warning issue:
 
 ### Generate Reply
 
-Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
+Output file: `.kiro/specs/$0/document-review-{n}-reply.md`
 
 #### Reply Structure
 
@@ -262,7 +262,7 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 - Set `documentReview.status = "approved"` in spec.json
 - Indicate spec is ready for implementation
-- Suggest running `/spec-manager:impl $1`
+- Suggest running `/spec-manager:impl $0`
 
 #### If fixes were applied (`--autofix` or `--fix`):
 
@@ -349,4 +349,4 @@ Display to user:
 5. Next step recommendation:
    - If default mode and modifications are needed: suggest running with `--fix`
    - If `--autofix` or `--fix` was used: inform that **a new document-review round will verify the changes** (auto-execution will handle this automatically)
-   - If Fix Required = 0 AND no fixes applied in this round: suggest `/spec-manager:impl $1`
+   - If Fix Required = 0 AND no fixes applied in this round: suggest `/spec-manager:impl $0`

@@ -19,7 +19,7 @@ argument-hint: [bug-name]
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Bug directory: `.kiro/bugs/$1/` (relative to current directory)
+- Bug directory: `.kiro/bugs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -33,19 +33,19 @@ If you are in a worktree (check `bug.json` for `worktree` field):
 
 <instructions>
 ## Core Task
-Implement the bug fix based on analysis in `.kiro/bugs/$1/analysis.md`.
+Implement the bug fix based on analysis in `.kiro/bugs/$0/analysis.md`.
 
 ## Parse Arguments
-- Bug name: `$1` (optional - if not provided, detect from conversation context)
+- Bug name: `$0` (optional - if not provided, detect from conversation context)
 
 ## Auto-Detection Logic
-**If no arguments** (`$1` empty):
+**If no arguments** (`$0` empty):
 - Check conversation history for recent `/kiro:bug-analyze` commands
 - OR scan `.kiro/bugs/*/analysis.md` for recently modified files
 
 ## Execution Steps
 1. **Validate Prerequisites**:
-   - Verify `.kiro/bugs/$1/analysis.md` exists
+   - Verify `.kiro/bugs/$0/analysis.md` exists
    - Read analysis to understand the proposed solution
 2. **Implement Fix**:
    - Apply the recommended fix from analysis
@@ -63,7 +63,7 @@ Implement the bug fix based on analysis in `.kiro/bugs/$1/analysis.md`.
      - Implementation notes
    - Write `fix.md` to bug directory
 5. **Update bug.json**:
-   - Read `.kiro/bugs/$1/bug.json`
+   - Read `.kiro/bugs/$0/bug.json`
    - Update `updated_at` field to current ISO-8601 timestamp
    - Preserve all other fields (including `worktree` if present)
    - Write updated bug.json

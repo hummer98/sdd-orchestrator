@@ -7,8 +7,8 @@ argument-hint: <feature-name> <prompt>
 # Spec Ask
 
 ## Parse Arguments
-- Feature: `$1`
-- Prompt: `$2` (remaining arguments after feature name)
+- Feature: `$0`
+- Prompt: `$1` (remaining arguments after feature name)
 
 ## Validate
 
@@ -24,10 +24,10 @@ If prompt is empty:
 
 ### Verify spec exists
 Check that spec directory exists:
-- `.kiro/specs/$1/` must exist
+- `.kiro/specs/$0/` must exist
 
 If spec directory does not exist:
-- Display error: "Spec not found: $1"
+- Display error: "Spec not found: $0"
 - Exit
 
 ## Load Context
@@ -38,7 +38,7 @@ Read all context files:
 - `.kiro/steering/*.md`
 
 ### Spec files (feature context)
-- `.kiro/specs/$1/*.md`
+- `.kiro/specs/$0/*.md`
 
 Use Glob to find all files, then Read each file.
 
@@ -46,7 +46,7 @@ Use Glob to find all files, then Read each file.
 
 With the loaded steering and spec context, process the user's prompt:
 
-**Feature**: $1
-**User Prompt**: $2
+**Feature**: $0
+**User Prompt**: $1
 
 Respond to the user's request using the loaded context as background knowledge.

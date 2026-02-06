@@ -10,7 +10,7 @@ argument-hint: <feature-name> [-y]
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -23,13 +23,13 @@ If you are in a worktree (check `spec.json` for `worktree` field):
 </environment_context>
 
 ## Parse Arguments
-- Feature name: `$1`
-- Auto-approve flag: `$2` (optional, "-y")
+- Feature name: `$0`
+- Auto-approve flag: `$1` (optional, "-y")
 
 ## Validate
 Check that requirements have been completed:
-- Verify `.kiro/specs/$1/` exists
-- Verify `.kiro/specs/$1/requirements.md` exists
+- Verify `.kiro/specs/$0/` exists
+- Verify `.kiro/specs/$0/requirements.md` exists
 
 If validation fails, inform user to complete requirements phase first.
 
@@ -44,12 +44,12 @@ Task(
   subagent_type="spec-design-agent",
   description="Generate technical design and update research log",
   prompt="""
-Feature: $1
-Spec directory: .kiro/specs/$1/
-Auto-approve: {true if $2 == "-y", else false}
+Feature: $0
+Spec directory: .kiro/specs/$0/
+Auto-approve: {true if $1 == "-y", else false}
 
 File patterns to read:
-- .kiro/specs/$1/*.{json,md}
+- .kiro/specs/$0/*.{json,md}
 - .kiro/steering/*.md
 - .kiro/settings/rules/design-*.md
 - .kiro/settings/templates/specs/design.md
@@ -100,12 +100,12 @@ Show Subagent summary to user, then provide next step guidance:
 ### Next Phase: Task Generation
 
 **If Design Approved**:
-- Review generated design at `.kiro/specs/$1/design.md`
-- **Optional**: Run `/kiro:validate-design $1` for interactive quality review
-- Then `/kiro:spec-tasks $1 -y` to generate implementation tasks
+- Review generated design at `.kiro/specs/$0/design.md`
+- **Optional**: Run `/kiro:validate-design $0` for interactive quality review
+- Then `/kiro:spec-tasks $0 -y` to generate implementation tasks
 
 **If Modifications Needed**:
-- Provide feedback and re-run `/kiro:spec-design $1`
+- Provide feedback and re-run `/kiro:spec-design $0`
 - Existing design used as reference (merge mode)
 
 **Note**: Design approval is mandatory before proceeding to task generation.

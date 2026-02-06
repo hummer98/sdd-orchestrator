@@ -19,7 +19,7 @@ argument-hint: <feature-name>
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -33,13 +33,13 @@ If you are in a worktree (check `spec.json` for `worktree` field):
 
 <instructions>
 ## Core Task
-Generate complete requirements for feature **$1** based on the project description in requirements.md.
+Generate complete requirements for feature **$0** based on the project description in requirements.md.
 
 ## Execution Steps
 
 1. **Load Context**:
-   - Read `.kiro/specs/$1/spec.json` for language and metadata
-   - Read `.kiro/specs/$1/requirements.md` for project description
+   - Read `.kiro/specs/$0/spec.json` for language and metadata
+   - Read `.kiro/specs/$0/requirements.md` for project description
    - **Load ALL steering context**: Read entire `.kiro/steering/` directory including:
      - Default files: `structure.md`, `tech.md`, `product.md`
      - All custom steering files (regardless of mode settings)
@@ -99,15 +99,15 @@ Provide output in the language specified in spec.json with:
 ### Next Phase: Design Generation
 
 **If Requirements Approved**:
-- Review generated requirements at `.kiro/specs/$1/requirements.md`
+- Review generated requirements at `.kiro/specs/$0/requirements.md`
 - **Optional Gap Analysis** (for existing codebases):
-  - Run `/kiro:validate-gap $1` to analyze implementation gap with current code
+  - Run `/kiro:validate-gap $0` to analyze implementation gap with current code
   - Identifies existing components, integration points, and implementation strategy
   - Recommended for brownfield projects; skip for greenfield
-- Then `/kiro:spec-design $1 -y` to proceed to design phase
+- Then `/kiro:spec-design $0 -y` to proceed to design phase
 
 **If Modifications Needed**:
-- Provide feedback and re-run `/kiro:spec-requirements $1`
+- Provide feedback and re-run `/kiro:spec-requirements $0`
 
 **Note**: Approval is mandatory before proceeding to design phase.
 

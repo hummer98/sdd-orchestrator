@@ -16,7 +16,7 @@ argument-hint: <feature-name>
 
 <instructions>
 ## Parse Arguments
-- Feature name: `$1`
+- Feature name: `$0`
 
 ## Core Task
 Generate comprehensive EARS-format requirements based on the project description in requirements.md.
@@ -30,8 +30,8 @@ Use Glob tool to expand file patterns and read all files:
 
 ### Step 1: Load Context
 **Read all necessary context**:
-- `.kiro/specs/$1/spec.json` - for language setting
-- `.kiro/specs/$1/requirements.md` - for project description
+- `.kiro/specs/$0/spec.json` - for language setting
+- `.kiro/specs/$0/requirements.md` - for project description
 - `.kiro/steering/*.md` - for project context
 - `.kiro/settings/rules/ears-format.md` - for EARS format rules
 - `.kiro/settings/templates/specs/requirements.md` - for template structure
@@ -43,7 +43,7 @@ Use Glob tool to expand file patterns and read all files:
 - Ensure each requirement is testable and verifiable
 
 ### Step 3: Write Output
-- Write generated requirements to `.kiro/specs/$1/requirements.md`
+- Write generated requirements to `.kiro/specs/$0/requirements.md`
 - Preserve project description section
 - Add Introduction section
 - Add structured Requirements sections

@@ -18,8 +18,8 @@ argument-hint: <feature-name> [task-numbers]
 
 <instructions>
 ## Parse Arguments
-- Feature name: `$1`
-- Task numbers: `$2` (optional)
+- Feature name: `$0`
+- Task numbers: `$1` (optional)
   - Format: "1.1" (single task) or "1,2,3" (multiple tasks)
   - If not provided: Execute all pending tasks
 
@@ -31,15 +31,15 @@ Execute implementation tasks using TDD.
 ### Step 0: Expand File Patterns
 Use Glob tool to expand file patterns and read all files:
 - Glob `.kiro/steering/*.md` to get all steering files
-- Glob `.kiro/specs/$1/*.{json,md}` to get all spec files
+- Glob `.kiro/specs/$0/*.{json,md}` to get all spec files
 - Read each file from glob results
 
 ### Step 1: Load Context
 **Read all necessary context**:
-- `.kiro/specs/$1/spec.json` - for language setting
-- `.kiro/specs/$1/requirements.md` - for requirements
-- `.kiro/specs/$1/design.md` - for design specifications
-- `.kiro/specs/$1/tasks.md` - for task details
+- `.kiro/specs/$0/spec.json` - for language setting
+- `.kiro/specs/$0/requirements.md` - for requirements
+- `.kiro/specs/$0/design.md` - for design specifications
+- `.kiro/specs/$0/tasks.md` - for task details
 - `.kiro/steering/*.md` - for project context
 
 ### Step 2: Select Tasks

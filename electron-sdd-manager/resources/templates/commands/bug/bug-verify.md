@@ -19,7 +19,7 @@ argument-hint: [bug-name]
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Bug directory: `.kiro/bugs/$1/` (relative to current directory)
+- Bug directory: `.kiro/bugs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -36,16 +36,16 @@ If you are in a worktree (check `bug.json` for `worktree` field):
 Verify the bug fix and document verification results.
 
 ## Parse Arguments
-- Bug name: `$1` (optional - if not provided, detect from conversation context)
+- Bug name: `$0` (optional - if not provided, detect from conversation context)
 
 ## Auto-Detection Logic
-**If no arguments** (`$1` empty):
+**If no arguments** (`$0` empty):
 - Check conversation history for recent `/kiro:bug-fix` commands
 - OR scan `.kiro/bugs/*/fix.md` for recently modified files
 
 ## Execution Steps
 1. **Validate Prerequisites**:
-   - Verify `.kiro/bugs/$1/fix.md` exists
+   - Verify `.kiro/bugs/$0/fix.md` exists
    - Read the fix documentation
 2. **Verify Fix**:
    - Attempt to reproduce the original bug using steps from report.md
@@ -65,7 +65,7 @@ Verify the bug fix and document verification results.
      - Side effect check results
    - Write `verification.md` to bug directory
 6. **Update bug.json Timestamp**:
-   - Read `.kiro/bugs/$1/bug.json`
+   - Read `.kiro/bugs/$0/bug.json`
    - Update `updated_at` field to current ISO-8601 timestamp
    - Preserve all other fields (including `worktree` if present)
    - Write updated bug.json

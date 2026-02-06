@@ -21,7 +21,7 @@ argument-hint: <feature-name>
 Merge the feature branch from worktree to main branch, then cleanup the worktree.
 
 ## Parse Arguments
-- Feature name: `$1` (required)
+- Feature name: `$0` (required)
 
 ## Execution Steps
 
@@ -54,20 +54,20 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
 **spec-worktree-early-creation**: In early worktree creation mode, spec.json exists ONLY in the worktree, not in main.
 
 1. Derive worktree path from convention:
-   - Relative path: `.kiro/worktrees/specs/$1`
-   - Absolute path: `$(pwd)/.kiro/worktrees/specs/$1`
+   - Relative path: `.kiro/worktrees/specs/$0`
+   - Absolute path: `$(pwd)/.kiro/worktrees/specs/$0`
 2. Verify worktree directory exists:
    ```bash
-   ls -d ".kiro/worktrees/specs/$1" 2>/dev/null
+   ls -d ".kiro/worktrees/specs/$0" 2>/dev/null
    ```
-   - If not found, error: "Worktree not found at .kiro/worktrees/specs/$1. This command is only for worktree mode."
+   - If not found, error: "Worktree not found at .kiro/worktrees/specs/$0. This command is only for worktree mode."
 3. Read spec.json from worktree:
-   - Path: `.kiro/worktrees/specs/$1/.kiro/specs/$1/spec.json`
+   - Path: `.kiro/worktrees/specs/$0/.kiro/specs/$0/spec.json`
 4. Verify `worktree` field exists in spec.json
    - If not found, error: "No worktree configured for this spec. This command is only for worktree mode."
 5. Extract worktree information:
    - `worktree.path`: relative path to worktree (should match convention)
-   - `worktree.branch`: feature branch name (e.g., `feature/$1`)
+   - `worktree.branch`: feature branch name (e.g., `feature/$0`)
 
 ### Step 1.5: Validate Inspection Completion
 
@@ -77,11 +77,11 @@ spec-merge can only merge specs that have passed inspection (phase = inspection-
 #### 1.5.1: Use Worktree Path from Step 1.2
 ```bash
 # Already resolved in Step 1.2
-WORKTREE_ABSOLUTE_PATH=$(pwd)/.kiro/worktrees/specs/$1
+WORKTREE_ABSOLUTE_PATH=$(pwd)/.kiro/worktrees/specs/$0
 ```
 
 #### 1.5.2: Read spec.json from Worktree (already done in Step 1.2)
-Use the spec.json already read in Step 1.2: `.kiro/worktrees/specs/$1/.kiro/specs/$1/spec.json`
+Use the spec.json already read in Step 1.2: `.kiro/worktrees/specs/$0/.kiro/specs/$0/spec.json`
 
 #### 1.5.3: Validate Phase
 Check the `phase` field in spec.json:
@@ -95,9 +95,9 @@ Check the `phase` field in spec.json:
   現在のphase: {phase}
 
   ### Next Steps
-  1. Run `/kiro:spec-inspection $1` to inspect the implementation
+  1. Run `/kiro:spec-inspection $0` to inspect the implementation
   2. Ensure inspection result is GO
-  3. Re-run `/kiro:spec-merge $1`
+  3. Re-run `/kiro:spec-merge $0`
   ```
 - **EXIT** (do not continue to Step 2)
 
@@ -112,8 +112,8 @@ Check the `inspection.rounds` array in spec.json:
      Inspection結果が記録されていません。
 
      ### Next Steps
-     1. Run `/kiro:spec-inspection $1` to inspect the implementation
-     2. Re-run `/kiro:spec-merge $1`
+     1. Run `/kiro:spec-inspection $0` to inspect the implementation
+     2. Re-run `/kiro:spec-merge $0`
      ```
    - **EXIT**
 
@@ -128,9 +128,9 @@ Check the `inspection.rounds` array in spec.json:
        最新のInspection結果: {result}
 
        ### Next Steps
-       1. Run `/kiro:spec-inspection $1` to re-inspect
-       2. Or run `/kiro:spec-inspection $1 --fix` to fix issues
-       3. Re-run `/kiro:spec-merge $1`
+       1. Run `/kiro:spec-inspection $0` to re-inspect
+       2. Or run `/kiro:spec-inspection $0 --fix` to fix issues
+       3. Re-run `/kiro:spec-merge $0`
        ```
      - **EXIT**
 
@@ -145,7 +145,7 @@ Before merging, commit all changes including spec.json update in the worktree.
 ```bash
 # Already resolved in Step 1.2
 PROJECT_ROOT=$(pwd)
-WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/specs/$1"
+WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/specs/$0"
 ```
 
 #### 2.2: Commit Pending Implementation Changes (if any)
@@ -156,7 +156,7 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 **IF** output is not empty (uncommitted changes exist):
 1. Stage and commit:
    ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && git add . && git commit -m "feat($1): implementation complete"
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add . && git commit -m "feat($0): implementation complete"
    ```
 2. Log: "Worktree内の未コミット変更をコミットしました"
 
@@ -190,7 +190,7 @@ Verify merge-spec.sh script is installed:
 #### 3.2: Execute Merge Script
 Run the merge script with feature name:
 ```bash
-bash .kiro/scripts/merge-spec.sh $1
+bash .kiro/scripts/merge-spec.sh $0
 ```
 
 The script will:
@@ -277,7 +277,7 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 - Generate commit message by analyzing staged changes:
   - Get changed files: `git diff --cached --name-only`
   - Determine change type (usually `feat` for spec implementations)
-  - Format: `feat($1): <description>`
+  - Format: `feat($0): <description>`
 - Create merge commit with generated message
 - Proceed to Step 5
 
@@ -303,8 +303,8 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   3. Resolve each conflict by keeping the desired changes
   4. Remove all conflict markers
   5. Stage only the resolved files: `git add <resolved-file-path>` (repeat for each file)
-  6. Run: `git commit -m "feat($1): merge implementation from worktree"`
-  7. Re-run this command to complete cleanup: `/kiro:spec-merge $1`
+  6. Run: `git commit -m "feat($0): merge implementation from worktree"`
+  7. Re-run this command to complete cleanup: `/kiro:spec-merge $0`
   ```
 - **EXIT** (do not continue to Step 5)
 

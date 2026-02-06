@@ -10,7 +10,7 @@ argument-hint: <feature-name>
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -23,12 +23,12 @@ If you are in a worktree (check `spec.json` for `worktree` field):
 </environment_context>
 
 ## Parse Arguments
-- Feature name: `$1`
+- Feature name: `$0`
 
 ## Validate
 Check that spec has been initialized:
-- Verify `.kiro/specs/$1/` exists
-- Verify `.kiro/specs/$1/spec.json` exists
+- Verify `.kiro/specs/$0/` exists
+- Verify `.kiro/specs/$0/spec.json` exists
 
 If validation fails, inform user to run `/kiro:spec-init` first.
 
@@ -43,12 +43,12 @@ Task(
   subagent_type="spec-requirements-agent",
   description="Generate EARS requirements",
   prompt="""
-Feature: $1
-Spec directory: .kiro/specs/$1/
+Feature: $0
+Spec directory: .kiro/specs/$0/
 
 File patterns to read:
-- .kiro/specs/$1/spec.json
-- .kiro/specs/$1/requirements.md
+- .kiro/specs/$0/spec.json
+- .kiro/specs/$0/requirements.md
 - .kiro/steering/*.md
 - .kiro/settings/rules/ears-format.md
 - .kiro/settings/templates/specs/requirements.md
@@ -65,14 +65,14 @@ Show Subagent summary to user, then provide next step guidance:
 ### Next Phase: Design Generation
 
 **If Requirements Approved**:
-- Review generated requirements at `.kiro/specs/$1/requirements.md`
+- Review generated requirements at `.kiro/specs/$0/requirements.md`
 - **Optional Gap Analysis** (for existing codebases):
-  - Run `/kiro:validate-gap $1` to analyze implementation gap with current code
+  - Run `/kiro:validate-gap $0` to analyze implementation gap with current code
   - Identifies existing components, integration points, and implementation strategy
   - Recommended for brownfield projects; skip for greenfield
-- Then `/kiro:spec-design $1 [-y]` to proceed to design phase
+- Then `/kiro:spec-design $0 [-y]` to proceed to design phase
 
 **If Modifications Needed**:
-- Provide feedback and re-run `/kiro:spec-requirements $1`
+- Provide feedback and re-run `/kiro:spec-requirements $0`
 
 **Note**: Approval is mandatory before proceeding to design phase.

@@ -17,8 +17,8 @@ argument-hint: <feature-name> [--sequential]
 
 <instructions>
 ## Parse Arguments
-- Feature name: `$1`
-- Sequential mode flag: `$2` (optional, "--sequential")
+- Feature name: `$0`
+- Sequential mode flag: `$1` (optional, "--sequential")
 
 ## Core Task
 Generate implementation tasks from design document.
@@ -28,14 +28,14 @@ Generate implementation tasks from design document.
 ### Step 0: Expand File Patterns
 Use Glob tool to expand file patterns and read all files:
 - Glob `.kiro/steering/*.md` to get all steering files
-- Glob `.kiro/specs/$1/*.{json,md}` to get all spec files
+- Glob `.kiro/specs/$0/*.{json,md}` to get all spec files
 - Read each file from glob results
 
 ### Step 1: Load Context
 **Read all necessary context**:
-- `.kiro/specs/$1/spec.json` - for language setting
-- `.kiro/specs/$1/requirements.md` - for requirements mapping
-- `.kiro/specs/$1/design.md` - for component and interface details
+- `.kiro/specs/$0/spec.json` - for language setting
+- `.kiro/specs/$0/requirements.md` - for requirements mapping
+- `.kiro/specs/$0/design.md` - for component and interface details
 - `.kiro/steering/*.md` - for project context
 - `.kiro/settings/rules/tasks-generation.md` - for task generation rules
 - `.kiro/settings/rules/tasks-parallel-analysis.md` - for parallel analysis (skip if --sequential)
@@ -50,7 +50,7 @@ Use Glob tool to expand file patterns and read all files:
 - Ensure all requirements are covered
 
 ### Step 3: Write Output
-- Write generated tasks to `.kiro/specs/$1/tasks.md`
+- Write generated tasks to `.kiro/specs/$0/tasks.md`
 - Use checkbox format `- [ ]` for all tasks
 - Include requirements mapping in detail bullets
 

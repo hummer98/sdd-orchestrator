@@ -7,22 +7,22 @@ argument-hint: <feature-name> [--fix | --autofix]
 # Spec Inspection (spec-manager)
 
 ## Parse Arguments
-- Feature name: `$1` (required)
-- Options: `$2` (optional: `--fix` or `--autofix`)
+- Feature name: `$0` (required)
+- Options: `$1` (optional: `--fix` or `--autofix`)
 
 ## Validate Spec Files Exist
 
 Before invoking Subagent, verify that all required spec files exist:
 
-1. Check if `.kiro/specs/$1/` directory exists
+1. Check if `.kiro/specs/$0/` directory exists
 2. Check if the following files exist:
-   - `.kiro/specs/$1/spec.json`
-   - `.kiro/specs/$1/requirements.md`
-   - `.kiro/specs/$1/design.md`
-   - `.kiro/specs/$1/tasks.md`
+   - `.kiro/specs/$0/spec.json`
+   - `.kiro/specs/$0/requirements.md`
+   - `.kiro/specs/$0/design.md`
+   - `.kiro/specs/$0/tasks.md`
 
 **If any file is missing**:
-- Display error message: "Spec files not found for feature '$1'. Required: spec.json, requirements.md, design.md, tasks.md"
+- Display error message: "Spec files not found for feature '$0'. Required: spec.json, requirements.md, design.md, tasks.md"
 - Suggest: "Complete previous phases: `/spec-manager:requirements`, `/spec-manager:design`, `/spec-manager:tasks`"
 - Stop execution
 
@@ -37,12 +37,12 @@ Task(
   subagent_type="spec-inspection-agent",
   description="Comprehensive inspection of implementation against specifications",
   prompt="""
-Feature: {$1}
-Spec directory: .kiro/specs/{$1}/
-Options: {$2 or none}
+Feature: {$0}
+Spec directory: .kiro/specs/{$0}/
+Options: {$1 or none}
 
 File patterns to read:
-- .kiro/specs/{$1}/*.{json,md}
+- .kiro/specs/{$0}/*.{json,md}
 - .kiro/steering/*.md
 - CLAUDE.md
 

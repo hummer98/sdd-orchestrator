@@ -309,7 +309,7 @@ For complex features (integrations, security, APIs), use standard workflow:
 ## Safety & Fallback
 
 ### Argument Parsing
-- Use `$ARGUMENTS` to parse (NOT `$1`, `$2`)
+- Use `$ARGUMENTS` to parse (NOT `$0`, `$1`)
 - Handle spaces in descriptions correctly
 - Example: `"Multi word description --auto"` → extract both parts correctly
 

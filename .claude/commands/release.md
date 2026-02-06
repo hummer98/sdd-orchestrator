@@ -38,7 +38,7 @@ UNCOMMITTED=$(git status --porcelain)
 
 if [ -n "$UNCOMMITTED" ]; then
   # --auto モードの場合はファイル種別を判定
-  if [[ "$1" == "--auto" ]]; then
+  if [[ "$0" == "--auto" ]]; then
     # ソースコード変更があるかチェック
     SOURCE_CHANGES=$(echo "$UNCOMMITTED" | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$')
 
@@ -79,7 +79,7 @@ LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 echo "前回のリリースタグ: $LATEST_TAG"
 
 # --auto モードの場合は自動判定
-if [[ "$1" == "--auto" ]]; then
+if [[ "$0" == "--auto" ]]; then
   # コミットメッセージを解析
   COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline)
 
@@ -140,7 +140,7 @@ fi
 
 ```bash
 # --auto モードの場合は $NEXT_VERSION を使用、通常モードの場合はユーザーに確認
-if [[ "$1" != "--auto" ]]; then
+if [[ "$0" != "--auto" ]]; then
   echo "package.jsonのバージョンを更新するバージョンを入力してください（例: 0.52.0）:"
   exit 1  # ユーザー入力待ち
 fi

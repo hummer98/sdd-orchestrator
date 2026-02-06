@@ -46,8 +46,8 @@ allowed-tools: Bash(git *), Read, Glob
 - `--check-branch` が指定されていない場合: ブランチチェックをスキップ（ステップ2, 3を省略し、カレントブランチに直接コミット）
 
 **引数がある場合**:
-1. Spec として存在するか確認: `.kiro/specs/$1/tasks.md`
-2. Bug として存在するか確認: `.kiro/bugs/$1/`
+1. Spec として存在するか確認: `.kiro/specs/$0/tasks.md`
+2. Bug として存在するか確認: `.kiro/bugs/$0/`
 3. 見つかった場合、そのコンテキストに基づいてコミット対象を特定
 
 **Spec の場合**:

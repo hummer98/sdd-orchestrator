@@ -11,7 +11,7 @@ argument-hint: <feature-name>
 **Current Working Directory**: The directory where this command is executed
 **CRITICAL**: All file operations MUST be performed relative to the current working directory.
 
-- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Spec directory: `.kiro/specs/$0/` (relative to current directory)
 - Source files: All paths are relative to current directory
 - DO NOT navigate to parent directories or git root
 - DO NOT use absolute paths from git root
@@ -33,15 +33,15 @@ This command executes all pending implementation tasks for a spec autonomously, 
 
 ## Parse Arguments
 
-- Feature name: `$1`
+- Feature name: `$0`
 
 ## Validate
 
 ### Check Prerequisites
 
-1. Verify `.kiro/specs/$1/` exists
-2. Verify `.kiro/specs/$1/tasks.md` exists
-3. Read `.kiro/specs/$1/spec.json` and check `approvals.tasks.approved === true`
+1. Verify `.kiro/specs/$0/` exists
+2. Verify `.kiro/specs/$0/tasks.md` exists
+3. Read `.kiro/specs/$0/spec.json` and check `approvals.tasks.approved === true`
 
 If validation fails:
 - Missing spec directory: "Spec not found. Run `/kiro:spec-init` first."
@@ -52,7 +52,7 @@ If validation fails:
 
 ### Parse tasks.md
 
-1. Read `.kiro/specs/$1/tasks.md`
+1. Read `.kiro/specs/$0/tasks.md`
 2. Extract all tasks with format `- [ ] N.N description`
 3. Identify (P) markers indicating parallel-safe tasks
 4. Group tasks:
@@ -120,12 +120,12 @@ Task(
   subagent_type="spec-auto-impl-worker-agent",
   description="Impl task {task.id}: {task.short_description}",
   prompt="""
-Feature: $1
-Spec directory: .kiro/specs/$1/
+Feature: $0
+Spec directory: .kiro/specs/$0/
 Target task: {task.id}
 
 File patterns to read:
-- .kiro/specs/$1/*.{json,md}
+- .kiro/specs/$0/*.{json,md}
 - .kiro/steering/*.md
 
 TDD Mode: strict (test-first)
@@ -185,7 +185,7 @@ If a subagent doesn't return a TASK_REPORT:
 
 After ALL tasks are completed successfully (no failures):
 
-1. Read `.kiro/specs/$1/spec.json`
+1. Read `.kiro/specs/$0/spec.json`
 2. Update:
    - `status`: `"implementation_complete"`
    - `updated_at`: current UTC timestamp (use `date -u +"%Y-%m-%dT%H:%M:%SZ"`)
@@ -231,8 +231,8 @@ Stopping: 1 failed task(s) in group 3.
 
 ### Next Steps
 1. Investigate failed task 3.2
-2. Fix the issue manually or with `/kiro:spec-impl $1 3.2`
-3. Re-run `/kiro:spec-auto-impl $1` to continue remaining tasks
+2. Fix the issue manually or with `/kiro:spec-impl $0 3.2`
+3. Re-run `/kiro:spec-auto-impl $0` to continue remaining tasks
 ```
 
 ## Usage Examples

@@ -21,7 +21,7 @@ argument-hint: <bug-name>
 Merge the bug fix from worktree branch `bugfix/{bug-name}` to main branch.
 
 ## Parse Arguments
-- Bug name: `$1` (required)
+- Bug name: `$0` (required)
 
 ## Execution Steps
 
@@ -38,20 +38,20 @@ Merge the bug fix from worktree branch `bugfix/{bug-name}` to main branch.
 **bugs-worktree-directory-mode**: In worktree mode, bug.json exists ONLY in the worktree, not in main.
 
 1. Derive worktree path from convention:
-   - Relative path: `.kiro/worktrees/bugs/$1`
-   - Absolute path: `$(pwd)/.kiro/worktrees/bugs/$1`
+   - Relative path: `.kiro/worktrees/bugs/$0`
+   - Absolute path: `$(pwd)/.kiro/worktrees/bugs/$0`
 2. Verify worktree directory exists:
    ```bash
-   ls -d ".kiro/worktrees/bugs/$1" 2>/dev/null
+   ls -d ".kiro/worktrees/bugs/$0" 2>/dev/null
    ```
-   - If not found, error: "Worktree not found at .kiro/worktrees/bugs/$1. This command is only for worktree mode."
+   - If not found, error: "Worktree not found at .kiro/worktrees/bugs/$0. This command is only for worktree mode."
 3. Read bug.json from worktree:
-   - Path: `.kiro/worktrees/bugs/$1/.kiro/bugs/$1/bug.json`
+   - Path: `.kiro/worktrees/bugs/$0/.kiro/bugs/$0/bug.json`
 4. Verify `worktree` field exists in bug.json
    - If not found, error: "No worktree configured for this bug. This command is only for worktree mode."
 5. Extract worktree information:
    - `worktree.path`: relative path to worktree (should match convention)
-   - `worktree.branch`: bugfix branch name (e.g., `bugfix/$1`)
+   - `worktree.branch`: bugfix branch name (e.g., `bugfix/$0`)
 
 ### Step 2: Prepare Worktree for Merge
 Before merging, commit all changes including bug.json update in the worktree.
@@ -60,7 +60,7 @@ Before merging, commit all changes including bug.json update in the worktree.
 ```bash
 # Already resolved in Step 1.2
 PROJECT_ROOT=$(pwd)
-WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/bugs/$1"
+WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/bugs/$0"
 ```
 
 #### 2.2: Commit Pending Implementation Changes (if any)
@@ -71,7 +71,7 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 **IF** output is not empty (uncommitted changes exist):
 1. Stage and commit:
    ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && git add . && git commit -m "fix($1): bug fix complete"
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add . && git commit -m "fix($0): bug fix complete"
    ```
 2. Log: "Worktree内の未コミット変更をコミットしました"
 
@@ -105,7 +105,7 @@ Verify merge-bug.sh script is installed:
 #### 3.2: Execute Merge Script
 Run the merge script with bug name:
 ```bash
-bash .kiro/scripts/merge-bug.sh $1
+bash .kiro/scripts/merge-bug.sh $0
 ```
 
 The script will:
@@ -190,7 +190,7 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 **IF** all conflicts resolved (no conflicted files remain):
 - Create merge commit:
   ```bash
-  git commit -m "fix($1): {bug summary from report.md} (conflicts resolved)"
+  git commit -m "fix($0): {bug summary from report.md} (conflicts resolved)"
   ```
 - Proceed to Step 5
 
@@ -216,8 +216,8 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   3. Resolve each conflict by keeping the desired changes
   4. Remove all conflict markers
   5. Stage only the resolved files: `git add <resolved-file-path>` (repeat for each file)
-  6. Run: `git commit -m "fix($1): {bug summary}"`
-  7. Re-run this command to complete cleanup: `/kiro:bug-merge $1`
+  6. Run: `git commit -m "fix($0): {bug summary}"`
+  7. Re-run this command to complete cleanup: `/kiro:bug-merge $0`
   ```
 - **EXIT** (do not continue to Step 5)
 

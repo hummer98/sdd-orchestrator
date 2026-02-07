@@ -48,7 +48,8 @@ import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from 
 // bug-auto-execution-per-bug-state: Import bug auto-execution IPC listeners
 import { initBugAutoExecutionIpcListeners, cleanupBugAutoExecutionIpcListeners } from '../shared/stores/bugAutoExecutionStore';
 // Task 8.2: Shared providers for API abstraction and platform capabilities
-import { ApiClientProvider, PlatformProvider } from '../shared';
+import { ApiClientProvider } from '../shared/api';
+import { PlatformProvider } from '../shared/providers';
 // header-profile-badge feature
 import { ProfileBadge } from '../shared/components/ui';
 // mcp-server-integration Task 7.5: MCP Status Indicator

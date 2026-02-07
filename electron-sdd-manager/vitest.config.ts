@@ -7,6 +7,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    environmentMatchGlobs: [
+      ['src/main/**/*.test.ts', 'node'],
+    ],
+    reporters: [['json', { outputFile: './test-results/vitest-results.json' }]],
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: [
@@ -17,6 +21,7 @@ export default defineConfig({
       'src/main/services/mcp/mcpSdkImport.test.ts',
       'src/main/services/mcp/mcpServerService.test.ts',
     ],
+    pool: 'forks',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -138,8 +138,8 @@ vi.mock('../hooks/useNavigationStack', () => {
   };
 });
 
-// Mock shared providers and hooks
-vi.mock('../../shared', () => {
+// Mock shared providers and hooks (individual paths to avoid barrel import)
+vi.mock('../../shared/api', () => {
   const mockApiClient: Partial<ApiClient> = {
     getSpecs: () => Promise.resolve({ ok: true, value: [] } as const),
     getBugs: () => Promise.resolve({ ok: true, value: [] } as const),
@@ -154,11 +154,17 @@ vi.mock('../../shared', () => {
 
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    PlatformProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
     useApi: () => mockApiClient,
   };
 });
+
+vi.mock('../../shared/providers', () => ({
+  PlatformProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('../../shared/hooks/useDeviceType', () => ({
+  useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
+}));
 
 // Mock layouts
 vi.mock('../layouts', () => {

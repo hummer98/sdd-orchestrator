@@ -14,10 +14,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-// Mock the shared providers and hooks
-vi.mock('../shared', async () => {
+// Mock the shared providers and hooks (individual paths to avoid barrel import)
+vi.mock('../shared/api', async () => {
   const React = await import('react');
-  // Create a mock ApiClient
   const mockApiClient = {
     getSpecs: () => Promise.resolve({ ok: true, value: [] }),
     getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
@@ -48,12 +47,21 @@ vi.mock('../shared', async () => {
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
-    PlatformProvider: ({ children }: { children: React.ReactNode }) =>
-      React.createElement('div', { 'data-testid': 'platform-provider' }, children),
-    useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
     useApi: () => mockApiClient,
   };
 });
+
+vi.mock('../shared/providers', async () => {
+  const React = await import('react');
+  return {
+    PlatformProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'platform-provider' }, children),
+  };
+});
+
+vi.mock('../shared/hooks/useDeviceType', () => ({
+  useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
+}));
 
 // Mock the layouts
 vi.mock('./layouts', async () => {

@@ -42,14 +42,14 @@ describe('Task 8.2: App.tsx Provider Integration', () => {
   });
 
   describe('Shared exports', () => {
-    it('ApiClientProvider should be accessible from shared/index', async () => {
-      const shared = await import('../shared');
-      expect(shared.ApiClientProvider).toBeDefined();
+    it('ApiClientProvider should be accessible from shared/api', async () => {
+      const { ApiClientProvider } = await import('../shared/api');
+      expect(ApiClientProvider).toBeDefined();
     });
 
-    it('PlatformProvider should be accessible from shared/index', async () => {
-      const shared = await import('../shared');
-      expect(shared.PlatformProvider).toBeDefined();
+    it('PlatformProvider should be accessible from shared/providers', async () => {
+      const { PlatformProvider } = await import('../shared/providers');
+      expect(PlatformProvider).toBeDefined();
     });
   });
 });

@@ -13,7 +13,9 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
+import { ApiClientProvider, useApi } from '../shared/api';
+import { PlatformProvider } from '../shared/providers';
+import { useDeviceType } from '../shared/hooks/useDeviceType';
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
 import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView, ProjectView } from './views';
 import { ProjectDetailPage } from './components/ProjectDetailPage';

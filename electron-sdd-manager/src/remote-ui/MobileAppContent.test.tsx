@@ -69,17 +69,26 @@ const mockApiClient = {
   getProfile: () => Promise.resolve({ ok: true, value: { name: 'cc-sdd' } }),
 };
 
-vi.mock('../shared', async () => {
+vi.mock('../shared/api', async () => {
   const React = await import('react');
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
-    PlatformProvider: ({ children }: { children: React.ReactNode }) =>
-      React.createElement('div', { 'data-testid': 'platform-provider' }, children),
-    useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
     useApi: () => mockApiClient,
   };
 });
+
+vi.mock('../shared/providers', async () => {
+  const React = await import('react');
+  return {
+    PlatformProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-testid': 'platform-provider' }, children),
+  };
+});
+
+vi.mock('../shared/hooks/useDeviceType', () => ({
+  useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
+}));
 
 // Track MobileLayout props
 let capturedMobileLayoutProps: {

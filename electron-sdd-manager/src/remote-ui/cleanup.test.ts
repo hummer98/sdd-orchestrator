@@ -37,17 +37,20 @@ describe('Task 12: Cleanup and Final Integration', () => {
   });
 
   describe('Task 12.2: Electron版インポートパス確認', () => {
-    it('should export shared components from shared/index.ts', async () => {
-      const shared = await import('../shared');
+    it('should export shared components from shared modules', async () => {
+      // Import from specific paths to avoid loading entire shared barrel export (~43MB)
+      const { ApiClientProvider, useApi } = await import('../shared/api');
+      const { PlatformProvider, usePlatform } = await import('../shared/providers');
+      const { useDeviceType } = await import('../shared/hooks/useDeviceType');
 
       // Core providers
-      expect(shared.ApiClientProvider).toBeDefined();
-      expect(shared.PlatformProvider).toBeDefined();
+      expect(ApiClientProvider).toBeDefined();
+      expect(PlatformProvider).toBeDefined();
 
       // Hooks
-      expect(shared.useApi).toBeDefined();
-      expect(shared.usePlatform).toBeDefined();
-      expect(shared.useDeviceType).toBeDefined();
+      expect(useApi).toBeDefined();
+      expect(usePlatform).toBeDefined();
+      expect(useDeviceType).toBeDefined();
     });
 
     it('should export shared types', async () => {

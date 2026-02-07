@@ -19,7 +19,7 @@
 import React, { ReactNode, useState, useEffect } from 'react';
 import { FileText, Bug, Bot, FolderOpen } from 'lucide-react';
 import { ProfileBadge } from '../../shared/components/ui';
-import { useApi } from '../../shared';
+import { useApi } from '../../shared/api';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
 import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 

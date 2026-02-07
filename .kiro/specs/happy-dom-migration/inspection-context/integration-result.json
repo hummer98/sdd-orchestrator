@@ -1,0 +1,202 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-07T12:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete. Verified: vitest.config.ts has environment: 'happy-dom', environmentMatchGlobs retains src/main/** as 'node', happy-dom exists in devDependencies (^20.5.0).",
+      "evidence": [
+        "electron-sdd-manager/vitest.config.ts:9 - environment: 'happy-dom'",
+        "electron-sdd-manager/vitest.config.ts:11 - ['src/main/**/*.test.ts', 'node']",
+        "electron-sdd-manager/package.json:80 - \"happy-dom\": \"^20.5.0\""
+      ]
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete. Verified: shared/components/agent/AgentLogPanel.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) with configurable: true at line 20.",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/agent/AgentLogPanel.test.tsx:20"
+      ]
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete. Verified: renderer/components/AgentLogPanel.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) with configurable: true at line 22.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx:22"
+      ]
+    },
+    {
+      "id": "task-2.3",
+      "checkType": "task-completion",
+      "target": "2.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.3 marked as complete. Verified: renderer/components/RemoteAccessPanel.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) at 3 locations (lines 139, 443, 541).",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.test.tsx:139",
+        "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.test.tsx:443",
+        "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.test.tsx:541"
+      ]
+    },
+    {
+      "id": "task-2.4",
+      "checkType": "task-completion",
+      "target": "2.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.4 marked as complete. Verified: renderer/components/McpSettingsPanel.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) at line 52.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/McpSettingsPanel.test.tsx:52"
+      ]
+    },
+    {
+      "id": "task-2.5",
+      "checkType": "task-completion",
+      "target": "2.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.5 marked as complete. Verified: renderer/components/InstallCloudflaredDialog.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) at line 181.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/InstallCloudflaredDialog.test.tsx:181"
+      ]
+    },
+    {
+      "id": "task-2.6",
+      "checkType": "task-completion",
+      "target": "2.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.6 marked as complete. Verified: renderer/components/BugListItem.test.tsx uses Object.defineProperty(navigator, 'clipboard', ...) at line 29.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/BugListItem.test.tsx:29"
+      ]
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete. Verified: remote-ui/components/AgentDetailDrawer.test.tsx uses element.style.height with toBe() at 3 locations for 50vh, 90vh, and 25vh.",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/components/AgentDetailDrawer.test.tsx:240 - expect(drawer.style.height).toBe('50vh')",
+        "electron-sdd-manager/src/remote-ui/components/AgentDetailDrawer.test.tsx:350 - expect(drawer.style.height).toBe('90vh')",
+        "electron-sdd-manager/src/remote-ui/components/AgentDetailDrawer.test.tsx:384 - expect(drawer.style.height).toBe('25vh')"
+      ]
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete. Verified: shared/components/ui/AgentIcon.test.tsx uses getAttribute('class') at 11 locations. No className.baseVal usage found (only in a comment).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/ui/AgentIcon.test.tsx:23,31,39,62,69,78,79,80,81,89,90"
+      ]
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete. Verified: tech.md has 'DOM環境: happy-dom' section with rules table covering navigator.clipboard, CSS relative units, SVG className, and @vitest-environment jsdom fallback.",
+      "evidence": [
+        ".kiro/steering/tech.md:67-77"
+      ]
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete. Verified: docs/memo/vitest-performance-analysis-20260207.md has 'happy-dom 移行結果' section with measurement data showing Duration improvement (106.62s->98.30s), Environment improvement (-44.6%), and no new test failures.",
+      "evidence": [
+        "docs/memo/vitest-performance-analysis-20260207.md:429-452"
+      ]
+    },
+    {
+      "id": "negative-object-assign",
+      "checkType": "usage",
+      "target": "Object.assign(navigator, { clipboard: ... })",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No remaining Object.assign(navigator, ...) patterns found in src/. All 8 occurrences have been replaced with Object.defineProperty."
+    },
+    {
+      "id": "negative-classname-baseval",
+      "checkType": "usage",
+      "target": "className.baseVal",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No className.baseVal usage found in code. Only reference is a comment at AgentIcon.test.tsx:22 ('// SVG elements use className.baseVal') which explains the rationale for the fix."
+    },
+    {
+      "id": "negative-tohavestyle-vh",
+      "checkType": "usage",
+      "target": "toHaveStyle({ height: '...vh' })",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No toHaveStyle with vh units found. All 3 occurrences have been replaced with element.style.height direct comparison."
+    },
+    {
+      "id": "placeholder-spec-related",
+      "checkType": "placeholder",
+      "target": "src/**",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No spec-related placeholder comments (TODO/FIXME/PLACEHOLDER/TBD/IMPLEMENT) found in modified files. No references to happy-dom migration task IDs found in implementation files."
+    },
+    {
+      "id": "config-happy-dom-env",
+      "checkType": "import",
+      "target": "happy-dom",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "happy-dom is configured as the default test environment in vitest.config.ts and is present in package.json devDependencies.",
+      "evidence": [
+        "electron-sdd-manager/vitest.config.ts:9",
+        "electron-sdd-manager/package.json:80"
+      ]
+    },
+    {
+      "id": "steering-rules",
+      "checkType": "wiring",
+      "target": "Task 5.1: tech.md happy-dom rules",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md contains DOM環境: happy-dom section with rules table covering 3 prohibited patterns and their standard-compliant alternatives, plus @vitest-environment jsdom fallback guidance."
+    },
+    {
+      "id": "perf-results-documented",
+      "checkType": "wiring",
+      "target": "Task 6.1: Performance measurement results",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Performance analysis document includes happy-dom migration results section with before/after metrics: Duration -7.8%, Environment -44.6%, no new test failures."
+    }
+  ],
+  "stats": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 18
+  }
+}

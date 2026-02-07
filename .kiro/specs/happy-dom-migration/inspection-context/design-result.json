@@ -1,0 +1,203 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-07T12:00:00Z",
+  "checks": [
+    {
+      "id": "design-config-environment",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vitest.config.ts の environment が 'happy-dom' に変更済み (Req 1.1)",
+      "evidence": [
+        "electron-sdd-manager/vitest.config.ts:9 - environment: 'happy-dom'"
+      ]
+    },
+    {
+      "id": "design-config-envmatchglobs",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "environmentMatchGlobs で src/main/** が 'node' 環境のまま維持 (Req 1.2)",
+      "evidence": [
+        "electron-sdd-manager/vitest.config.ts:10-12 - environmentMatchGlobs: [['src/main/**/*.test.ts', 'node']]"
+      ]
+    },
+    {
+      "id": "design-config-happydom-dep",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "happy-dom が devDependencies に存在 (Req 1.3)",
+      "evidence": [
+        "electron-sdd-manager/package.json:80 - \"happy-dom\": \"^20.5.0\""
+      ]
+    },
+    {
+      "id": "design-patternA-shared-agentlogpanel",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/agent/AgentLogPanel.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (1箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 20-23: Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })"
+      ]
+    },
+    {
+      "id": "design-patternA-renderer-agentlogpanel",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/AgentLogPanel.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (1箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 22-25: Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })"
+      ]
+    },
+    {
+      "id": "design-patternA-remoteaccesspanel",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/RemoteAccessPanel.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (3箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 139-142: Object.defineProperty in 'should have copyable URL'",
+        "Line 443-445: Object.defineProperty in 'should copy Tunnel URL when copy button clicked'",
+        "Line 541-543: Object.defineProperty in 'URL with access token' beforeEach"
+      ]
+    },
+    {
+      "id": "design-patternA-mcpsettingspanel",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/McpSettingsPanel.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (1箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 52-55: Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })"
+      ]
+    },
+    {
+      "id": "design-patternA-installcloudflared",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/InstallCloudflaredDialog.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (1箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 181-183: Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })"
+      ]
+    },
+    {
+      "id": "design-patternA-buglistitem",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/BugListItem.test.tsx: Object.defineProperty(navigator, 'clipboard', ...) with configurable: true (1箇所) (Req 2.1-2.4)",
+      "evidence": [
+        "Line 29-32: Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn() }, configurable: true })"
+      ]
+    },
+    {
+      "id": "design-patternA-no-objectassign",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Object.assign(navigator, { clipboard: ... }) パターンがコードベースから完全に除去済み (Req 2.3)",
+      "evidence": [
+        "grep 'Object.assign(navigator' returned 0 matches in electron-sdd-manager/src/"
+      ]
+    },
+    {
+      "id": "design-patternB-agentdetaildrawer",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/remote-ui/components/AgentDetailDrawer.test.tsx: toHaveStyle({ height: 'Xvh' }) を element.style.height に置換済み (3箇所: 50vh, 90vh, 25vh) (Req 3.1-3.3)",
+      "evidence": [
+        "Line 240: expect(drawer.style.height).toBe('50vh')",
+        "Line 350: expect(drawer.style.height).toBe('90vh')",
+        "Line 384: expect(drawer.style.height).toBe('25vh')",
+        "grep 'toHaveStyle' returned 0 matches in this file"
+      ]
+    },
+    {
+      "id": "design-patternC-agenticon",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/ui/AgentIcon.test.tsx: className.baseVal を getAttribute('class') に置換済み (6箇所以上) (Req 4.1-4.3)",
+      "evidence": [
+        "Line 23,31,39: icon.getAttribute('class') (AgentIcon tests)",
+        "Line 62,69: container.getAttribute('class') (AgentBranchIcon tests)",
+        "Line 78-81,89-90: svgs[N].getAttribute('class') (AgentBranchIcon icon tests)",
+        "No functional className.baseVal usage found"
+      ]
+    },
+    {
+      "id": "design-patternC-stale-comment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentIcon.test.tsx line 22: コメント '// SVG elements use className.baseVal' が残存しているが、実際のコードは getAttribute('class') に修正済み。コメントの正確性の問題だが機能的影響なし",
+      "evidence": [
+        "Line 22: // SVG elements use className.baseVal (comment only, not functional code)",
+        "Line 23: const classNames = icon.getAttribute('class') || ''; (correct implementation)"
+      ]
+    },
+    {
+      "id": "design-steering-tech-happydom-rules",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": ".kiro/steering/tech.md に happy-dom テストルールが追加済み (Req 6.1-6.2)",
+      "evidence": [
+        "tech.md:67 - '#### DOM環境: happy-dom' セクション追加",
+        "tech.md:69 - 'ユニットテストのデフォルトDOM環境は happy-dom' 明記",
+        "tech.md:71-75 - 3パターンの禁止/代替ルール表追加",
+        "tech.md:77 - @vitest-environment jsdom フォールバック手順追加"
+      ]
+    },
+    {
+      "id": "design-steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "product.md との整合性: テスト基盤改善はプロダクトの品質向上に寄与。スコープ外の機能追加なし",
+      "evidence": [
+        "No production code changes",
+        "Test infrastructure improvement only",
+        "No new user-facing features added"
+      ]
+    },
+    {
+      "id": "design-steering-structure-compliance",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "structure.md との整合性: テストファイルは実装と同ディレクトリに配置、命名規則 *.test.tsx 遵守",
+      "evidence": [
+        "src/shared/components/agent/AgentLogPanel.test.tsx - co-located with component",
+        "src/renderer/components/AgentLogPanel.test.tsx - co-located with component",
+        "src/remote-ui/components/AgentDetailDrawer.test.tsx - co-located with component",
+        "src/shared/components/ui/AgentIcon.test.tsx - co-located with component",
+        "All test files use *.test.tsx naming convention"
+      ]
+    },
+    {
+      "id": "design-memo-exists",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docs/memo/vitest-performance-analysis-20260207.md が存在",
+      "evidence": [
+        "docs/memo/vitest-performance-analysis-20260207.md found in worktree"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 17
+  }
+}

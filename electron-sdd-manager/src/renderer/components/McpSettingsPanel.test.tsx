@@ -49,10 +49,9 @@ describe('McpSettingsPanel', () => {
     mockSetPort.mockResolvedValue(undefined);
     mockWriteText.mockResolvedValue(undefined);
 
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: mockWriteText,
-      },
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      configurable: true,
     });
   });
 

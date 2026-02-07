@@ -64,6 +64,18 @@ task electron:test -- "foo|bar|baz"   # 複数パターン
 
 **E2E統合テストの詳細**: Mock Claude CLIを使用したワークフロー統合テストについては `.kiro/steering/e2e-testing.md` を参照。
 
+#### DOM環境: happy-dom
+
+ユニットテストのデフォルトDOM環境は **happy-dom**（`vitest.config.ts`）。以下のルールを遵守すること。
+
+| パターン | 禁止 | 代替（標準準拠） |
+|----------|------|-----------------|
+| `navigator.clipboard` モック | `Object.assign(navigator, { clipboard: ... })` | `Object.defineProperty(navigator, 'clipboard', { value: ..., configurable: true })` |
+| CSS相対単位の検証 | `toHaveStyle({ height: 'Xvh' })` | `expect(element.style.height).toBe('Xvh')` |
+| SVG要素のクラス名取得 | `element.className.baseVal` | `element.getAttribute('class')` |
+
+**フォールバック**: 修正困難な互換性問題がある場合、テストファイル先頭に `// @vitest-environment jsdom` コメントを追加してファイル単位で jsdom にフォールバック可能。使用時は理由を記録すること。
+
 ## Development Environment
 
 ### Required Tools
@@ -235,4 +247,4 @@ sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-te
 
 ---
 _Document standards and patterns, not every dependency_
-_updated_at: 2026-01-29_
+_updated_at: 2026-02-07_

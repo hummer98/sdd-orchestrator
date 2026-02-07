@@ -178,10 +178,9 @@ describe('InstallCloudflaredDialog', () => {
 
     it('should copy Homebrew command to clipboard when copy button clicked', async () => {
       const mockWriteText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: mockWriteText,
-        },
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        configurable: true,
       });
 
       render(<InstallCloudflaredDialog {...defaultProps} />);

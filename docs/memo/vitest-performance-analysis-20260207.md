@@ -277,7 +277,7 @@ vitest 9: 4.4GB
 | **高** | vitest 3.1.4 へアップグレード | Module Runner改善 | 中 | **適用済み** |
 | **高** | `main/` テストの `node` 環境移行 | jsdom オーバーヘッド削減 | 低 | **適用済み** |
 | **高** | `setup.ts` jsdom ガード強化 | 不要モック排除 | 低 | **適用済み** |
-| **中** | jsdom → happy-dom 移行検討 | メモリ・速度改善 | 中（互換性） | 未着手 |
+| **中** | jsdom → happy-dom 移行 | Environment -45%, Duration -8% | 低（8ファイル修正） | **適用済み** |
 | **中** | 実 setTimeout を fake timers に置換 | 約20秒削減 | 低 | 未着手 |
 | **中** | renderer/shared 重複テスト統合 | テストケース数削減 | 中 | 未着手 |
 | **低** | 巨大テストファイルの分割 | キャッシュ・並列効率向上 | 低 | 未着手 |
@@ -393,7 +393,6 @@ CPU 10コア環境。制限なし（デフォルト）が最速かつ OOM なし
 残りの最適化候補:
 1. `shared/index.ts` 自体の `export *` を削除（まだソース側で barrel import しているファイルが残存している可能性）
 2. 実 setTimeout → fake timers 置換（約20秒削減見込み）
-3. happy-dom 移行検討（jsdom のメモリフットプリント削減）
 
 ---
 
@@ -412,3 +411,42 @@ jsdom / node いずれの環境でも失敗するファイル：
 | `main/services/specManagerService.test.ts` | 不明 |
 | `main/services/unifiedCommandsetInstaller.test.ts` | ファイルシステム関連 |
 | `main/services/validationService.test.ts` | ファイルシステム関連 |
+| `main/trpc/__tests__/spec-router.test.ts` | 不明 |
+| `remote-ui/App.test.tsx` | vi.mock パス関連 |
+| `remote-ui/MobileAppContent.test.tsx` | vi.mock パス関連 |
+| `remote-ui/components/AgentsTabView.test.tsx` | 不明 |
+| `remote-ui/components/BugDetailPage.test.tsx` | 不明 |
+| `remote-ui/components/SpecDetailPage.test.tsx` | 不明 |
+| `renderer/components/AgentLogPanel.test.tsx` | SessionInfoBlock レンダリング不一致 |
+| `renderer/components/ArtifactEditor.test.tsx` | 不明 |
+| `renderer/components/BugPane.test.tsx` | 不明 |
+| `renderer/components/CommandsetInstallDialog.test.tsx` | 不明 |
+| `renderer/components/DocsTabs.integration.test.tsx` | 不明 |
+| `renderer/components/ProjectAgentPanel.test.tsx` | 不明 |
+
+---
+
+## happy-dom 移行結果
+
+### 移行概要
+
+jsdom から happy-dom へのデフォルト DOM 環境移行を実施。
+
+**修正内容**:
+- `vitest.config.ts`: `environment: 'jsdom'` -> `'happy-dom'`
+- 6ファイル・8箇所: `Object.assign(navigator, { clipboard: ... })` -> `Object.defineProperty(navigator, 'clipboard', { value: ..., configurable: true })`
+- 1ファイル・3箇所: `toHaveStyle({ height: 'Xvh' })` -> `element.style.height` 直接比較
+- 1ファイル・6箇所: `svgs[N].className.baseVal` -> `svgs[N].getAttribute('class')`
+
+### 計測結果
+
+| 項目 | jsdom | happy-dom | 改善 |
+|------|-------|-----------|------|
+| Duration | 106.62s | 98.30s | -7.8% |
+| Environment 累計 | 180.32s | 99.85s | -44.6% |
+| Test Files passed | 388 | 388 | 変化なし |
+| Test Files failed | 21 | 21 | 変化なし（全て既存の失敗） |
+| Tests passed | 8476 | 8476 | 変化なし |
+| Tests failed | 103 | 103 | 変化なし |
+
+**結論**: happy-dom 移行により Environment 初期化コストを約45%削減し、全体実行時間を約8秒短縮。新たな失敗テストは発生していない。フォールバック対象ファイルなし。

@@ -17,10 +17,9 @@ import type { ParsedLogEntry } from '@shared/api/types';
 
 // Mock clipboard API
 const mockWriteText = vi.fn();
-Object.assign(navigator, {
-  clipboard: {
-    writeText: mockWriteText,
-  },
+Object.defineProperty(navigator, 'clipboard', {
+  value: { writeText: mockWriteText },
+  configurable: true,
 });
 
 // Helper to create ParsedLogEntry

@@ -136,10 +136,9 @@ describe('RemoteAccessPanel', () => {
 
     it('should have copyable URL', () => {
       const mockWriteText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: mockWriteText,
-        },
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        configurable: true,
       });
 
       (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -441,10 +440,9 @@ describe('RemoteAccessPanel', () => {
 
     it('should copy Tunnel URL when copy button clicked', () => {
       const mockWriteText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: mockWriteText,
-        },
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        configurable: true,
       });
 
       (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(storeWithTunnel);
@@ -540,10 +538,9 @@ describe('RemoteAccessPanel', () => {
     const mockWriteText = vi.fn().mockResolvedValue(undefined);
 
     beforeEach(() => {
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: mockWriteText,
-        },
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        configurable: true,
       });
       mockWriteText.mockClear();
     });

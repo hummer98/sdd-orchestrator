@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
     environmentMatchGlobs: [
       ['src/main/**/*.test.ts', 'node'],
     ],

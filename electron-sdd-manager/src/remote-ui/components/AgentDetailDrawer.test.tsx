@@ -237,7 +237,7 @@ describe('AgentDetailDrawer', () => {
         render(<AgentDetailDrawer {...defaultProps} />);
         const drawer = screen.getByTestId('agent-detail-drawer');
         // The drawer should have height style containing 50vh
-        expect(drawer).toHaveStyle({ height: '50vh' });
+        expect(drawer.style.height).toBe('50vh');
       });
     });
 
@@ -347,7 +347,7 @@ describe('AgentDetailDrawer', () => {
         fireEvent.touchEnd(dragHandle);
 
         // Height should be capped at 90vh
-        expect(drawer).toHaveStyle({ height: '90vh' });
+        expect(drawer.style.height).toBe('90vh');
       });
 
       it('should not go below minimum height of 25vh when dragging down', () => {
@@ -381,7 +381,7 @@ describe('AgentDetailDrawer', () => {
         });
 
         // Check height during drag (before touchEnd) - should be 25vh
-        expect(drawer).toHaveStyle({ height: '25vh' });
+        expect(drawer.style.height).toBe('25vh');
 
         // For touchEnd, since delta is exactly 25vh which is > 20vh threshold,
         // it would close. Let's just verify the clamp works during drag.

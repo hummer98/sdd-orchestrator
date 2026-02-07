@@ -75,10 +75,10 @@ describe('AgentBranchIcon', () => {
     const container = screen.getByTestId('agent-branch-icon');
     const svgs = container.querySelectorAll('svg');
     // Both icons should have the size class
-    expect(svgs[0].className.baseVal).toContain('w-5');
-    expect(svgs[0].className.baseVal).toContain('h-5');
-    expect(svgs[1].className.baseVal).toContain('w-5');
-    expect(svgs[1].className.baseVal).toContain('h-5');
+    expect(svgs[0].getAttribute('class')).toContain('w-5');
+    expect(svgs[0].getAttribute('class')).toContain('h-5');
+    expect(svgs[1].getAttribute('class')).toContain('w-5');
+    expect(svgs[1].getAttribute('class')).toContain('h-5');
   });
 
   it('applies AGENT_ICON_COLOR to both icons', () => {
@@ -86,8 +86,8 @@ describe('AgentBranchIcon', () => {
     const container = screen.getByTestId('agent-branch-icon');
     const svgs = container.querySelectorAll('svg');
     // Both icons should have the default color
-    expect(svgs[0].className.baseVal).toContain('text-white');
-    expect(svgs[1].className.baseVal).toContain('text-white');
+    expect(svgs[0].getAttribute('class')).toContain('text-white');
+    expect(svgs[1].getAttribute('class')).toContain('text-white');
   });
 });
 

@@ -1,0 +1,134 @@
+{
+  "spec_overview": "vitest のユニットテスト DOM 環境を jsdom から happy-dom に移行し、テスト実行速度を約16.4%改善する。移行に伴い8ファイルのテストコードを標準準拠に修正し、steeringに再発防止ルールを追加する。",
+  "key_components": [
+    {
+      "name": "vitest.config.ts",
+      "type": "config",
+      "path": "electron-sdd-manager/vitest.config.ts",
+      "requirements": ["1.1", "1.2", "1.3"]
+    },
+    {
+      "name": "AgentLogPanel.test.tsx (shared)",
+      "type": "test",
+      "path": "electron-sdd-manager/src/shared/components/agent/AgentLogPanel.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "AgentLogPanel.test.tsx (renderer)",
+      "type": "test",
+      "path": "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "RemoteAccessPanel.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "McpSettingsPanel.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/renderer/components/McpSettingsPanel.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "InstallCloudflaredDialog.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/renderer/components/InstallCloudflaredDialog.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "BugListItem.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/renderer/components/BugListItem.test.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "AgentDetailDrawer.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/remote-ui/components/AgentDetailDrawer.test.tsx",
+      "requirements": ["3.1", "3.2", "3.3"]
+    },
+    {
+      "name": "AgentIcon.test.tsx",
+      "type": "test",
+      "path": "electron-sdd-manager/src/shared/components/ui/AgentIcon.test.tsx",
+      "requirements": ["4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "tech.md (steering)",
+      "type": "docs",
+      "path": ".kiro/steering/tech.md",
+      "requirements": ["6.1", "6.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "vitest.config.ts",
+      "target": "happy-dom (npm package)",
+      "type": "import"
+    },
+    {
+      "source": "vitest.config.ts",
+      "target": "All test files (411 files)",
+      "type": "config"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/vitest.config.ts",
+      "action": "UPDATE",
+      "reason": "environment を jsdom から happy-dom に変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/components/agent/AgentLogPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換 (3箇所)"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/McpSettingsPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/InstallCloudflaredDialog.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/BugListItem.test.tsx",
+      "action": "UPDATE",
+      "reason": "Object.assign(navigator, { clipboard: ... }) を Object.defineProperty に置換"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/components/AgentDetailDrawer.test.tsx",
+      "action": "UPDATE",
+      "reason": "toHaveStyle({ height: 'Xvh' }) を element.style.height 直接比較に置換 (3箇所)"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/components/ui/AgentIcon.test.tsx",
+      "action": "UPDATE",
+      "reason": "className.baseVal を getAttribute('class') に置換 (6箇所)"
+    },
+    {
+      "target": ".kiro/steering/tech.md",
+      "action": "UPDATE",
+      "reason": "Testing セクションに happy-dom テスト記述ルール追加"
+    },
+    {
+      "target": "docs/memo/vitest-performance-analysis-20260207.md",
+      "action": "UPDATE",
+      "reason": "最終計測結果の追記"
+    }
+  ]
+}

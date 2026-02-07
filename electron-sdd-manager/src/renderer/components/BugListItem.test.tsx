@@ -26,10 +26,9 @@ describe('BugListItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock clipboard API
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
     });
   });
 

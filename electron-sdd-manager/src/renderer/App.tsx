@@ -68,8 +68,7 @@ import type { ProjectFilesState } from '../shared/api/types';
 // idle-time-project-level-reporting Task 4.1: Idle time sync hook
 // Requirements: 1.1, 1.2, 1.3 - プロジェクト選択時にアイドル時間報告を開始
 import { useIdleTimeSync } from './hooks/useIdleTimeSync';
-// trpc-infrastructure: TRPCProvider for tRPC React hooks integration (Requirements 4.5)
-import { TRPCProvider } from '../shared/trpc/provider';
+// TRPCProvider is now in main.tsx (must wrap App for hooks to work)
 // trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
 import { getVanillaClient } from '../shared/trpc/vanillaClient';
 // trpc-full-migration Task 9.2: tRPC Subscription for event listeners
@@ -315,6 +314,11 @@ export function App() {
   // Task 9.2: Menu events via tRPC Subscription
   trpc.events.onMenuOpenProject.useSubscription(undefined, {
     onData: async (data) => {
+      if (!data.projectPath) {
+        const stack = new Error().stack?.replace(/\n/g, ' | ') ?? 'no stack';
+        console.warn(`[App] onMenuOpenProject received empty projectPath, ignoring. data=${JSON.stringify(data)} stack=${stack}`);
+        return;
+      }
       console.log(`[App] Opening project from menu: ${data.projectPath}`);
       await selectProject(data.projectPath);
     },
@@ -628,11 +632,10 @@ export function App() {
 
   // Task 8.2: Wrap with ApiClientProvider and PlatformProvider
   // These providers enable shared components to use abstract API and platform capabilities
-  // trpc-infrastructure: TRPCProvider enables tRPC React hooks (Requirements 4.5)
+  // TRPCProvider is in main.tsx (wraps App to enable tRPC hooks in App body)
   return (
     <ApiClientProvider>
       <PlatformProvider>
-        <TRPCProvider>
         <NotificationProvider>
           <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
             {/* Header - draggable for window movement on macOS */}
@@ -930,7 +933,6 @@ export function App() {
         />
           </div>
         </NotificationProvider>
-        </TRPCProvider>
       </PlatformProvider>
     </ApiClientProvider>
   );

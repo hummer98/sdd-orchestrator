@@ -123,8 +123,13 @@ function createEventSubscription<T>(eventName: string) {
         return () => {};
       }
 
-      const handler = (data: T) => {
-        emit.next(data);
+      const handler = (...args: unknown[]) => {
+        // Diagnostic: detect phantom subscription data
+        if (args.length === 0 || (args.length === 1 && args[0] === undefined)) {
+          const stack = new Error().stack;
+          console.warn(`[events-router] ${eventName} fired with empty data. args=${JSON.stringify(args)} stack=${stack}`);
+        }
+        emit.next(args.length === 1 ? (args[0] as T) : (args as unknown as T));
       };
 
       eventBus.on(eventName, handler);

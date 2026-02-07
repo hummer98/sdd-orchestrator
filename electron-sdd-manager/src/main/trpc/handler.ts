@@ -12,33 +12,27 @@ import { createIPCHandler } from 'electron-trpc/main';
 import { appRouter } from './router';
 import { createContext, type ContextServices } from './context';
 import { projectLogger } from '../services/projectLogger';
-import { getGlobalEventBus } from './services/globalEventBus';
-import { getInitialSelectResult, clearInitialSelectResult } from './helpers/projectSetup';
+import { createProductionServices } from './productionServices';
 
 /**
  * Sets up the tRPC IPC handler for the given BrowserWindow.
  * This enables Renderer processes to call tRPC procedures via IPC.
  *
- * Task 9.2: Global EventBusをtRPC contextに自動注入する。
- * これによりeventsRouterのSubscriptionがMain Processのイベントを受信できる。
+ * Production services are automatically resolved via createProductionServices().
+ * Tests can override individual services via serviceOverrides parameter.
  *
  * @param window - The BrowserWindow instance to attach the handler to
- * @param serviceOverrides - Optional partial service overrides for DI
+ * @param serviceOverrides - Optional partial service overrides for DI (testing)
  */
 export function setupTRPCHandler(
   window: Electron.BrowserWindow,
   serviceOverrides?: Partial<ContextServices>,
 ): void {
   try {
-    // Task 9.2: Inject global EventBus into context for Subscription support
-    // startup-project-selection-race-condition: Inject projectSetup cache functions for Pull model
-    // Type cast needed: SelectProjectResult (concrete) -> SelectProjectResultLike (interface)
-    // These types are structurally compatible at runtime but BugMetadata[] vs Record<string, unknown>[]
-    // requires explicit assertion for TypeScript
+    // Resolve all production services as defaults, then apply overrides
+    const productionDefaults = createProductionServices();
     const mergedOverrides: Partial<ContextServices> = {
-      eventBus: getGlobalEventBus(),
-      getInitialSelectResult: getInitialSelectResult as ContextServices['getInitialSelectResult'],
-      clearInitialSelectResult,
+      ...productionDefaults,
       ...serviceOverrides,
     };
 

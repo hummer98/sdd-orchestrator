@@ -76,7 +76,6 @@ import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { ExperimentalToolsInstallerService } from '../services/experimentalToolsInstallerService';
 import { CommandsetVersionService } from '../services/commandsetVersionService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
-import { getDefaultMigrationService } from '../services/migrationService';
 
 // Schedule Domain
 import { setLastActivityTime } from '../services/idleTimeTracker';
@@ -411,7 +410,7 @@ export function createProductionServices(): Partial<ContextServices> {
       return result;
     },
     installGetManualInstallInstructions: (location?: string) => getManualInstallInstructions(location as any),
-    installMigrationService: getDefaultMigrationService(),
+    installMigrationService: undefined, // Initialized lazily after project selection via setProjectPath
     installCheckJjAvailability: () => {
       const resolver = getToolPathResolverService();
       const status = resolver.getStatus('jj');

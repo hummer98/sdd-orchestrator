@@ -14,6 +14,7 @@
  */
 import { useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ipcLink } from 'electron-trpc/renderer';
 import { trpc } from './client';
 
 interface TRPCProviderProps {
@@ -22,18 +23,15 @@ interface TRPCProviderProps {
 
 /**
  * Attempt to create a tRPC client with ipcLink.
- * Returns null if ipcLink is not available (Remote UI environment).
+ * Returns null if electronTRPC global is not available (Remote UI environment).
  */
 function createTRPCClient() {
   try {
-    // Dynamic import to avoid bundling electron-trpc in Remote UI
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { ipcLink } = require('electron-trpc/renderer');
     return trpc.createClient({
       links: [ipcLink()],
     });
   } catch {
-    // ipcLink not available (Remote UI environment)
+    // electronTRPC global not available (Remote UI environment)
     // tRPC hooks will not be functional, but the provider structure is in place
     console.warn('[TRPCProvider] ipcLink not available, tRPC disabled in this environment');
     return null;

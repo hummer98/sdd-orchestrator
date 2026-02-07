@@ -45,10 +45,12 @@ import type { SpecInfo, BugInfo, AgentStateInfo } from '../../services/webSocket
 // Re-export utility functions that were in projectUtils.ts
 export { validateProjectPath, isProjectSelectionInProgress, setProjectSelectionLock, resetProjectSelectionLock } from './projectUtils';
 
-// Re-export project file utilities
+// Import project file utilities for local use and re-export
+import { startProjectFileWatcher, stopProjectFileWatcher, initProjectFileWatcher } from './projectFileUtils';
 export { startProjectFileWatcher, stopProjectFileWatcher, initProjectFileWatcher } from './projectFileUtils';
 
-// Re-export watcher utilities
+// Import watcher utilities for local use and re-export
+import { stopSpecsWatcher, stopBugsWatcher, stopAgentRecordWatcher } from './watcherUtils';
 export { stopSpecsWatcher, stopBugsWatcher, stopAgentRecordWatcher } from './watcherUtils';
 
 // ============================================================
@@ -221,8 +223,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
 // ============================================================
 
 export async function setProjectPath(projectPath: string): Promise<void> {
-  const { stopSpecsWatcher, stopBugsWatcher, stopAgentRecordWatcher } = await import('./watcherUtils');
-  const { startProjectFileWatcher, stopProjectFileWatcher } = await import('./projectFileUtils');
+  // startProjectFileWatcher, stopProjectFileWatcher, stopSpecsWatcher etc. are imported at module level
 
   logger.info('[projectSetup] setProjectPath called', { projectPath });
   currentProjectPath = projectPath;
@@ -383,7 +384,7 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
  * - Renderer log forwarding via ipcMain.on (LOG_RENDERER)
  */
 export function initializeEventWiring(): void {
-  const { initProjectFileWatcher } = require('./projectFileUtils');
+  // initProjectFileWatcher is imported at module level (static import)
 
   // Renderer logging (fire-and-forget) - still uses ipcMain.on for fire-and-forget pattern
   // This is kept as the tRPC misc.logRenderer mutation also handles this,

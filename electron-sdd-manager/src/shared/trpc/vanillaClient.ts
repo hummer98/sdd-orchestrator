@@ -12,6 +12,7 @@
  *   await client.config.addRecentProject.mutate({ path: '/my/project' });
  */
 import { createTRPCProxyClient } from '@trpc/client';
+import { ipcLink } from 'electron-trpc/renderer';
 import type { AppRouter } from '../../main/trpc/router';
 
 type VanillaClient = ReturnType<typeof createTRPCProxyClient<AppRouter>>;
@@ -24,9 +25,6 @@ let vanillaClient: VanillaClient | null = null;
  */
 export function getVanillaClient(): VanillaClient {
   if (!vanillaClient) {
-    // Dynamic require to avoid bundling electron-trpc in Remote UI
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { ipcLink } = require('electron-trpc/renderer');
     vanillaClient = createTRPCProxyClient<AppRouter>({
       links: [ipcLink()],
     });

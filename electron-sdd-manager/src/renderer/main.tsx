@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import { TRPCProvider } from '../shared/trpc/provider';
 import './styles/index.css';
 import { useProjectStore, useSpecStore, useSharedBugStore, notify } from './stores';
 import { setNotificationHandler } from '@shared/stores/notificationStore';
@@ -70,6 +71,8 @@ if (import.meta.env.DEV) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <TRPCProvider>
+      <App />
+    </TRPCProvider>
   </React.StrictMode>
 );

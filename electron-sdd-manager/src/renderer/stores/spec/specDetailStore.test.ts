@@ -5,7 +5,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSpecDetailStore, getResolvedScheme } from './specDetailStore';
 import { useEditorStore } from '../editorStore';
 import type { SpecMetadata, SpecDetail, ArtifactInfo } from '../../types';
 import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
@@ -18,6 +17,25 @@ vi.mock('../../../shared/stores/agentStore', () => ({
     })),
   },
 }));
+
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
+const mockVanillaClient = {
+  file: {
+    readSpecJson: { query: vi.fn() },
+    readArtifact: { query: vi.fn() },
+    listMarkdownFilesInSpec: { query: vi.fn() },
+  },
+  // trpc-full-migration Task 5.3: Mock spec procedures for syncDocumentReview/syncSpecPhase
+  spec: {
+    syncDocumentReview: { mutate: vi.fn() },
+    syncSpecPhase: { mutate: vi.fn() },
+  },
+};
+vi.mock('../../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
+import { useSpecDetailStore, getResolvedScheme } from './specDetailStore';
 
 // spec-path-ssot-refactor: SpecMetadata now only contains name field
 // phase, updatedAt, approvals should be obtained from SpecJson (SSOT)
@@ -62,10 +80,10 @@ describe('useSpecDetailStore', () => {
 
   describe('selectSpec (Req 2.3)', () => {
     it('should set selectedSpec and load specDetail', async () => {
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      // spec-path-ssot-refactor: readArtifact now uses object params via tRPC
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Requirements');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -76,17 +94,17 @@ describe('useSpecDetailStore', () => {
     });
 
     it('should load specJson and all artifacts (Req 2.5)', async () => {
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-      window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((_specName: string, filename: string) => {
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      // spec-path-ssot-refactor: readArtifact now uses object params via tRPC
+      mockVanillaClient.file.readArtifact.query
+        .mockImplementation(({ filename }: { name: string; filename: string; entityType: string }) => {
           if (filename.includes('requirements')) return Promise.resolve('# Requirements');
           if (filename.includes('design')) return Promise.resolve('# Design');
           if (filename.includes('tasks')) return Promise.resolve('# Tasks\n- [ ] Task 1');
           if (filename.includes('research')) return Promise.reject(new Error('Not found'));
           return Promise.reject(new Error('Unknown'));
         });
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -104,15 +122,14 @@ describe('useSpecDetailStore', () => {
 - [ ] Task 3 pending
 - [ ] Task 4 pending`;
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-      window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((_specName: string, filename: string) => {
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query
+        .mockImplementation(({ filename }: { name: string; filename: string; entityType: string }) => {
           if (filename.includes('tasks')) return Promise.resolve(tasksContent);
           return Promise.reject(new Error('Not found'));
         });
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.spec.syncSpecPhase.mutate.mockResolvedValue(undefined);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -133,14 +150,14 @@ describe('useSpecDetailStore', () => {
 - [ ] 2. Sequential task
 - [ ] 3. Another task`;
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((_specName: string, filename: string) => {
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query
+        .mockImplementation(({ filename }: { name: string; filename: string; entityType: string }) => {
           if (filename.includes('tasks')) return Promise.resolve(tasksContent);
           return Promise.reject(new Error('Not found'));
         });
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.spec.syncSpecPhase.mutate.mockResolvedValue(undefined);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -158,14 +175,14 @@ describe('useSpecDetailStore', () => {
 - [ ] 2. Task two
 - [ ] 3. Task three`;
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((_specName: string, filename: string) => {
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query
+        .mockImplementation(({ filename }: { name: string; filename: string; entityType: string }) => {
           if (filename.includes('tasks')) return Promise.resolve(tasksContent);
           return Promise.reject(new Error('Not found'));
         });
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.spec.syncSpecPhase.mutate.mockResolvedValue(undefined);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -182,9 +199,9 @@ describe('useSpecDetailStore', () => {
         resolveSpecJson = resolve;
       });
 
-      window.electronAPI.readSpecJson = vi.fn().mockReturnValue(specJsonPromise);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockReturnValue(specJsonPromise);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       const selectPromise = useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -198,9 +215,9 @@ describe('useSpecDetailStore', () => {
     });
 
     it('should provide silent mode option (Req 2.7)', async () => {
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       // Use a spy to capture isLoading state changes
       const isLoadingValues: boolean[] = [];
@@ -217,7 +234,7 @@ describe('useSpecDetailStore', () => {
     });
 
     it('should set error state if selectSpec fails (Req 2.8)', async () => {
-      window.electronAPI.readSpecJson = vi.fn().mockRejectedValue(new Error('Read error'));
+      mockVanillaClient.file.readSpecJson.query.mockRejectedValue(new Error('Read error'));
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -237,12 +254,12 @@ describe('useSpecDetailStore', () => {
         name: 'spec-b',
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue({
         ...mockSpecJson,
         feature_name: 'spec-a',
       });
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Spec A Content');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Spec A Content');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(specA);
 
@@ -255,7 +272,7 @@ describe('useSpecDetailStore', () => {
       const specJsonPromise = new Promise((resolve) => {
         resolveSpecJson = resolve;
       });
-      window.electronAPI.readSpecJson = vi.fn().mockReturnValue(specJsonPromise);
+      mockVanillaClient.file.readSpecJson.query.mockReturnValue(specJsonPromise);
 
       // Start loading spec-b (don't await yet)
       const selectPromise = useSpecDetailStore.getState().selectSpec(specB);
@@ -266,7 +283,7 @@ describe('useSpecDetailStore', () => {
       expect(useSpecDetailStore.getState().isLoading).toBe(true);
 
       // Complete loading
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Spec B Content');
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Spec B Content');
       resolveSpecJson!({ ...mockSpecJson, feature_name: 'spec-b' });
       await selectPromise;
 
@@ -278,9 +295,9 @@ describe('useSpecDetailStore', () => {
   describe('clearSelectedSpec (Req 2.4)', () => {
     it('should reset selection', async () => {
       // First select a spec
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -296,9 +313,9 @@ describe('useSpecDetailStore', () => {
 
     it('should also clear editor content (Bug fix: spec-item-flash-wrong-content)', async () => {
       // Setup: select a spec and set editor content
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Requirements');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
@@ -323,15 +340,15 @@ describe('useSpecDetailStore', () => {
   describe('refreshSpecDetail', () => {
     it('should reload spec detail when called', async () => {
       // First select a spec
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 
       // Update mock to return different data
       const updatedSpecJson = { ...mockSpecJson, phase: 'tasks-generated' as const };
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(updatedSpecJson);
 
       await useSpecDetailStore.getState().refreshSpecDetail();
 
@@ -340,11 +357,9 @@ describe('useSpecDetailStore', () => {
     });
 
     it('should do nothing when no spec is selected', async () => {
-      window.electronAPI.readSpecJson = vi.fn();
-
       await useSpecDetailStore.getState().refreshSpecDetail();
 
-      expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
+      expect(mockVanillaClient.file.readSpecJson.query).not.toHaveBeenCalled();
     });
   });
 
@@ -637,10 +652,10 @@ describe('useSpecDetailStore', () => {
   describe('markdownFiles loading', () => {
     it('should include markdownFiles in specDetail when selectSpec is called', async () => {
       // Given: listMarkdownFilesInSpec returns additional markdown files
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockResolvedValue(['e2e-report-1.md', 'custom-note.md']);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('Not found'));
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.file.listMarkdownFilesInSpec.query.mockResolvedValue(['e2e-report-1.md', 'custom-note.md']);
 
       // When: selectSpec is called
       await useSpecDetailStore.getState().selectSpec(mockSpec);
@@ -652,10 +667,10 @@ describe('useSpecDetailStore', () => {
 
     it('should include empty markdownFiles array when no additional files exist', async () => {
       // Given: listMarkdownFilesInSpec returns empty array
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockResolvedValue([]);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('Not found'));
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.file.listMarkdownFilesInSpec.query.mockResolvedValue([]);
 
       // When: selectSpec is called
       await useSpecDetailStore.getState().selectSpec(mockSpec);
@@ -667,10 +682,10 @@ describe('useSpecDetailStore', () => {
 
     it('should handle listMarkdownFilesInSpec error gracefully', async () => {
       // Given: listMarkdownFilesInSpec fails
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
-      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockRejectedValue(new Error('API error'));
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('Not found'));
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
+      mockVanillaClient.file.listMarkdownFilesInSpec.query.mockRejectedValue(new Error('API error'));
 
       // When: selectSpec is called
       await useSpecDetailStore.getState().selectSpec(mockSpec);
@@ -691,9 +706,9 @@ describe('useSpecDetailStore', () => {
         },
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithWorktree);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(specJsonWithWorktree);
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('Not found'));
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await useSpecDetailStore.getState().selectSpec(mockSpec);
 

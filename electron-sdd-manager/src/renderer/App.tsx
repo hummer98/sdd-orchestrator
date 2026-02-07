@@ -60,7 +60,8 @@ import { useMcpStore } from '../shared/stores/mcpStore';
 import { useToolPathStore } from '../shared/stores/toolPathStore';
 // agent-log-store-unification Task 4.4: Shared log subscription hook
 import { useAgentLogSubscription } from '../shared/hooks';
-import { IpcApiClient } from '../shared/api/IpcApiClient';
+// trpc-full-migration Task 11.4: IpcApiClient removed; agent log subscription uses tRPC vanilla client
+import type { ParsedLogEntry } from '../shared/api/types';
 // project-config-editor Task 4.2: Project editor store for tab switching cleanup
 import { useProjectEditorStore } from '../shared/stores/projectEditorStore';
 import type { ProjectFilesState } from '../shared/api/types';
@@ -69,6 +70,10 @@ import type { ProjectFilesState } from '../shared/api/types';
 import { useIdleTimeSync } from './hooks/useIdleTimeSync';
 // trpc-infrastructure: TRPCProvider for tRPC React hooks integration (Requirements 4.5)
 import { TRPCProvider } from '../shared/trpc/provider';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../shared/trpc/vanillaClient';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import { trpc } from '../shared/trpc/client';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -183,14 +188,17 @@ export function App() {
 
   // レイアウト保存関数（app-wide layout persistence）
   // 現在のペインサイズをアプリ設定に保存
+  // trpc-full-migration Task 3.2: Use tRPC for saveLayoutConfig
   const saveLayout = useCallback(async () => {
     try {
-      await window.electronAPI.saveLayoutConfig({
-        leftPaneWidth,
-        rightPaneWidth,
-        bottomPaneHeight,
-        agentListHeight,
-        projectAgentPanelHeight,
+      await getVanillaClient().config.saveLayoutConfig.mutate({
+        config: {
+          leftPaneWidth,
+          rightPaneWidth,
+          bottomPaneHeight,
+          agentListHeight,
+          projectAgentPanelHeight,
+        },
       });
       console.log('[App] Layout config saved');
     } catch (error) {
@@ -200,9 +208,10 @@ export function App() {
 
   // レイアウト復元関数（app-wide layout persistence）
   // アプリ設定からペインサイズを読み込む
+  // trpc-full-migration Task 3.2: Use tRPC for loadLayoutConfig
   const loadLayout = useCallback(async () => {
     try {
-      const config = await window.electronAPI.loadLayoutConfig();
+      const config = await getVanillaClient().config.loadLayoutConfig.query();
       if (config) {
         setLeftPaneWidth(config.leftPaneWidth);
         setRightPaneWidth(config.rightPaneWidth);
@@ -222,6 +231,7 @@ export function App() {
 
   // レイアウトリセット関数（app-wide layout persistence）
   // すべてのペインをデフォルト値に戻し、設定に保存
+  // trpc-full-migration Task 3.2: Use tRPC for resetLayoutConfig
   const resetLayout = useCallback(async () => {
     setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
     setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
@@ -230,7 +240,7 @@ export function App() {
     setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
 
     try {
-      await window.electronAPI.resetLayoutConfig();
+      await getVanillaClient().config.resetLayoutConfig.mutate();
       console.log('[App] Layout config reset to defaults');
     } catch (error) {
       console.error('[App] Failed to reset layout config:', error);
@@ -262,22 +272,176 @@ export function App() {
     eventListenersSetup.current = true;
     const cleanup = setupEventListeners();
 
-    // agent-exit-robustness: Register agent exit error listener
-    // Requirements: 3.4, 3.5 - Notify user when agent exit processing fails
-    const cleanupAgentExitError = window.electronAPI.onAgentExitError((data) => {
+    return () => {
+      eventListenersSetup.current = false;
+      cleanup();
+    };
+  }, [setupEventListeners, addNotification]);
+
+  // Task 9.2: Agent exit error via tRPC Subscription
+  // agent-exit-robustness: Requirements: 3.4, 3.5 - Notify user when agent exit processing fails
+  trpc.events.onAgentExitError.useSubscription(undefined, {
+    onData: (data) => {
       console.error('[App] Agent exit error:', data);
       addNotification({
         type: 'error',
         message: `Agent終了処理でエラーが発生しました: ${data.agentId}`,
       });
-    });
+    },
+  });
 
-    return () => {
-      eventListenersSetup.current = false;
-      cleanup();
-      cleanupAgentExitError();
-    };
-  }, [setupEventListeners, addNotification]);
+  // Task 9.2: Project selected via tRPC Subscription
+  // startup-project-selection-fix: Requirements: 1.3, 1.4, 2.2
+  trpc.events.onProjectSelected.useSubscription(undefined, {
+    onData: async (data) => {
+      const result = data as unknown as Parameters<typeof applySelectProjectResult>[0];
+      console.log('[App] Received PROJECT_SELECTED via tRPC Subscription', { projectPath: (data as Record<string, unknown>).projectPath });
+      await applySelectProjectResult(result);
+    },
+  });
+
+  // Task 9.2: Menu events via tRPC Subscription
+  trpc.events.onMenuOpenProject.useSubscription(undefined, {
+    onData: async (data) => {
+      console.log(`[App] Opening project from menu: ${data.projectPath}`);
+      await selectProject(data.projectPath);
+    },
+  });
+
+  trpc.events.onMenuInstallCli.useSubscription(undefined, {
+    onData: () => {
+      setIsCliInstallDialogOpen(true);
+    },
+  });
+
+  trpc.events.onMenuSetCommandPrefix.useSubscription(undefined, {
+    onData: (data) => {
+      console.log(`[App] Setting command prefix to: ${data.prefix}`);
+      setCommandPrefix(data.prefix as CommandPrefix);
+    },
+  });
+
+  trpc.events.onMenuToggleRemoteServer.useSubscription(undefined, {
+    onData: async () => {
+      // Always check actual server status to handle HMR/reload scenarios
+      // trpc-full-migration Task 10.6: Use tRPC for getRemoteServerStatus
+      const actualStatus = await getVanillaClient().misc.getRemoteServerStatus.query();
+      console.log(`[App] Toggle remote server, actual status: ${actualStatus.running}, ref state: ${isRemoteServerRunningRef.current}`);
+
+      if (actualStatus.running) {
+        await stopServer();
+        setIsRemoteAccessDialogOpen(false);
+      } else {
+        if (!currentProject) {
+          addNotification({
+            type: 'warning',
+            message: 'リモートアクセスサーバーを起動するにはプロジェクトを選択してください',
+          });
+          return;
+        }
+        await startServer();
+        setIsRemoteAccessDialogOpen(true);
+      }
+    },
+  });
+
+  trpc.events.onMenuInstallCommandset.useSubscription(undefined, {
+    onData: () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'コマンドセットをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+      setIsCommandsetInstallDialogOpen(true);
+    },
+  });
+
+  trpc.events.onMenuResetLayout.useSubscription(undefined, {
+    onData: () => {
+      console.log('[App] Reset layout from menu');
+      resetLayout();
+    },
+  });
+
+  trpc.events.onMenuInstallExperimentalDebug.useSubscription(undefined, {
+    onData: async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // trpc-full-migration Task 10.6: Use tRPC for checkExperimentalToolExists
+      const checkResult = await getVanillaClient().install.checkExperimentalToolExists.query({ projectPath: currentProject, toolType: 'debug' }) as { exists: boolean };
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('debug.mdは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Debugエージェントのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      // trpc-full-migration Task 10.6: Use tRPC for installExperimentalDebug
+      const result = await getVanillaClient().install.installExperimentalDebug.mutate({ projectPath: currentProject, options: { force: shouldInstall && checkResult.exists } }) as { ok: boolean; value?: { installedFiles: string[]; overwrittenFiles: string[]; skippedFiles: string[] }; error?: { type: string } };
+
+      if (result.ok) {
+        if (result.value!.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Debugエージェントをインストールしました。CLAUDE.mdへのマージも実行されます。' });
+        } else if (result.value!.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Debugエージェントを上書きしました' });
+        } else if (result.value!.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Debugエージェントは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error!.type}` });
+      }
+    },
+  });
+
+  trpc.events.onMenuInstallExperimentalGemini.useSubscription(undefined, {
+    onData: async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // trpc-full-migration Task 10.6: Use tRPC for checkExperimentalGeminiDocReviewExists
+      const checkResult = await getVanillaClient().install.checkExperimentalGeminiDocReviewExists.query({ projectPath: currentProject }) as { exists: boolean };
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('Gemini document-reviewコマンドは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Gemini document-reviewのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      // trpc-full-migration Task 10.6: Use tRPC for installExperimentalGeminiDocReview
+      const result = await getVanillaClient().install.installExperimentalGeminiDocReview.mutate({ projectPath: currentProject, options: { force: shouldInstall && checkResult.exists } }) as { ok: boolean; value?: { installedFiles: string[]; overwrittenFiles: string[]; skippedFiles: string[] }; error?: { type: string } };
+
+      if (result.ok) {
+        if (result.value!.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドをインストールしました' });
+        } else if (result.value!.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドを上書きしました' });
+        } else if (result.value!.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Gemini document-reviewコマンドは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error!.type}` });
+      }
+    },
+  });
 
   // Initialize remote access store on mount
   const remoteAccessInitialized = useRef(false);
@@ -323,8 +487,18 @@ export function App() {
 
   // agent-log-store-unification Task 4.4: Setup real-time log subscription
   // Requirements: 2.4 - Use shared useAgentLogSubscription hook for log events
-  const ipcApiClient = useMemo(() => new IpcApiClient(), []);
-  useAgentLogSubscription(ipcApiClient);
+  // trpc-full-migration Task 11.4: IpcApiClient removed; create minimal adapter with tRPC vanilla client
+  const agentLogApiClient = useMemo(() => ({
+    onAgentLog: (callback: (agentId: string, log: ParsedLogEntry) => void): (() => void) => {
+      const sub = getVanillaClient().events.onAgentLog.subscribe(undefined, {
+        onData: (data: { agentId: string; parsedLog: Record<string, unknown> }) => {
+          callback(data.agentId, data.parsedLog as unknown as ParsedLogEntry);
+        },
+      });
+      return () => sub.unsubscribe();
+    },
+  }), []);
+  useAgentLogSubscription(agentLogApiClient as any);
 
   // idle-time-project-level-reporting Task 4.1: Idle time sync for schedule task support
   // Requirements: 1.1, 1.2, 1.3 - プロジェクト選択時にアイドル時間報告を開始
@@ -361,180 +535,12 @@ export function App() {
     };
   }, []);
 
-  // startup-project-selection-fix Task 5.1: Register onProjectSelected listener
-  // Requirements: 1.3, 1.4, 2.2 - Receive startup broadcast and apply to store
+  // startup-project-selection-fix Task 5.1: onProjectSelected listener
+  // Task 9.2: Migrated to tRPC Subscription hooks (above)
   const { applySelectProjectResult } = useProjectStore();
-  const projectSelectedListenerSetup = useRef(false);
-  useEffect(() => {
-    if (projectSelectedListenerSetup.current) {
-      return;
-    }
-    projectSelectedListenerSetup.current = true;
 
-    // Register listener for PROJECT_SELECTED broadcast from Main process
-    const cleanupProjectSelected = window.electronAPI.onProjectSelected(async (result) => {
-      console.log('[App] Received PROJECT_SELECTED broadcast', { projectPath: result.projectPath });
-      await applySelectProjectResult(result);
-    });
-
-    return () => {
-      projectSelectedListenerSetup.current = false;
-      cleanupProjectSelected();
-    };
-  }, [applySelectProjectResult]);
-
-  // Setup menu event listeners
-  const menuListenersSetup = useRef(false);
-  useEffect(() => {
-    if (menuListenersSetup.current) {
-      return;
-    }
-    menuListenersSetup.current = true;
-
-    const cleanupOpenProject = window.electronAPI.onMenuOpenProject(async (projectPath: string) => {
-      console.log(`[App] Opening project from menu: ${projectPath}`);
-      await selectProject(projectPath);
-      // Note: Layout is app-wide, no need to reload on project switch
-    });
-
-    const cleanupCliInstall = window.electronAPI.onMenuInstallCliCommand(() => {
-      setIsCliInstallDialogOpen(true);
-    });
-
-    const cleanupCommandPrefix = window.electronAPI.onMenuSetCommandPrefix((prefix: CommandPrefix) => {
-      console.log(`[App] Setting command prefix to: ${prefix}`);
-      setCommandPrefix(prefix);
-    });
-
-    const cleanupToggleRemoteServer = window.electronAPI.onMenuToggleRemoteServer(async () => {
-      // Always check actual server status to handle HMR/reload scenarios
-      const actualStatus = await window.electronAPI.getRemoteServerStatus();
-      console.log(`[App] Toggle remote server, actual status: ${actualStatus.isRunning}, ref state: ${isRemoteServerRunningRef.current}`);
-
-      if (actualStatus.isRunning) {
-        await stopServer();
-        setIsRemoteAccessDialogOpen(false);
-      } else {
-        // Require project to be selected before starting server
-        if (!currentProject) {
-          addNotification({
-            type: 'warning',
-            message: 'リモートアクセスサーバーを起動するにはプロジェクトを選択してください',
-          });
-          return;
-        }
-        await startServer();
-        // Show dialog with QR code and URL when server starts
-        setIsRemoteAccessDialogOpen(true);
-      }
-    });
-
-    const cleanupCommandsetInstall = window.electronAPI.onMenuInstallCommandset(() => {
-      if (!currentProject) {
-        addNotification({
-          type: 'warning',
-          message: 'コマンドセットをインストールするにはプロジェクトを選択してください',
-        });
-        return;
-      }
-      setIsCommandsetInstallDialogOpen(true);
-    });
-
-    // レイアウトリセットメニューイベントリスナー（pane-layout-persistence feature）
-    const cleanupResetLayout = window.electronAPI.onMenuResetLayout(() => {
-      console.log('[App] Reset layout from menu');
-      resetLayout();
-    });
-
-    // Experimental Tools Install menu event listeners (experimental-tools-installer feature)
-    // Note: Plan command is not yet implemented in the backend
-
-    const cleanupExpDebug = window.electronAPI.onMenuInstallExperimentalDebug(async () => {
-      if (!currentProject) {
-        addNotification({
-          type: 'warning',
-          message: 'ツールをインストールするにはプロジェクトを選択してください',
-        });
-        return;
-      }
-
-      // Check if file exists
-      const checkResult = await window.electronAPI.checkExperimentalToolExists(currentProject, 'debug');
-      let shouldInstall = true;
-
-      if (checkResult.exists) {
-        shouldInstall = window.confirm('debug.mdは既に存在します。上書きしますか？');
-        if (!shouldInstall) {
-          addNotification({ type: 'info', message: 'Debugエージェントのインストールをキャンセルしました' });
-          return;
-        }
-      }
-
-      const result = await window.electronAPI.installExperimentalDebug(currentProject, { force: shouldInstall && checkResult.exists });
-
-      if (result.ok) {
-        if (result.value.installedFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Debugエージェントをインストールしました。CLAUDE.mdへのマージも実行されます。' });
-        } else if (result.value.overwrittenFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Debugエージェントを上書きしました' });
-        } else if (result.value.skippedFiles.length > 0) {
-          addNotification({ type: 'info', message: 'Debugエージェントは既にインストール済みです' });
-        }
-      } else {
-        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
-      }
-    });
-
-    // gemini-document-review Task 3.3: Gemini document-review menu event handler
-    // Requirements: 1.1, 1.7, 1.8
-    const cleanupExpGemini = window.electronAPI.onMenuInstallExperimentalGeminiDocReview(async () => {
-      if (!currentProject) {
-        addNotification({
-          type: 'warning',
-          message: 'ツールをインストールするにはプロジェクトを選択してください',
-        });
-        return;
-      }
-
-      // Check if file exists
-      const checkResult = await window.electronAPI.checkExperimentalGeminiDocReviewExists(currentProject);
-      let shouldInstall = true;
-
-      if (checkResult.exists) {
-        shouldInstall = window.confirm('Gemini document-reviewコマンドは既に存在します。上書きしますか？');
-        if (!shouldInstall) {
-          addNotification({ type: 'info', message: 'Gemini document-reviewのインストールをキャンセルしました' });
-          return;
-        }
-      }
-
-      const result = await window.electronAPI.installExperimentalGeminiDocReview(currentProject, { force: shouldInstall && checkResult.exists });
-
-      if (result.ok) {
-        if (result.value.installedFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドをインストールしました' });
-        } else if (result.value.overwrittenFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドを上書きしました' });
-        } else if (result.value.skippedFiles.length > 0) {
-          addNotification({ type: 'info', message: 'Gemini document-reviewコマンドは既にインストール済みです' });
-        }
-      } else {
-        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
-      }
-    });
-
-    return () => {
-      menuListenersSetup.current = false;
-      cleanupOpenProject();
-      cleanupCliInstall();
-      cleanupCommandPrefix();
-      cleanupToggleRemoteServer();
-      cleanupCommandsetInstall();
-      cleanupResetLayout();
-      cleanupExpDebug();
-      cleanupExpGemini();
-    };
-  }, [selectProject, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
+  // Menu event listeners
+  // Task 9.2: Migrated to tRPC Subscription hooks (above)
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {
@@ -555,7 +561,8 @@ export function App() {
 
     setProjectFiles(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const files = await window.electronAPI.listProjectFiles();
+      // trpc-full-migration Task 10.6: Use tRPC for listProjectFiles
+      const files = await getVanillaClient().file.projectFileList.query() as unknown as ProjectFilesState;
       setProjectFiles(files);
     } catch (error) {
       console.error('[App] Failed to load project files:', error);
@@ -673,7 +680,8 @@ export function App() {
               <button
                 onClick={async () => {
                   try {
-                    await window.electronAPI.openInVSCode(currentProject);
+                    // trpc-full-migration Task 10.6: Use tRPC for openInVSCode
+                    await getVanillaClient().misc.openInVscode.mutate({ projectPath: currentProject });
                   } catch (error) {
                     addNotification({
                       type: 'error',
@@ -826,17 +834,18 @@ export function App() {
             if (!currentProject) return;
             console.log(`[App] Installing commandset with profile: ${profileName}`);
 
-            const result = await window.electronAPI.installCommandsetByProfile(
-              currentProject,
+            // trpc-full-migration Task 10.6: Use tRPC for installCommandsetByProfile
+            const result = await getVanillaClient().install.installCommandsetByProfile.mutate({
+              projectPath: currentProject,
               profileName,
-              { force: true }
-            );
+              options: { force: true },
+            }) as { ok: boolean; value?: { summary: { totalInstalled: number; totalSkipped: number; totalFailed: number } }; error?: { type: string; message?: string } };
 
             if (!result.ok) {
-              throw new Error(result.error.message || result.error.type);
+              throw new Error(result.error?.message || result.error?.type);
             }
 
-            const { summary } = result.value;
+            const { summary } = result.value!;
             console.log(`[App] Commandset installed successfully:`, summary);
 
             // Refresh spec-manager files check to update UI (bug fix: commandset-install-warning-persists)
@@ -844,9 +853,10 @@ export function App() {
 
             // header-profile-badge feature: Reload profile after successful install
             // Requirements: 3.2, 3.3 - Auto-update profile badge after installation
+            // trpc-full-migration Task 3.2: Use tRPC for loadProfile
             try {
-              const profile = await window.electronAPI.loadProfile(currentProject);
-              // Cast to ProfileConfig since we know the IPC returns the correct structure
+              const profile = await getVanillaClient().config.loadProfile.query({ projectPath: currentProject });
+              // Cast to ProfileConfig since we know the tRPC returns the correct structure
               useProjectStore.setState({ installedProfile: profile as ProfileConfig | null });
               console.log('[App] Profile reloaded after commandset install:', profile);
             } catch (error) {
@@ -861,10 +871,12 @@ export function App() {
             };
           }}
           onCheckAgentFolderExists={async (projectPath: string) => {
-            return window.electronAPI.checkAgentFolderExists(projectPath);
+            // trpc-full-migration Task 6.2: Use tRPC agent.checkFolderExists query
+            return getVanillaClient().agent.checkFolderExists.query({ projectPath });
           }}
           onDeleteAgentFolder={async (projectPath: string) => {
-            return window.electronAPI.deleteAgentFolder(projectPath);
+            // trpc-full-migration Task 6.2: Use tRPC agent.deleteFolder mutation
+            return getVanillaClient().agent.deleteFolder.mutate({ projectPath });
           }}
         />
 

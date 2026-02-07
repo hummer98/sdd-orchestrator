@@ -19,6 +19,9 @@ import { GitDiffViewer } from './GitDiffViewer';
 import { ViewModeToggle } from './ViewModeToggle';
 import { SourceContentViewer } from './SourceContentViewer';
 import { ResizeHandle } from '@shared/components/ui/ResizeHandle';
+// trpc-full-migration Task 11.4: Import vanillaClient for tRPC subscription
+// getVanillaClient() lazily initializes ipcLink, so importing the module is safe for Remote UI
+import { getVanillaClient } from '../../trpc/vanillaClient';
 
 /**
  * Props for GitView component
@@ -88,23 +91,27 @@ export function GitView({ workingPath, showDiffModeToggle = true }: GitViewProps
     };
   }, [apiClient, effectivePath, refreshStatus]);
 
-  // Subscribe to git:changes-detected events from Electron main process
+  // Subscribe to git:changes-detected events via tRPC Subscription (Electron only)
+  // trpc-full-migration Task 11.4: Migrated from window.electronAPI to tRPC vanilla client
   useEffect(() => {
-    // In Electron environment, listen for file change events
-    if (typeof window !== 'undefined' && window.electronAPI?.onGitChangesDetected) {
-      const unsubscribe = window.electronAPI.onGitChangesDetected(
-        (_event: unknown, data: { projectPath: string }) => {
-          // Only refresh if the change is for our project
-          if (data.projectPath === effectivePath) {
-            refreshStatus(apiClient, effectivePath);
-          }
-        }
-      );
-
-      return () => {
-        unsubscribe?.();
-      };
+    // Only subscribe in Electron environment (electronTRPC is set by exposeElectronTRPC)
+    if (typeof window === 'undefined' || !('electronTRPC' in window)) {
+      return;
     }
+
+    const client = getVanillaClient();
+    const sub = client.events.onGitChangesDetected.subscribe(undefined, {
+      onData: (data: { projectPath?: string }) => {
+        // Only refresh if the change is for our project
+        if (data.projectPath === effectivePath) {
+          refreshStatus(apiClient, effectivePath);
+        }
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, [apiClient, effectivePath, refreshStatus]);
 
   // Handle file tree resize

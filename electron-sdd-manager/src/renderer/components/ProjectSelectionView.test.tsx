@@ -7,7 +7,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ProjectSelectionView } from './ProjectSelectionView';
 import { useProjectStore } from '../stores/projectStore';
 
 // Mock the projectStore
@@ -15,11 +14,21 @@ vi.mock('../stores/projectStore', () => ({
   useProjectStore: vi.fn(),
 }));
 
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for showOpenDialog
+const mockShowOpenDialogTrpc = vi.fn();
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    project: {
+      showOpenDialog: { mutate: mockShowOpenDialogTrpc },
+    },
+  }),
+}));
+
+import { ProjectSelectionView } from './ProjectSelectionView';
+
 const mockUseProjectStore = vi.mocked(useProjectStore);
 
-// Mock window.electronAPI
-const mockShowOpenDialog = vi.fn();
-const originalElectronAPI = (window as any).electronAPI;
+// trpc-full-migration Task 11.4: showOpenDialog now uses tRPC vanilla client (mocked above)
 
 describe('ProjectSelectionView', () => {
   const mockSelectProject = vi.fn();
@@ -32,15 +41,6 @@ describe('ProjectSelectionView', () => {
       isLoading: false,
       error: null,
     } as any);
-
-    (window as any).electronAPI = {
-      ...originalElectronAPI,
-      showOpenDialog: mockShowOpenDialog,
-    };
-  });
-
-  afterAll(() => {
-    (window as any).electronAPI = originalElectronAPI;
   });
 
   // ============================================================
@@ -73,8 +73,8 @@ describe('ProjectSelectionView', () => {
   // ============================================================
   describe('Requirement 1.1, 5.3: Folder selection dialog', () => {
     it('should call showOpenDialog when folder select button is clicked', async () => {
-      // showOpenDialog returns null when canceled
-      mockShowOpenDialog.mockResolvedValue(null);
+      // trpc-full-migration Task 4.3: showOpenDialog now via tRPC
+      mockShowOpenDialogTrpc.mockResolvedValue(null);
 
       render(<ProjectSelectionView />);
 
@@ -82,7 +82,7 @@ describe('ProjectSelectionView', () => {
       fireEvent.click(folderButton);
 
       await waitFor(() => {
-        expect(mockShowOpenDialog).toHaveBeenCalled();
+        expect(mockShowOpenDialogTrpc).toHaveBeenCalled();
       });
     });
   });
@@ -93,8 +93,8 @@ describe('ProjectSelectionView', () => {
   describe('Requirement 1.2: Open project after folder selection', () => {
     it('should call selectProject with selected path', async () => {
       const selectedPath = '/path/to/selected/project';
-      // showOpenDialog returns the path string when a folder is selected
-      mockShowOpenDialog.mockResolvedValue(selectedPath);
+      // trpc-full-migration Task 4.3: showOpenDialog now via tRPC
+      mockShowOpenDialogTrpc.mockResolvedValue(selectedPath);
 
       render(<ProjectSelectionView />);
 
@@ -112,8 +112,8 @@ describe('ProjectSelectionView', () => {
   // ============================================================
   describe('Requirement 1.3: Cancel does nothing', () => {
     it('should not call selectProject when dialog is canceled', async () => {
-      // showOpenDialog returns null when canceled
-      mockShowOpenDialog.mockResolvedValue(null);
+      // trpc-full-migration Task 4.3: showOpenDialog now via tRPC
+      mockShowOpenDialogTrpc.mockResolvedValue(null);
 
       render(<ProjectSelectionView />);
 
@@ -121,7 +121,7 @@ describe('ProjectSelectionView', () => {
       fireEvent.click(folderButton);
 
       await waitFor(() => {
-        expect(mockShowOpenDialog).toHaveBeenCalled();
+        expect(mockShowOpenDialogTrpc).toHaveBeenCalled();
       });
 
       expect(mockSelectProject).not.toHaveBeenCalled();

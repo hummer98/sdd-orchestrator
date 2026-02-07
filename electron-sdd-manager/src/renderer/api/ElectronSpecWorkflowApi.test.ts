@@ -3,51 +3,55 @@
  *
  * TDD tests for ElectronSpecWorkflowApi.
  * Task 4.3: startAutoExecution()にprojectPath引数を追加
+ * trpc-full-migration Task 7.2: Replace window.electronAPI with tRPC vanilla client
+ * Requirements: 6.2 - AutoExecution全チャンネル移行
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ElectronSpecWorkflowApi } from './ElectronSpecWorkflowApi';
 
-// Mock window.electronAPI
-const mockAutoExecutionStart = vi.fn();
-
-const mockElectronAPI = {
-  autoExecutionStart: mockAutoExecutionStart,
-  // Add other required methods as stubs
-  execute: vi.fn(),
-  updateApproval: vi.fn(),
-  readSpecJson: vi.fn(),
-  readArtifact: vi.fn(),
-  autoExecutionStop: vi.fn(),
-  updateSpecJson: vi.fn(),
-  getEventLog: vi.fn(),
-  startImpl: vi.fn(),
-  parseTasksForParallel: vi.fn(),
+// trpc-full-migration Task 5.3 + Task 7.2: Mock tRPC vanilla client for spec and autoExecution operations
+const mockVanillaClient = {
+  spec: {
+    execute: { mutate: vi.fn() },
+    updateApproval: { mutate: vi.fn() },
+    updateSpecJson: { mutate: vi.fn() },
+    getEventLog: { query: vi.fn() },
+    startImpl: { mutate: vi.fn() },
+    parseTasksForParallel: { query: vi.fn() },
+  },
+  file: {
+    readSpecJson: { query: vi.fn() },
+    readArtifact: { query: vi.fn() },
+  },
+  autoExecution: {
+    start: { mutate: vi.fn() },
+    stop: { mutate: vi.fn() },
+    getStatus: { query: vi.fn() },
+  },
 };
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
+import { ElectronSpecWorkflowApi } from './ElectronSpecWorkflowApi';
 
 describe('ElectronSpecWorkflowApi', () => {
   let api: ElectronSpecWorkflowApi;
-  let originalElectronAPI: typeof window.electronAPI;
 
   beforeEach(() => {
-    // Store original
-    originalElectronAPI = window.electronAPI;
-    // Set mock
-    (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = mockElectronAPI;
     api = new ElectronSpecWorkflowApi();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    // Restore original
-    (window as unknown as { electronAPI: typeof originalElectronAPI }).electronAPI = originalElectronAPI;
+    vi.restoreAllMocks();
   });
 
-  describe('startAutoExecution', () => {
+  // trpc-full-migration Task 7.2: Tests for tRPC-based autoExecution
+  describe('startAutoExecution (tRPC Task 7.2)', () => {
     const testProjectPath = '/path/to/project';
     const testSpecPath = '/path/to/project/.kiro/specs/test-feature';
     const testSpecId = 'test-feature';
-    // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
     const testOptions = {
       permissions: {
         requirements: true,
@@ -60,9 +64,8 @@ describe('ElectronSpecWorkflowApi', () => {
       },
     };
 
-    it('should accept projectPath as first argument', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockResolvedValue({
+    it('should call tRPC autoExecution.start.mutate with correct parameters', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: true,
         value: {
           status: 'running',
@@ -71,29 +74,9 @@ describe('ElectronSpecWorkflowApi', () => {
         },
       });
 
-      // Act - Call with projectPath as first argument
       await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
-      // Assert - Verify method accepts 4 arguments
-      expect(mockAutoExecutionStart).toHaveBeenCalled();
-    });
-
-    it('should pass projectPath to window.electronAPI.autoExecutionStart()', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockResolvedValue({
-        ok: true,
-        value: {
-          status: 'running',
-          currentPhase: 'requirements',
-          executedPhases: [],
-        },
-      });
-
-      // Act
-      await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
-
-      // Assert - Verify projectPath is passed to IPC call
-      expect(mockAutoExecutionStart).toHaveBeenCalledWith(
+      expect(mockVanillaClient.autoExecution.start.mutate).toHaveBeenCalledWith(
         expect.objectContaining({
           projectPath: testProjectPath,
           specPath: testSpecPath,
@@ -103,8 +86,7 @@ describe('ElectronSpecWorkflowApi', () => {
     });
 
     it('should return success result with mapped state', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockResolvedValue({
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: true,
         value: {
           status: 'running',
@@ -113,10 +95,8 @@ describe('ElectronSpecWorkflowApi', () => {
         },
       });
 
-      // Act
       const result = await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
-      // Assert
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.status).toBe('running');
@@ -125,9 +105,8 @@ describe('ElectronSpecWorkflowApi', () => {
       }
     });
 
-    it('should return error result when autoExecutionStart fails', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockResolvedValue({
+    it('should return error result when autoExecution.start fails', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: false,
         error: {
           type: 'ALREADY_RUNNING',
@@ -135,10 +114,8 @@ describe('ElectronSpecWorkflowApi', () => {
         },
       });
 
-      // Act
       const result = await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
-      // Assert
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe('ALREADY_RUNNING');
@@ -146,23 +123,19 @@ describe('ElectronSpecWorkflowApi', () => {
     });
 
     it('should handle exceptions and return error result', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockRejectedValue(new Error('IPC error'));
+      mockVanillaClient.autoExecution.start.mutate.mockRejectedValue(new Error('tRPC error'));
 
-      // Act
       const result = await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
-      // Assert
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe('AUTO_EXECUTION_ERROR');
-        expect(result.error.message).toBe('IPC error');
+        expect(result.error.message).toBe('tRPC error');
       }
     });
 
-    it('should pass options correctly to IPC call', async () => {
-      // Arrange
-      mockAutoExecutionStart.mockResolvedValue({
+    it('should pass permissions correctly to tRPC call', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: true,
         value: {
           status: 'running',
@@ -171,12 +144,9 @@ describe('ElectronSpecWorkflowApi', () => {
         },
       });
 
-      // Act
       await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
-      // Assert - Verify options structure
-      // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
-      expect(mockAutoExecutionStart).toHaveBeenCalledWith(
+      expect(mockVanillaClient.autoExecution.start.mutate).toHaveBeenCalledWith(
         expect.objectContaining({
           options: expect.objectContaining({
             permissions: expect.objectContaining({
@@ -189,6 +159,19 @@ describe('ElectronSpecWorkflowApi', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('stopAutoExecution (tRPC Task 7.2)', () => {
+    it('should call tRPC autoExecution.stop.mutate', async () => {
+      mockVanillaClient.autoExecution.stop.mutate.mockResolvedValue({ ok: true, value: undefined });
+
+      const result = await api.stopAutoExecution('/test/.kiro/specs/test-feature');
+
+      expect(mockVanillaClient.autoExecution.stop.mutate).toHaveBeenCalledWith({
+        specPath: '/test/.kiro/specs/test-feature',
+      });
+      expect(result.ok).toBe(true);
     });
   });
 });

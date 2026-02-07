@@ -5,6 +5,9 @@
  * Renderer側で最終アクティビティ時刻をMain Processに定期同期するフック
  * - HumanActivityTracker（HAT）によるUI操作追跡のみを使用
  * - ウィンドウフォーカスはアイドル判定に使用しない
+ *
+ * trpc-full-migration Task 11.4: Updated to use tRPC vanillaClient mock
+ * instead of window.electronAPI mock.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
@@ -18,28 +21,24 @@ vi.mock('../services/humanActivityTracker', () => ({
   initHumanActivityTracker: vi.fn(),
 }));
 
-// Mock window.electronAPI
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for reportIdleTime
 const mockReportIdleTime = vi.fn().mockResolvedValue(undefined);
-
-// Store original electronAPI
-const originalElectronAPI = window.electronAPI;
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    schedule: {
+      reportIdleTime: { mutate: mockReportIdleTime },
+    },
+  }),
+}));
 
 describe('useIdleTimeSync', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-
-    // Setup window.electronAPI mock (use existing window object from jsdom)
-    (window as Window & { electronAPI?: { reportIdleTime: typeof mockReportIdleTime } }).electronAPI = {
-      reportIdleTime: mockReportIdleTime,
-    };
   });
 
   afterEach(() => {
     vi.useRealTimers();
-
-    // Restore original electronAPI
-    (window as Window & { electronAPI?: unknown }).electronAPI = originalElectronAPI;
   });
 
   // ===========================================================================
@@ -73,7 +72,7 @@ describe('useIdleTimeSync', () => {
       expect(mockReportIdleTime).toHaveBeenCalledTimes(2);
     });
 
-    it('should report lastActivityTime to Main Process', async () => {
+    it('should report lastActivityTime to Main Process via tRPC', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
@@ -91,7 +90,8 @@ describe('useIdleTimeSync', () => {
         await vi.advanceTimersByTimeAsync(100);
       });
 
-      expect(mockReportIdleTime).toHaveBeenCalledWith(lastActivityTime);
+      // Verify tRPC client was called with correct parameters
+      expect(mockReportIdleTime).toHaveBeenCalledWith({ lastActivityTime });
     });
 
     it('should cleanup interval on unmount', async () => {
@@ -254,7 +254,7 @@ describe('useIdleTimeSync', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(IDLE_SYNC_INTERVAL_MS);
       });
-      expect(mockReportIdleTime).toHaveBeenCalledWith(hatTime);
+      expect(mockReportIdleTime).toHaveBeenCalledWith({ lastActivityTime: hatTime });
     });
   });
 
@@ -283,7 +283,7 @@ describe('useIdleTimeSync', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(100);
       });
-      expect(mockReportIdleTime).toHaveBeenCalledWith(hatActivityTime);
+      expect(mockReportIdleTime).toHaveBeenCalledWith({ lastActivityTime: hatActivityTime });
 
       // Simulate Spec deselection (HAT becomes inactive)
       hatActive = false;
@@ -320,14 +320,14 @@ describe('useIdleTimeSync', () => {
       expect(mockReportIdleTime).not.toHaveBeenCalled();
     });
 
-    it('should handle IPC errors gracefully', async () => {
+    it('should handle tRPC errors gracefully', async () => {
       const lastActivityTime = Date.now();
       const mockTracker = {
         isActive: true,
         getLastActivityTime: () => lastActivityTime,
       };
       (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockReportIdleTime.mockRejectedValueOnce(new Error('IPC failed'));
+      mockReportIdleTime.mockRejectedValueOnce(new Error('tRPC failed'));
 
       // Should not throw
       expect(() => {

@@ -32,6 +32,10 @@ import {
   setupAgentEventListeners,
   skipPermissionsOperations,
 } from './agentStoreAdapter';
+// trpc-full-migration Task 6.2: Use tRPC vanilla client for agent operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import type { Unsubscribable } from '@trpc/server/observable';
 
 // Bug fix: agent-log-dynamic-import-issue
 // Import specStore synchronously to avoid Promise delays in callbacks
@@ -308,6 +312,52 @@ function calculateRunningCounts(): Map<string, number> {
 }
 
 // =============================================================================
+// tRPC Agent API Adapter
+// trpc-full-migration Task 6.2: Partial ApiClient adapter for shared store
+// =============================================================================
+
+/**
+ * Create a minimal ApiClient adapter that uses tRPC for agent log operations.
+ * Only implements methods needed by shared/agentStore.ensureLogsLoaded().
+ */
+function createTrpcAgentApiAdapter() {
+  return {
+    getAgentLogs: async (specId: string, agentId: string) => {
+      try {
+        const logs = await getVanillaClient().agent.getLogs.query({ specId, agentId });
+        return { ok: true as const, value: logs };
+      } catch (error) {
+        return {
+          ok: false as const,
+          error: {
+            type: 'TRPC_ERROR',
+            message: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+    },
+    getAgents: async () => {
+      try {
+        const agentsRecord = await getVanillaClient().agent.getAllAgents.query();
+        const agents: SharedAgentInfo[] = [];
+        for (const specAgents of Object.values(agentsRecord)) {
+          agents.push(...(specAgents as SharedAgentInfo[]));
+        }
+        return { ok: true as const, value: agents };
+      } catch (error) {
+        return {
+          ok: false as const,
+          error: {
+            type: 'TRPC_ERROR',
+            message: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+    },
+  } as import('@shared/api/types').ApiClient;
+}
+
+// =============================================================================
 // Store
 // =============================================================================
 
@@ -326,11 +376,12 @@ export const useAgentStore = create<AgentStore>()(
     // Agent Operations (Requirements: 3.3)
     // ===========================================================================
 
+    // trpc-full-migration Task 6.2: Uses tRPC agent.getAllAgents query
     loadAgents: async () => {
       set({ isLoading: true, error: null });
 
       try {
-        const agentsRecord = await window.electronAPI.getAllAgents();
+        const agentsRecord = await getVanillaClient().agent.getAllAgents.query();
         const agentsMap = new Map<string, AgentInfo[]>();
 
         // Record<string, AgentInfo[]> を Map に変換
@@ -365,13 +416,14 @@ export const useAgentStore = create<AgentStore>()(
       }
     },
 
+    // trpc-full-migration Task 6.2: Uses tRPC agent.getRunningAgentCounts query
     loadRunningAgentCounts: async () => {
       try {
-        const countsRecord = await window.electronAPI.getRunningAgentCounts();
+        const countsRecord = await getVanillaClient().agent.getRunningAgentCounts.query();
         const countsMap = new Map<string, number>();
 
         for (const [specId, count] of Object.entries(countsRecord)) {
-          countsMap.set(specId, count);
+          countsMap.set(specId, count as number);
         }
 
         set({ runningAgentCounts: countsMap });
@@ -399,16 +451,13 @@ export const useAgentStore = create<AgentStore>()(
       set({ selectedAgentId: agentId });
     },
 
+    // trpc-full-migration Task 6.2: Uses tRPC-backed TrpcAgentApiAdapter
     ensureLogsLoaded: async (agentId: string) => {
       // agent-log-store-unification Task 4.1: Delegate to shared ensureLogsLoaded
-      // Requirements: 1.4 - 共通版への委譲に変更（後方互換性維持のため薄いラッパーとして残す）
-      //
-      // Note: IpcApiClient requires projectStore to be initialized, which is done
-      // after the app is mounted. We import it lazily here to avoid circular dependencies.
-      const { IpcApiClient } = await import('@shared/api/IpcApiClient');
-      const apiClient = new IpcApiClient();
+      // trpc-full-migration Task 6.2: Use tRPC-backed adapter instead of IpcApiClient
+      const adapter = createTrpcAgentApiAdapter();
 
-      await useSharedAgentStore.getState().ensureLogsLoaded(apiClient, agentId);
+      await useSharedAgentStore.getState().ensureLogsLoaded(adapter, agentId);
 
       // Sync logs from shared store after loading
       set({ logs: getLogsFromShared() });
@@ -416,12 +465,10 @@ export const useAgentStore = create<AgentStore>()(
 
     loadAgentLogs: async (_specId: string, agentId: string) => {
       // agent-log-store-unification Task 4.2: Delegate to shared ensureLogsLoaded
-      // Requirements: 1.5 - loadAgentLogs削除（共通版に移行）
-      // This method is kept for backward compatibility but now uses ensureLogsLoaded
-      const { IpcApiClient } = await import('@shared/api/IpcApiClient');
-      const apiClient = new IpcApiClient();
+      // trpc-full-migration Task 6.2: Use tRPC-backed adapter instead of IpcApiClient
+      const adapter = createTrpcAgentApiAdapter();
 
-      await useSharedAgentStore.getState().ensureLogsLoaded(apiClient, agentId);
+      await useSharedAgentStore.getState().ensureLogsLoaded(adapter, agentId);
       // Sync logs from shared store
       set({ logs: getLogsFromShared() });
     },
@@ -538,8 +585,12 @@ export const useAgentStore = create<AgentStore>()(
       // Agent Record変更イベントリスナー（ファイル監視）
       // Note: The adapter handles basic add/change/unlink, but we need additional
       // handling for auto-selection which requires specStore/bugStore context
-      const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
-        (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => {
+      // Task 9.2: window.electronAPI.onAgentRecordChanged -> tRPC Subscription
+      const facadeSubscriptions: Unsubscribable[] = [];
+      const recordChangedSub = getVanillaClient().events.onAgentRecordChanged.subscribe(undefined, {
+        onData: (data: { type: string; data?: { agentId?: string; specId?: string } }) => {
+          const type = data.type as 'add' | 'change' | 'unlink';
+          const eventInfo = data.data ?? {};
           console.log('[agentStore] Agent record changed', { type, eventInfo });
 
           const { agentId, specId } = eventInfo;
@@ -587,8 +638,9 @@ export const useAgentStore = create<AgentStore>()(
               }
             });
           }
-        }
-      );
+        },
+      });
+      facadeSubscriptions.push(recordChangedSub);
 
       // Subscribe to shared store changes
       const unsubscribeShared = useSharedAgentStore.subscribe(() => {
@@ -605,7 +657,7 @@ export const useAgentStore = create<AgentStore>()(
       return () => {
         console.log('[agentStore] Cleaning up event listeners');
         cleanupAdapter();
-        cleanupRecordChanged();
+        facadeSubscriptions.forEach((sub) => sub.unsubscribe());
         unsubscribeShared();
       };
     },

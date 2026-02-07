@@ -5,12 +5,14 @@
  */
 
 import type { SpecMetadata } from '../types';
-import type { SpecsChangeEvent } from '../types/electron';
+import type { SpecsChangeEvent } from '../../shared/types/specsChange';
 import type { SpecSyncService } from './specSyncService';
 import {
   SPEC_JSON_FILENAME,
   getArtifactKeyFromFilename,
 } from '../../shared/constants/artifacts';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Dependencies for SpecWatcherService initialization
@@ -67,13 +69,16 @@ export class SpecWatcherService {
     }
 
     try {
-      // Register change event listener
-      this.watcherCleanup = window.electronAPI.onSpecsChanged((event) => {
-        this.handleSpecsChanged(event);
+      // Task 9.2: window.electronAPI.onSpecsChanged -> tRPC Subscription
+      const sub = getVanillaClient().events.onSpecsChanged.subscribe(undefined, {
+        onData: (data: Record<string, unknown>) => {
+          this.handleSpecsChanged(data as unknown as SpecsChangeEvent);
+        },
       });
+      this.watcherCleanup = () => sub.unsubscribe();
 
       this._isWatching = true;
-      console.log('[specWatcherService] Started watching');
+      console.log('[specWatcherService] Started watching via tRPC Subscription');
     } catch (error) {
       console.error('[specWatcherService] Failed to start watching:', error);
     }
@@ -90,7 +95,8 @@ export class SpecWatcherService {
     }
 
     try {
-      await window.electronAPI.stopSpecsWatcher();
+      // trpc-full-migration Task 5.3: Use tRPC for stopSpecsWatcher
+      await getVanillaClient().spec.stopSpecsWatcher.mutate();
       this._isWatching = false;
       console.log('[specWatcherService] Stopped watching');
     } catch (error) {

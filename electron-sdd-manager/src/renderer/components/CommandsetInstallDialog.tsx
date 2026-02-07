@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, Loader2, Package, Layers, CheckCircle, Trash2, FolderCheck, FileText, RefreshCw, SkipForward } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { CommonCommandConflict, CommonCommandDecision, CommonCommandsInstallResult } from '../types/electron.d';
+import type { CommonCommandConflict, CommonCommandDecision, CommonCommandsInstallResult } from '../../shared/types/install';
 
 /**
  * Profile name type

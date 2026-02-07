@@ -6,12 +6,28 @@
  *
  * auto-execution-projectpath-fix Task 4.5:
  * Requirements: 4.3 - Renderer側store/hookでprojectPath取得・送信
+ *
+ * trpc-full-migration Task 7.2: Replace window.electronAPI with tRPC vanilla client
+ * Requirements: 6.2 - AutoExecution全チャンネル移行
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { AutoExecutionPermissions } from './useAutoExecution';
 import { useAutoExecution } from './useAutoExecution';
+
+// trpc-full-migration Task 7.2: Mock tRPC vanilla client for autoExecution operations
+const mockVanillaClient = {
+  autoExecution: {
+    start: { mutate: vi.fn() },
+    stop: { mutate: vi.fn() },
+    getStatus: { query: vi.fn() },
+    retryFrom: { mutate: vi.fn() },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
 
 describe('useAutoExecution Types', () => {
   // ============================================================
@@ -108,23 +124,13 @@ describe('useAutoExecution Types', () => {
 });
 
 // ============================================================
-// auto-execution-projectpath-fix Task 4.5: projectPath parameter
-// Requirements: 4.3 - Renderer側store/hookでprojectPath取得・送信
+// trpc-full-migration Task 7.2: tRPC vanilla client integration
+// Requirements: 6.2 - AutoExecution全チャンネル移行
 // ============================================================
 
-describe('useAutoExecution projectPath handling (Task 4.5)', () => {
-  // Mock window.electronAPI
-  const mockAutoExecutionStart = vi.fn();
-
+describe('useAutoExecution tRPC integration (Task 7.2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock window.electronAPI.autoExecutionStart
-    (global as unknown as { window: { electronAPI: unknown } }).window = {
-      electronAPI: {
-        autoExecutionStart: mockAutoExecutionStart,
-      },
-    };
   });
 
   afterEach(() => {
@@ -132,8 +138,8 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
   });
 
   describe('startAutoExecution', () => {
-    it('should accept projectPath as the first parameter', async () => {
-      mockAutoExecutionStart.mockResolvedValue({
+    it('should call tRPC autoExecution.start.mutate with correct parameters', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: true,
         value: {
           specPath: '/test/project/.kiro/specs/test-spec',
@@ -161,7 +167,6 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
           inspection: false,
           deploy: false,
         },
-        documentReviewFlag: 'pause' as const,
       };
 
       await act(async () => {
@@ -173,9 +178,9 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
         );
       });
 
-      // Verify that autoExecutionStart was called with projectPath
-      expect(mockAutoExecutionStart).toHaveBeenCalledTimes(1);
-      expect(mockAutoExecutionStart).toHaveBeenCalledWith({
+      // Verify tRPC client was called (not window.electronAPI)
+      expect(mockVanillaClient.autoExecution.start.mutate).toHaveBeenCalledTimes(1);
+      expect(mockVanillaClient.autoExecution.start.mutate).toHaveBeenCalledWith({
         projectPath: testProjectPath,
         specPath: testSpecPath,
         specId: testSpecId,
@@ -183,8 +188,8 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
       });
     });
 
-    it('should pass projectPath through to IPC call', async () => {
-      mockAutoExecutionStart.mockResolvedValue({
+    it('should pass projectPath through to tRPC call', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
         ok: true,
         value: {
           specPath: '/worktree/path/.kiro/specs/feature',
@@ -200,7 +205,6 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
 
       const { result } = renderHook(() => useAutoExecution());
 
-      // Simulate worktree scenario where specPath differs from projectPath
       const projectPath = '/main/repository';
       const specPath = '/main/repository/.kiro/worktrees/specs/feature/.kiro/specs/feature';
 
@@ -218,15 +222,145 @@ describe('useAutoExecution projectPath handling (Task 4.5)', () => {
               inspection: false,
               deploy: false,
             },
-            documentReviewFlag: 'run' as const,
           }
         );
       });
 
-      // The projectPath should be the main repository, not derived from specPath
-      const callArg = mockAutoExecutionStart.mock.calls[0][0];
+      const callArg = mockVanillaClient.autoExecution.start.mutate.mock.calls[0][0];
       expect(callArg.projectPath).toBe(projectPath);
       expect(callArg.specPath).toBe(specPath);
+    });
+
+    it('should handle error result from tRPC', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockResolvedValue({
+        ok: false,
+        error: {
+          type: 'ALREADY_EXECUTING',
+          specId: 'test-spec',
+        },
+      });
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      let returnValue: unknown;
+      await act(async () => {
+        returnValue = await result.current.startAutoExecution(
+          '/test',
+          '/test/.kiro/specs/test-spec',
+          'test-spec',
+          { permissions: { requirements: true, design: false, tasks: false, impl: false, inspection: false, deploy: false } }
+        );
+      });
+
+      expect((returnValue as any).ok).toBe(false);
+    });
+
+    it('should handle tRPC exceptions gracefully', async () => {
+      mockVanillaClient.autoExecution.start.mutate.mockRejectedValue(new Error('tRPC error'));
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      let returnValue: unknown;
+      await act(async () => {
+        returnValue = await result.current.startAutoExecution(
+          '/test',
+          '/test/.kiro/specs/test',
+          'test',
+          { permissions: { requirements: true, design: false, tasks: false, impl: false, inspection: false, deploy: false } }
+        );
+      });
+
+      expect((returnValue as any).ok).toBe(false);
+      expect((returnValue as any).error.type).toBe('PHASE_EXECUTION_FAILED');
+    });
+  });
+
+  describe('stopAutoExecution', () => {
+    it('should call tRPC autoExecution.stop.mutate', async () => {
+      mockVanillaClient.autoExecution.stop.mutate.mockResolvedValue({ ok: true, value: undefined });
+      mockVanillaClient.autoExecution.getStatus.query.mockResolvedValue(null);
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      await act(async () => {
+        await result.current.stopAutoExecution('/test/.kiro/specs/test-spec');
+      });
+
+      expect(mockVanillaClient.autoExecution.stop.mutate).toHaveBeenCalledWith({
+        specPath: '/test/.kiro/specs/test-spec',
+      });
+    });
+
+    it('should refresh status via tRPC after stop', async () => {
+      mockVanillaClient.autoExecution.stop.mutate.mockResolvedValue({ ok: true, value: undefined });
+      mockVanillaClient.autoExecution.getStatus.query.mockResolvedValue({
+        specPath: '/test/.kiro/specs/test-spec',
+        status: 'idle',
+        currentPhase: null,
+        executedPhases: [],
+        errors: [],
+      });
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      await act(async () => {
+        await result.current.stopAutoExecution('/test/.kiro/specs/test-spec');
+      });
+
+      expect(mockVanillaClient.autoExecution.getStatus.query).toHaveBeenCalledWith({
+        specPath: '/test/.kiro/specs/test-spec',
+      });
+    });
+  });
+
+  describe('retryFromPhase', () => {
+    it('should call tRPC autoExecution.retryFrom.mutate', async () => {
+      mockVanillaClient.autoExecution.retryFrom.mutate.mockResolvedValue({
+        ok: true,
+        value: {
+          specPath: '/test/.kiro/specs/test-spec',
+          specId: 'test-spec',
+          status: 'running',
+          currentPhase: 'design',
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      await act(async () => {
+        await result.current.retryFromPhase('/test/.kiro/specs/test-spec', 'design');
+      });
+
+      expect(mockVanillaClient.autoExecution.retryFrom.mutate).toHaveBeenCalledWith({
+        specPath: '/test/.kiro/specs/test-spec',
+        phase: 'design',
+      });
+    });
+  });
+
+  describe('refreshStatus', () => {
+    it('should call tRPC autoExecution.getStatus.query', async () => {
+      mockVanillaClient.autoExecution.getStatus.query.mockResolvedValue({
+        specPath: '/test/.kiro/specs/test-spec',
+        status: 'running',
+        currentPhase: 'tasks',
+        executedPhases: ['requirements', 'design'],
+        errors: [],
+      });
+
+      const { result } = renderHook(() => useAutoExecution());
+
+      await act(async () => {
+        await result.current.refreshStatus('/test/.kiro/specs/test-spec');
+      });
+
+      expect(mockVanillaClient.autoExecution.getStatus.query).toHaveBeenCalledWith({
+        specPath: '/test/.kiro/specs/test-spec',
+      });
     });
   });
 });

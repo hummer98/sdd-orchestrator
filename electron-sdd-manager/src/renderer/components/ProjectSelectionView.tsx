@@ -8,6 +8,8 @@ import { useState, KeyboardEvent } from 'react';
 import { FolderOpen } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { RecentProjectList } from './RecentProjectList';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for showOpenDialog
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 export function ProjectSelectionView() {
   const { selectProject, isLoading, error } = useProjectStore();
@@ -16,7 +18,8 @@ export function ProjectSelectionView() {
   // Requirement 1.1, 5.3: フォルダ選択ダイアログを開く
   const handleSelectFolder = async () => {
     // showOpenDialog returns path string or null (if canceled)
-    const selectedPath = await window.electronAPI.showOpenDialog();
+    // trpc-full-migration Task 4.3: Use tRPC for showOpenDialog
+    const selectedPath = await getVanillaClient().project.showOpenDialog.mutate();
 
     // Requirement 1.3: キャンセル時は何もしない
     if (!selectedPath) {

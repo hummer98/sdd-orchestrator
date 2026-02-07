@@ -21,7 +21,7 @@ import { Button } from '../ui/Button';
 import { useScheduleTaskStore, type ScheduleTaskElectronAPI } from '../../stores/scheduleTaskStore';
 import { ScheduleTaskListItem } from './ScheduleTaskListItem';
 import { ScheduleTaskEditPage } from './ScheduleTaskEditPage';
-import type { ScheduleTask, ScheduleTaskInput, ScheduleTaskServiceError } from '../../types/scheduleTask';
+import type { ScheduleTask, ScheduleTaskInput, ScheduleTaskServiceError, QueuedTask, RunningTaskInfo } from '../../types/scheduleTask';
 
 // =============================================================================
 // Error Message Helper
@@ -44,29 +44,44 @@ function getErrorMessage(error: ScheduleTaskServiceError): string {
 }
 
 // =============================================================================
-// Electron API Helper
+// tRPC Schedule Task API Helper
+// trpc-full-migration Task 11.4: Replaced window.electronAPI bridge with tRPC vanilla client
 // =============================================================================
 
+import { getVanillaClient } from '../../trpc/vanillaClient';
+
 /**
- * Get schedule task API from window.electronAPI
- * This function bridges shared component with Electron-specific API
+ * Get schedule task API backed by tRPC vanilla client
+ * This function bridges shared component with tRPC schedule router
  */
 function getScheduleTaskAPI(): ScheduleTaskElectronAPI | null {
-  if (typeof window !== 'undefined' && 'electronAPI' in window) {
-    const api = (window as any).electronAPI;
+  try {
+    const client = getVanillaClient();
     return {
-      scheduleTaskGetAll: api.scheduleTaskGetAll,
-      scheduleTaskGet: api.scheduleTaskGet,
-      scheduleTaskCreate: api.scheduleTaskCreate,
-      scheduleTaskUpdate: api.scheduleTaskUpdate,
-      scheduleTaskDelete: api.scheduleTaskDelete,
-      scheduleTaskExecuteImmediately: api.scheduleTaskExecuteImmediately,
-      scheduleTaskGetQueue: api.scheduleTaskGetQueue,
-      scheduleTaskGetRunning: api.scheduleTaskGetRunning,
-      onScheduleTaskStatusChanged: api.onScheduleTaskStatusChanged,
+      scheduleTaskGetAll: (projectPath: string) =>
+        client.schedule.getAll.query({ projectPath }) as unknown as Promise<ScheduleTask[]>,
+      scheduleTaskGet: (projectPath: string, taskId: string) =>
+        client.schedule.get.query({ projectPath, taskId }) as unknown as Promise<ScheduleTask | null>,
+      scheduleTaskCreate: (projectPath: string, task: ScheduleTaskInput) =>
+        client.schedule.create.mutate({ projectPath, task }) as any,
+      scheduleTaskUpdate: (projectPath: string, taskId: string, updates: Partial<ScheduleTaskInput>) =>
+        client.schedule.update.mutate({ projectPath, taskId, updates }) as any,
+      scheduleTaskDelete: (projectPath: string, taskId: string) =>
+        client.schedule.delete.mutate({ projectPath, taskId }) as any,
+      scheduleTaskExecuteImmediately: (projectPath: string, taskId: string, force?: boolean) =>
+        client.schedule.executeImmediately.mutate({ projectPath, taskId, force }) as any,
+      scheduleTaskGetQueue: (projectPath: string) =>
+        client.schedule.getQueue.query({ projectPath }) as unknown as Promise<QueuedTask[]>,
+      scheduleTaskGetRunning: (projectPath: string) =>
+        client.schedule.getRunning.query({ projectPath }) as unknown as Promise<RunningTaskInfo[]>,
+      onScheduleTaskStatusChanged: () => () => {
+        // tRPC Subscriptionに移行済み (Task 9.2)
+        // この関数はnoop - イベントリスナーはtRPC Subscription経由
+      },
     };
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**

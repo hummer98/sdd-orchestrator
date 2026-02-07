@@ -2,39 +2,47 @@
  * EngineConfigSection Component Tests
  * llm-engine-abstraction feature
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6
+ *
+ * trpc-full-migration Task 11.4: Migrated from window.electronAPI to tRPC vanilla client
  */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { EngineConfig } from '../../shared/types/engineConfig';
+
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for config operations
+const mockLoadEngineConfig = vi.fn().mockResolvedValue({});
+const mockSaveEngineConfig = vi.fn().mockResolvedValue(undefined);
+const mockGetAvailableLlmEngines = vi.fn().mockResolvedValue([
+  { id: 'claude', label: 'Claude' },
+  { id: 'gemini', label: 'Gemini' },
+]);
+
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    config: {
+      loadEngineConfig: { query: mockLoadEngineConfig },
+      saveEngineConfig: { mutate: mockSaveEngineConfig },
+      getAvailableLlmEngines: { query: mockGetAvailableLlmEngines },
+    },
+  }),
+}));
+
 import { EngineConfigSection } from './EngineConfigSection';
-import type { EngineConfig } from '../types/electron';
 
 describe('EngineConfigSection', () => {
   const testProjectPath = '/test/project';
 
-  // Type-safe mocks
-  let mockLoadEngineConfig: Mock;
-  let mockSaveEngineConfig: Mock;
-  let mockGetAvailableLLMEngines: Mock;
-
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Create mocks
-    mockLoadEngineConfig = vi.fn().mockResolvedValue({});
-    mockSaveEngineConfig = vi.fn().mockResolvedValue(undefined);
-    mockGetAvailableLLMEngines = vi.fn().mockResolvedValue([
+    // Reset default mock return values
+    mockLoadEngineConfig.mockResolvedValue({});
+    mockSaveEngineConfig.mockResolvedValue(undefined);
+    mockGetAvailableLlmEngines.mockResolvedValue([
       { id: 'claude', label: 'Claude' },
       { id: 'gemini', label: 'Gemini' },
     ]);
-
-    // Assign to window.electronAPI
-    window.electronAPI = {
-      ...window.electronAPI,
-      loadEngineConfig: mockLoadEngineConfig,
-      saveEngineConfig: mockSaveEngineConfig,
-      getAvailableLLMEngines: mockGetAvailableLLMEngines,
-    };
   });
 
   // ============================================================
@@ -95,10 +103,10 @@ describe('EngineConfigSection', () => {
       fireEvent.change(defaultSelect, { target: { value: 'gemini' } });
 
       await waitFor(() => {
-        expect(mockSaveEngineConfig).toHaveBeenCalledWith(
-          testProjectPath,
-          expect.objectContaining({ default: 'gemini' })
-        );
+        expect(mockSaveEngineConfig).toHaveBeenCalledWith({
+          projectPath: testProjectPath,
+          config: expect.objectContaining({ default: 'gemini' }),
+        });
       });
     });
   });
@@ -150,17 +158,17 @@ describe('EngineConfigSection', () => {
       fireEvent.change(genSelect, { target: { value: 'gemini' } });
 
       await waitFor(() => {
-        expect(mockSaveEngineConfig).toHaveBeenCalledWith(
-          testProjectPath,
-          expect.objectContaining({
+        expect(mockSaveEngineConfig).toHaveBeenCalledWith({
+          projectPath: testProjectPath,
+          config: expect.objectContaining({
             plan: 'gemini',
             requirements: 'gemini',
             design: 'gemini',
             tasks: 'gemini',
             'document-review': 'gemini',
             'document-review-reply': 'gemini',
-          })
-        );
+          }),
+        });
       });
     });
 
@@ -176,12 +184,12 @@ describe('EngineConfigSection', () => {
       fireEvent.change(inspectSelect, { target: { value: 'gemini' } });
 
       await waitFor(() => {
-        expect(mockSaveEngineConfig).toHaveBeenCalledWith(
-          testProjectPath,
-          expect.objectContaining({
+        expect(mockSaveEngineConfig).toHaveBeenCalledWith({
+          projectPath: testProjectPath,
+          config: expect.objectContaining({
             inspection: 'gemini',
-          })
-        );
+          }),
+        });
       });
     });
 
@@ -197,12 +205,12 @@ describe('EngineConfigSection', () => {
       fireEvent.change(implSelect, { target: { value: 'gemini' } });
 
       await waitFor(() => {
-        expect(mockSaveEngineConfig).toHaveBeenCalledWith(
-          testProjectPath,
-          expect.objectContaining({
+        expect(mockSaveEngineConfig).toHaveBeenCalledWith({
+          projectPath: testProjectPath,
+          config: expect.objectContaining({
             impl: 'gemini',
-          })
-        );
+          }),
+        });
       });
     });
 
@@ -227,17 +235,17 @@ describe('EngineConfigSection', () => {
       fireEvent.change(genSelect, { target: { value: '' } });
 
       await waitFor(() => {
-        expect(mockSaveEngineConfig).toHaveBeenCalledWith(
-          testProjectPath,
-          expect.objectContaining({
+        expect(mockSaveEngineConfig).toHaveBeenCalledWith({
+          projectPath: testProjectPath,
+          config: expect.objectContaining({
             plan: undefined,
             requirements: undefined,
             design: undefined,
             tasks: undefined,
             'document-review': undefined,
             'document-review-reply': undefined,
-          })
-        );
+          }),
+        });
       });
     });
   });
@@ -254,7 +262,7 @@ describe('EngineConfigSection', () => {
       render(<EngineConfigSection projectPath={testProjectPath} />);
 
       await waitFor(() => {
-        expect(mockLoadEngineConfig).toHaveBeenCalledWith(testProjectPath);
+        expect(mockLoadEngineConfig).toHaveBeenCalledWith({ projectPath: testProjectPath });
       });
     });
 
@@ -262,7 +270,7 @@ describe('EngineConfigSection', () => {
       render(<EngineConfigSection projectPath={testProjectPath} />);
 
       await waitFor(() => {
-        expect(mockGetAvailableLLMEngines).toHaveBeenCalled();
+        expect(mockGetAvailableLlmEngines).toHaveBeenCalled();
       });
     });
 

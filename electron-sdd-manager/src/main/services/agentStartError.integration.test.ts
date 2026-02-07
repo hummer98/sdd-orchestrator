@@ -1,18 +1,19 @@
 /**
- * Agent Start Error IPC Notification Integration Tests
+ * Agent Start Error Classification Integration Tests
  * agent-error-notification Task 9.1
  * Requirements: 5.1, 5.2
+ * trpc-full-migration Task 11.2: IPC_CHANNELS removed, EVENT_NAMES used instead
  *
- * Tests the full flow from spawn error to IPC notification:
+ * Tests the error classification flow:
  * 1. Mock child_process.spawn to emit ENOENT error
  * 2. Verify classifySpawnError is called
- * 3. Verify AGENT_START_ERROR IPC channel is used
+ * 3. Verify EVENT_NAMES.AGENT_START_ERROR is defined for EventBus
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { classifySpawnError, classifyExitError } from './agentStartErrorClassifier';
 import type { AgentStartError, AgentStartErrorType } from '../../shared/types/agentStartError';
-import { IPC_CHANNELS } from '../ipc/channels';
+import { EVENT_NAMES } from '../trpc/services/eventBus';
 
 // Mock projectLogger
 vi.mock('./projectLogger', () => ({
@@ -24,7 +25,7 @@ vi.mock('./projectLogger', () => ({
   },
 }));
 
-describe('Agent Start Error IPC Notification Integration Tests', () => {
+describe('Agent Start Error Classification Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -34,7 +35,7 @@ describe('Agent Start Error IPC Notification Integration Tests', () => {
   });
 
   // ============================================================
-  // Task 9.1: Spawn error IPC notification flow
+  // Task 9.1: Spawn error classification flow
   // Requirements: 5.1 - statusCallbacks for failed notification
   // ============================================================
 
@@ -73,7 +74,7 @@ describe('Agent Start Error IPC Notification Integration Tests', () => {
   });
 
   // ============================================================
-  // Task 9.1: Immediate exit IPC notification flow
+  // Task 9.1: Immediate exit classification flow
   // Requirements: 5.2 - AGENT_START_ERROR additional notification
   // ============================================================
 
@@ -109,23 +110,23 @@ describe('Agent Start Error IPC Notification Integration Tests', () => {
   });
 
   // ============================================================
-  // AGENT_START_ERROR channel definition test
-  // Requirements: 5.2 - Verify channel exists
+  // EventBus Event Name Definition Test
+  // Requirements: 5.2 - Verify event name exists for tRPC Subscription
   // ============================================================
 
-  describe('IPC Channel Definition', () => {
-    it('should have AGENT_START_ERROR channel defined', () => {
-      expect(IPC_CHANNELS.AGENT_START_ERROR).toBeDefined();
-      expect(IPC_CHANNELS.AGENT_START_ERROR).toBe('ipc:agent-start-error');
+  describe('EventBus Event Name Definition', () => {
+    it('should have AGENT_START_ERROR event name defined', () => {
+      expect(EVENT_NAMES.AGENT_START_ERROR).toBeDefined();
+      expect(EVENT_NAMES.AGENT_START_ERROR).toBe('events:agent-start-error');
     });
 
     it('should have both AGENT_STATUS_CHANGE and AGENT_START_ERROR for dual notification', () => {
-      // Both channels should be defined for dual notification pattern
-      expect(IPC_CHANNELS.AGENT_STATUS_CHANGE).toBeDefined();
-      expect(IPC_CHANNELS.AGENT_START_ERROR).toBeDefined();
+      // Both event names should be defined for dual notification pattern
+      expect(EVENT_NAMES.AGENT_STATUS_CHANGE).toBeDefined();
+      expect(EVENT_NAMES.AGENT_START_ERROR).toBeDefined();
 
-      // They should be different channels
-      expect(IPC_CHANNELS.AGENT_STATUS_CHANGE).not.toBe(IPC_CHANNELS.AGENT_START_ERROR);
+      // They should be different event names
+      expect(EVENT_NAMES.AGENT_STATUS_CHANGE).not.toBe(EVENT_NAMES.AGENT_START_ERROR);
     });
   });
 

@@ -1,0 +1,207 @@
+{
+  "spec_overview": "electron-sdd-managerにおける全219個のIPCチャンネルをtRPCルーターに移行し、レガシーIPC基盤（preload/index.ts、channels.ts、handlers.ts、electron.d.ts）を完全撤廃する。",
+  "key_components": [
+    {
+      "name": "systemRouter (拡張)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/system.ts",
+      "requirements": ["1.1", "1.2", "1.3"]
+    },
+    {
+      "name": "configRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/config.ts",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "projectRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/project.ts",
+      "requirements": ["3.1", "3.2", "3.3"]
+    },
+    {
+      "name": "fileRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/file.ts",
+      "requirements": ["3.1", "3.2", "3.3"]
+    },
+    {
+      "name": "specRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/spec.ts",
+      "requirements": ["4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "bugRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/bug.ts",
+      "requirements": ["4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "agentRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/agent.ts",
+      "requirements": ["5.1", "5.2", "5.3"]
+    },
+    {
+      "name": "autoExecutionRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts",
+      "requirements": ["6.1", "6.2", "6.3"]
+    },
+    {
+      "name": "gitRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/git.ts",
+      "requirements": ["7.1", "7.2", "7.3"]
+    },
+    {
+      "name": "eventsRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/events.ts",
+      "requirements": ["8.1", "8.2"]
+    },
+    {
+      "name": "cloudflareRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/cloudflare.ts",
+      "requirements": ["9.1", "9.2"]
+    },
+    {
+      "name": "installRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/install.ts",
+      "requirements": ["9.1", "9.2"]
+    },
+    {
+      "name": "mcpRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/mcp.ts",
+      "requirements": ["9.1", "9.2"]
+    },
+    {
+      "name": "scheduleRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/schedule.ts",
+      "requirements": ["9.1", "9.2"]
+    },
+    {
+      "name": "miscRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/misc.ts",
+      "requirements": ["9.1", "9.2"]
+    },
+    {
+      "name": "vanillaClient",
+      "type": "service",
+      "path": "electron-sdd-manager/src/shared/trpc/vanillaClient.ts",
+      "requirements": ["10.6"]
+    },
+    {
+      "name": "tRPC Context (DD-006)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/context.ts",
+      "requirements": ["1.1"]
+    },
+    {
+      "name": "AppRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/router.ts",
+      "requirements": ["1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "8.1", "9.1"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "React Components",
+      "target": "tRPC Hooks (trpc.*)",
+      "type": "call"
+    },
+    {
+      "source": "Zustand Stores",
+      "target": "vanillaClient",
+      "type": "call"
+    },
+    {
+      "source": "tRPC Hooks / vanillaClient",
+      "target": "electron-trpc IPC",
+      "type": "ipc"
+    },
+    {
+      "source": "Domain Routers",
+      "target": "Existing Services (via ctx.services)",
+      "type": "call"
+    },
+    {
+      "source": "eventsRouter",
+      "target": "EventEmitter (各Service)",
+      "type": "event"
+    },
+    {
+      "source": "AppRouter (router.ts)",
+      "target": "All Domain Routers",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "src/main/ipc/channels.ts",
+      "action": "DELETE",
+      "reason": "レガシーチャンネル定義 - tRPCルーターに移行済み"
+    },
+    {
+      "target": "src/main/ipc/handlers.ts",
+      "action": "DELETE",
+      "reason": "レガシーハンドラオーケストレーター - tRPCルーターに移行済み"
+    },
+    {
+      "target": "src/main/ipc/*Handlers.ts (22 files)",
+      "action": "DELETE",
+      "reason": "全ドメイン別ハンドラ - 各tRPCルーターに移行済み"
+    },
+    {
+      "target": "src/preload/index.ts",
+      "action": "UPDATE",
+      "reason": "electronAPI削除、trpc importのみ残す"
+    },
+    {
+      "target": "src/renderer/types/electron.d.ts",
+      "action": "DELETE",
+      "reason": "レガシーAPI型定義"
+    },
+    {
+      "target": "src/shared/api/IpcApiClient.ts",
+      "action": "DELETE",
+      "reason": "tRPCフックに置換"
+    },
+    {
+      "target": "src/main/trpc/router.ts",
+      "action": "UPDATE",
+      "reason": "全ドメインルーターをappRouterに追加"
+    },
+    {
+      "target": "src/main/trpc/context.ts",
+      "action": "UPDATE",
+      "reason": "サービスインスタンス注入 (DD-006)"
+    },
+    {
+      "target": "src/renderer/stores/*.ts",
+      "action": "UPDATE",
+      "reason": "window.electronAPIをtRPCに置換"
+    },
+    {
+      "target": "src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "ipcRenderer.onリスナーをtRPC Subscriptionに置換"
+    },
+    {
+      "target": ".kiro/steering/tech.md",
+      "action": "UPDATE",
+      "reason": "IPC設計パターンセクションをtRPCに更新"
+    },
+    {
+      "target": ".kiro/steering/structure.md",
+      "action": "UPDATE",
+      "reason": "ディレクトリ構造をtRPCを反映して更新"
+    }
+  ]
+}

@@ -6,7 +6,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
-import type { EngineConfig, LLMEngineId } from '../types/electron';
+import type { EngineConfig } from '../../shared/types/engineConfig';
+import type { LLMEngineId } from '../../shared/registry/llmEngineRegistry';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // ============================================================
 // Section Configuration
@@ -72,8 +75,9 @@ export function EngineConfigSection({
           { id: 'claude', label: 'Claude' },
           { id: 'gemini', label: 'Gemini' },
         ];
+        // trpc-full-migration Task 3.2: Use tRPC for getAvailableLlmEngines
         try {
-          availableEngines = await window.electronAPI.getAvailableLLMEngines();
+          availableEngines = await getVanillaClient().config.getAvailableLlmEngines.query();
         } catch {
           // Use default engines on error
         }
@@ -81,7 +85,8 @@ export function EngineConfigSection({
 
         // Load config
         try {
-          const loadedConfig = await window.electronAPI.loadEngineConfig(projectPath);
+          // trpc-full-migration Task 3.2: Use tRPC for loadEngineConfig
+          const loadedConfig = await getVanillaClient().config.loadEngineConfig.query({ projectPath });
           setConfig(loadedConfig);
         } catch {
           // Set empty config on error
@@ -114,9 +119,10 @@ export function EngineConfigSection({
 
   // Save config helper
   const saveConfig = useCallback(
+    // trpc-full-migration Task 3.2: Use tRPC for saveEngineConfig
     async (newConfig: EngineConfig) => {
       try {
-        await window.electronAPI.saveEngineConfig(projectPath, newConfig);
+        await getVanillaClient().config.saveEngineConfig.mutate({ projectPath, config: newConfig });
         setConfig(newConfig);
       } catch (error) {
         console.error('[EngineConfigSection] Failed to save config:', error);

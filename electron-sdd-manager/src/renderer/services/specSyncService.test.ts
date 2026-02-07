@@ -5,9 +5,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SpecSyncService } from './specSyncService';
 import type { ArtifactInfo, TaskProgress, SpecDetail } from '../types';
 import type { SpecDetailState, ArtifactType } from '../stores/spec/types';
+
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
+const mockVanillaClient = {
+  file: {
+    readSpecJson: { query: vi.fn() },
+    readArtifact: { query: vi.fn() },
+  },
+  // trpc-full-migration Task 5.3: Mock spec procedures for syncDocumentReview
+  spec: {
+    syncDocumentReview: { mutate: vi.fn() },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
+import { SpecSyncService } from './specSyncService';
 
 // spec-path-ssot-refactor: SpecMetadata now only contains name field
 // phase, updatedAt, approvals should be obtained from SpecJson (SSOT)
@@ -121,12 +137,12 @@ describe('SpecSyncService', () => {
 
     it('should read spec.json and update state', async () => {
       const updatedSpecJson = { ...mockSpecJson, phase: 'tasks-generated' as const };
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(updatedSpecJson);
 
       await service.updateSpecJson();
 
-      // spec-path-ssot-refactor: readSpecJson now takes specName instead of path
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.name);
+      // trpc-full-migration Task 4.3: readSpecJson now uses tRPC with object params
+      expect(mockVanillaClient.file.readSpecJson.query).toHaveBeenCalledWith({ specName: mockSpec.name });
       expect(mockSetSpecJson).toHaveBeenCalledWith(updatedSpecJson);
     });
 
@@ -142,16 +158,14 @@ describe('SpecSyncService', () => {
         editorSyncCallback: mockEditorSyncCallback,
       });
 
-      window.electronAPI.readSpecJson = vi.fn();
-
       await service.updateSpecJson();
 
-      expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
+      expect(mockVanillaClient.file.readSpecJson.query).not.toHaveBeenCalled();
       expect(mockSetSpecJson).not.toHaveBeenCalled();
     });
 
     it('should also update spec metadata in list', async () => {
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
 
       await service.updateSpecJson();
 
@@ -170,8 +184,8 @@ describe('SpecSyncService', () => {
       };
       const inspectionContent = '# Inspection Report\n\nGO';
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(inspectionContent);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(specJsonWithInspection);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(inspectionContent);
 
       await service.updateSpecJson();
 
@@ -200,15 +214,16 @@ describe('SpecSyncService', () => {
 
     it('should read artifact and update state', async () => {
       const newContent = '# Updated Requirements';
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(newContent);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(newContent);
 
       await service.updateArtifact('requirements');
 
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) instead of full path
-      expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
-        mockSpec.name,
-        'requirements.md'
-      );
+      // trpc-full-migration Task 4.3: readArtifact now uses tRPC with object params
+      expect(mockVanillaClient.file.readArtifact.query).toHaveBeenCalledWith({
+        name: mockSpec.name,
+        filename: 'requirements.md',
+        entityType: 'spec',
+      });
       expect(mockSetArtifact).toHaveBeenCalledWith('requirements', {
         exists: true,
         updatedAt: null,
@@ -217,7 +232,7 @@ describe('SpecSyncService', () => {
     });
 
     it('should set artifact to null when file not found', async () => {
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('Not found'));
 
       await service.updateArtifact('research');
 
@@ -230,7 +245,7 @@ describe('SpecSyncService', () => {
 - [x] Task 2 completed
 - [ ] Task 3 pending`;
 
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(tasksContent);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(tasksContent);
 
       await service.updateArtifact('tasks');
 
@@ -253,11 +268,9 @@ describe('SpecSyncService', () => {
         editorSyncCallback: mockEditorSyncCallback,
       });
 
-      window.electronAPI.readArtifact = vi.fn();
-
       await service.updateArtifact('requirements');
 
-      expect(window.electronAPI.readArtifact).not.toHaveBeenCalled();
+      expect(mockVanillaClient.file.readArtifact.query).not.toHaveBeenCalled();
       expect(mockSetArtifact).not.toHaveBeenCalled();
     });
   });
@@ -281,14 +294,17 @@ describe('SpecSyncService', () => {
         ...mockSpecJson,
         documentReview: { status: 'completed', currentRound: 1 },
       };
-      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(true);
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+      // trpc-full-migration Task 5.3: syncDocumentReview via tRPC
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(true);
+      // trpc-full-migration Task 4.3: readSpecJson via tRPC
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(updatedSpecJson);
 
       await service.syncDocumentReviewState();
 
-      // spec-path-ssot-refactor: syncDocumentReview and readSpecJson now take specName
-      expect(window.electronAPI.syncDocumentReview).toHaveBeenCalledWith(mockSpec.name);
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.name);
+      // trpc-full-migration Task 5.3: syncDocumentReview via tRPC
+      expect(mockVanillaClient.spec.syncDocumentReview.mutate).toHaveBeenCalledWith({ specName: mockSpec.name });
+      // readSpecJson is now via tRPC
+      expect(mockVanillaClient.file.readSpecJson.query).toHaveBeenCalledWith({ specName: mockSpec.name });
       expect(mockSetSpecJson).toHaveBeenCalledWith(updatedSpecJson);
     });
 
@@ -304,11 +320,11 @@ describe('SpecSyncService', () => {
         editorSyncCallback: mockEditorSyncCallback,
       });
 
-      window.electronAPI.syncDocumentReview = vi.fn();
+      mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
       await service.syncDocumentReviewState();
 
-      expect(window.electronAPI.syncDocumentReview).not.toHaveBeenCalled();
+      expect(mockVanillaClient.spec.syncDocumentReview.mutate).not.toHaveBeenCalled();
     });
   });
 
@@ -338,8 +354,8 @@ describe('SpecSyncService', () => {
       };
       const inspectionContent = '# Inspection Report\n\nGO';
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(inspectionContent);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue(specJsonWithInspection);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(inspectionContent);
 
       await service.syncInspectionState();
 
@@ -364,11 +380,9 @@ describe('SpecSyncService', () => {
         editorSyncCallback: mockEditorSyncCallback,
       });
 
-      window.electronAPI.readSpecJson = vi.fn();
-
       await service.syncInspectionState();
 
-      expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
+      expect(mockVanillaClient.file.readSpecJson.query).not.toHaveBeenCalled();
     });
   });
 
@@ -436,8 +450,6 @@ describe('SpecSyncService', () => {
         },
       };
 
-      window.electronAPI.syncSpecPhase = vi.fn();
-
       service.init({
         getSelectedSpec: () => mockSpec,
         getSpecDetail: () => detailWithTasks,
@@ -450,9 +462,6 @@ describe('SpecSyncService', () => {
       });
 
       await service.syncTaskProgress();
-
-      // Renderer should NOT call syncSpecPhase - this is Main process responsibility
-      expect(window.electronAPI.syncSpecPhase).not.toHaveBeenCalled();
       // setSpecJson should NOT be called for phase updates
       expect(mockSetSpecJson).not.toHaveBeenCalled();
       // But taskProgress should still be calculated
@@ -491,7 +500,7 @@ describe('SpecSyncService', () => {
 
   describe('editor sync callback', () => {
     it('should call editorSyncCallback when artifact matches active tab', async () => {
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Updated');
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Updated');
 
       service.init({
         getSelectedSpec: () => mockSpec,

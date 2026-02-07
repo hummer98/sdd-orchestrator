@@ -12,6 +12,8 @@ import { setNotificationHandler } from '@shared/stores/notificationStore';
 // agent-error-notification Task 7.2: Import getAgentStartErrorMessage for localized error display
 // Requirements: 3.3, 3.4
 import { getAgentStartErrorMessage } from '@shared/types/agentStartErrorMessages';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import { getVanillaClient } from '@shared/trpc/vanillaClient';
 
 // renderer-unified-logging feature: Initialize console hook before React rendering
 // Requirements: 1.1, 1.3, 1.4
@@ -40,13 +42,20 @@ setNotificationHandler((n) => {
 
 // agent-error-notification Task 7.2: Register agent start error listener
 // Requirements: 3.3, 3.5, 5.3
+// Task 9.2: window.electronAPI.onAgentStartError -> tRPC Subscription
 // Displays Toast notification when agent startup fails (spawn error, auth error, etc.)
 // Auto-dismiss after 8 seconds (notify.error default behavior)
-if (typeof window !== 'undefined' && window.electronAPI) {
-  window.electronAPI.onAgentStartError((data) => {
-    const message = getAgentStartErrorMessage(data.error);
-    notify.error(message);
-  });
+if (typeof window !== 'undefined') {
+  try {
+    getVanillaClient().events.onAgentStartError.subscribe(undefined, {
+      onData: (data: { agentId: string; specId: string; error: Record<string, unknown> }) => {
+        const message = getAgentStartErrorMessage(data.error as unknown as Parameters<typeof getAgentStartErrorMessage>[0]);
+        notify.error(message);
+      },
+    });
+  } catch (error) {
+    console.warn('[main] Failed to subscribe to agent start errors via tRPC', error);
+  }
 }
 
 // Export stores for debugging (dev only)

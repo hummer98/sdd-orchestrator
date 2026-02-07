@@ -9,13 +9,15 @@
 
 import { useState, useEffect } from 'react';
 import { Bot, GitBranch, MessageSquare } from 'lucide-react';
-import { useAgentStore } from '../stores/agentStore';
+import { useAgentStore, type AgentInfo as RendererAgentInfo } from '../stores/agentStore';
 import { useAgentsBySpec } from '@shared/hooks';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // =============================================================================
 // Type Mapping
@@ -142,7 +144,13 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
     const featureName = specName || specId;
 
     try {
-      const agentInfo = await window.electronAPI.executeAskSpec(specId, featureName, prompt);
+      // trpc-full-migration Task 5.3: Use tRPC for executeAskSpec
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.executeAskSpec.mutate({
+        specId,
+        featureName,
+        prompt,
+      }) as unknown as RendererAgentInfo;
       addAgent(specId, agentInfo);
       selectAgent(agentInfo.agentId);
       notify.success('Spec Askを開始しました');

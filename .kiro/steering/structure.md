@@ -17,7 +17,11 @@ electron-sdd-manager/src/
 ├── main/           # Electronメインプロセス
 │   ├── services/   # バックエンドサービス
 │   │   └── ssh/    # SSH関連サービス
-│   ├── ipc/        # IPCハンドラ
+│   ├── trpc/       # tRPCルーター・サービス
+│   │   ├── routers/    # ドメイン別ルーター (15ルーター)
+│   │   ├── helpers/    # ルーター共通ユーティリティ
+│   │   ├── services/   # EventBus等のtRPCサービス
+│   │   └── __tests__/  # ルーターテスト
 │   └── utils/      # メインプロセス用ユーティリティ
 ├── preload/        # preloadスクリプト
 ├── renderer/       # レンダラープロセス（Electron React）
@@ -29,7 +33,8 @@ electron-sdd-manager/src/
 │   ├── services/   # レンダラー側サービス
 │   └── utils/      # ユーティリティ関数
 ├── shared/         # Electron版/Remote UI版共有コード
-│   ├── api/        # ApiClient抽象化層 (IpcApiClient, WebSocketApiClient)
+│   ├── api/        # ApiClient抽象化層 (WebSocketApiClient)
+│   ├── trpc/       # tRPCクライアント (provider, vanillaClient)
 │   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, schedule/, git/, etc.)
 │   ├── hooks/      # 共有フック (useDeviceType等)
 │   ├── providers/  # React Context Provider (PlatformProvider等)
@@ -84,7 +89,7 @@ electron-sdd-manager/src/
 |----------|--------|-----------|
 | 「IPC往復を減らしたい」 | プロジェクト選択状態をRendererのみで保持 | Mainとの状態不整合、再起動時の復元不可 |
 | 「Reactで簡単に実装できる」 | Agent一覧をRenderer内Zustandで完結 | Remote UIとの同期が必要、Mainが正確な状態を知れない |
-| 「preload API定義が面倒」 | 新機能のステートをRenderer内で閉じる | IPC設計をスキップすると後で負債になる |
+| 「tRPCルーター定義が面倒」 | 新機能のステートをRenderer内で閉じる | tRPC設計をスキップすると後で負債になる |
 
 ### ステート配置の判断基準
 
@@ -107,13 +112,14 @@ electron-sdd-manager/src/
 [Main Process]
 ├── セッション状態の保持
 ├── プロセス/ファイル監視の管理
-├── IPCハンドラでステート変更を受け付け
-└── ステート変更時にRendererへブロードキャスト
+├── tRPCルーターでステート変更を受け付け（query/mutation）
+└── ステート変更時にEventBus → Subscription経由でRendererへ通知
 
 [Renderer Process]
 ├── UIステート（表示制御、フォーム入力中の値）
 ├── Main Processステートの読み取り専用キャッシュ
-└── ステート変更はIPC経由でMainに依頼
+├── ステート変更はtRPC mutation経由でMainに依頼
+└── リアルタイム通知はtRPC Subscription経由で受信
 ```
 
 ### アンチパターン例
@@ -123,18 +129,18 @@ electron-sdd-manager/src/
 const useAgentStore = create((set) => ({
   runningAgents: [],
   startAgent: (config) => {
-    // Renderer内で状態を更新してからIPCを呼ぶ
+    // Renderer内で状態を更新してからtRPCを呼ぶ
     set({ runningAgents: [...runningAgents, config] });
-    window.electronAPI.startAgent(config);
+    getVanillaClient().agent.start.mutate(config);
   }
 }));
 
-// ✅ OK: MainでAgent状態を管理し、RendererはIPCでリクエスト
+// ✅ OK: MainでAgent状態を管理し、RendererはtRPCでリクエスト
 const useAgentStore = create((set) => ({
-  runningAgents: [], // Mainからの同期データ
+  runningAgents: [], // Mainからの同期データ（Subscription経由で同期）
   requestStartAgent: async (config) => {
-    // MainにリクエストしてMainが状態を更新、ブロードキャストで同期
-    await window.electronAPI.startAgent(config);
+    // MainにリクエストしてMainが状態を更新、Subscription経由で同期
+    await getVanillaClient().agent.start.mutate(config);
   }
 }));
 ```
@@ -145,7 +151,7 @@ Electron機能の設計時、以下を必ず確認する:
 
 1. **新しいステートはどこで保持するか？** → 上記判断基準で決定
 2. **Renderer側のステートは「Mainのキャッシュ」になっているか？** → Rendererが真実の情報源にならない
-3. **ステート変更の流れは Renderer → IPC → Main → ブロードキャスト → Renderer か？** → 逆方向のフローは設計ミス
+3. **ステート変更の流れは Renderer → tRPC mutation → Main → Subscription → Renderer か？** → 逆方向のフローは設計ミス
 
 ### Renderer Process Module Restrictions (Strict)
 
@@ -305,13 +311,45 @@ Agent state and logs are stored in `.kiro/runtime/agents/` with a flat entity-ba
 - **スケジュール実行**: `scheduleTaskService.ts`, `scheduleTaskCoordinator.ts`, `scheduleTaskFileService.ts`
 - **MCP Server**: `mcp/` ディレクトリ配下 (`mcpServerService.ts`, `mcpToolRegistry.ts`, etc.)
 
-### IPC Pattern
+### tRPC Pattern
 ```
-main/ipc/
-├── channels.ts         # チャンネル名定義
-├── handlers.ts         # 主要IPCハンドラ
-├── remoteAccessHandlers.ts  # リモートアクセス用
-└── sshHandlers.ts      # SSH用
+main/trpc/
+├── trpc.ts             # tRPC初期化（router, publicProcedure）
+├── context.ts          # Context DI（ContextServices）
+├── router.ts           # ルートルーター（15サブルーター集約）
+├── handler.ts          # setupTRPCHandler（createIPCHandler統合）
+├── routers/            # ドメイン別ルーター
+│   ├── system.ts       # システム情報
+│   ├── config.ts       # 設定管理
+│   ├── project.ts      # プロジェクト操作
+│   ├── file.ts         # ファイル操作
+│   ├── spec.ts         # Spec管理
+│   ├── bug.ts          # バグ管理
+│   ├── agent.ts        # Agent管理
+│   ├── autoExecution.ts # 自動実行
+│   ├── git.ts          # Git/Worktree
+│   ├── events.ts       # Subscriptions（37イベント）
+│   └── ...             # mcp, schedule, cloudflare, install, misc
+├── helpers/            # 共通ユーティリティ
+│   ├── test-helpers.ts # テスト用 createTestContext, createMockServices
+│   ├── projectSetup.ts # プロジェクト初期化
+│   └── ...
+└── services/           # tRPC固有サービス
+    ├── eventBus.ts     # EventBus（webContents.send置換）
+    └── globalEventBus.ts # シングルトンEventBus
+```
+
+**vanillaClient パターン** (DD-006):
+```typescript
+// Zustand storeなどReact外からのtRPC呼び出し
+import { getVanillaClient } from '@shared/trpc/vanillaClient';
+
+const store = create((set) => ({
+  loadData: async () => {
+    const data = await getVanillaClient().config.getRecentProjects.query();
+    set({ data });
+  }
+}));
 ```
 
 ---

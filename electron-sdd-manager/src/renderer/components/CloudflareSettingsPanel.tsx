@@ -7,6 +7,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { clsx } from 'clsx';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for cloudflare operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import {
   Cloud,
   Eye,
@@ -46,7 +48,8 @@ export function CloudflareSettingsPanel({ className }: CloudflareSettingsPanelPr
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const settings = await window.electronAPI.getCloudflareSettings();
+        // trpc-full-migration Task 10.6: Use tRPC for getCloudflareSettings
+        const settings = await getVanillaClient().cloudflare.getSettings.query();
         setHasTunnelToken(settings.hasTunnelToken);
       } catch (error) {
         console.error('[CloudflareSettingsPanel] Failed to load settings:', error);
@@ -68,7 +71,8 @@ export function CloudflareSettingsPanel({ className }: CloudflareSettingsPanelPr
     setSaveSuccess(false);
 
     try {
-      await window.electronAPI.setCloudfareTunnelToken(token.trim());
+      // trpc-full-migration Task 10.6: Use tRPC for setTunnelToken
+      await getVanillaClient().cloudflare.setTunnelToken.mutate({ token: token.trim() });
       setSaveSuccess(true);
       setHasTunnelToken(true);
       // Clear token field after successful save for security

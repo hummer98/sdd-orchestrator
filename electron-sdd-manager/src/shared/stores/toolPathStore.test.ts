@@ -7,22 +7,24 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ToolStatus, ToolResolutionResult } from '../../renderer/types/electron';
+import type { ToolStatus, ToolResolutionResult } from '../types/toolPath';
 
-// Mock window.electronAPI before importing the store
+// trpc-full-migration Task 3.2: Mock tRPC vanilla client for tool path operations
 const mockGetStatuses = vi.fn<[], Promise<ToolStatus[]>>();
-const mockSetPath = vi.fn<[string, string | null], Promise<ToolResolutionResult>>();
-const mockResolve = vi.fn<[string], Promise<ToolResolutionResult>>();
+const mockSetPath = vi.fn<[{ tool: string; path: string | null }], Promise<ToolResolutionResult>>();
+const mockResolve = vi.fn<[{ tool: string }], Promise<ToolResolutionResult>>();
 
-vi.stubGlobal('window', {
-  electronAPI: {
-    toolPath: {
-      getStatuses: mockGetStatuses,
-      setPath: mockSetPath,
-      resolve: mockResolve,
-    },
+const mockVanillaClient = {
+  config: {
+    getToolStatuses: { query: mockGetStatuses },
+    setToolPath: { mutate: mockSetPath },
+    resolveTool: { query: mockResolve },
   },
-});
+};
+
+vi.mock('../trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
 
 // Import after mocking
 import {
@@ -137,7 +139,7 @@ describe('toolPathStore', () => {
       expect(store.error).toBeNull();
     });
 
-    it('should call electronAPI.toolPath.getStatuses', async () => {
+    it('should call tRPC config.getToolStatuses.query', async () => {
       mockGetStatuses.mockResolvedValue(mockStatuses);
 
       await getToolPathStore().fetchStatuses();
@@ -164,7 +166,7 @@ describe('toolPathStore', () => {
       await getToolPathStore().fetchStatuses();
     });
 
-    it('should call electronAPI.toolPath.setPath with correct arguments', async () => {
+    it('should call tRPC config.setToolPath.mutate with correct arguments', async () => {
       const newPath = '/custom/path/to/jj';
       const newResolution: ToolResolutionResult = {
         resolved: true,
@@ -175,7 +177,7 @@ describe('toolPathStore', () => {
 
       await getToolPathStore().setToolPath('jj', newPath);
 
-      expect(mockSetPath).toHaveBeenCalledWith('jj', newPath);
+      expect(mockSetPath).toHaveBeenCalledWith({ tool: 'jj', path: newPath });
     });
 
     it('should update the status for the specified tool', async () => {
@@ -204,7 +206,7 @@ describe('toolPathStore', () => {
 
       await getToolPathStore().setToolPath('jj', null);
 
-      expect(mockSetPath).toHaveBeenCalledWith('jj', null);
+      expect(mockSetPath).toHaveBeenCalledWith({ tool: 'jj', path: null });
     });
 
     it('should set error on failure', async () => {
@@ -224,7 +226,7 @@ describe('toolPathStore', () => {
       await getToolPathStore().fetchStatuses();
     });
 
-    it('should call electronAPI.toolPath.resolve with correct argument', async () => {
+    it('should call tRPC config.resolveTool.query with correct argument', async () => {
       const newResolution: ToolResolutionResult = {
         resolved: true,
         path: '/opt/homebrew/bin/jj',
@@ -234,7 +236,7 @@ describe('toolPathStore', () => {
 
       await getToolPathStore().resolveTool('jj');
 
-      expect(mockResolve).toHaveBeenCalledWith('jj');
+      expect(mockResolve).toHaveBeenCalledWith({ tool: 'jj' });
     });
 
     it('should update the status for the specified tool after re-resolution', async () => {

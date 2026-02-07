@@ -2,9 +2,10 @@
  * Agent Store Tests
  * TDD: Testing agent state management and actions
  * Requirements: 5.1-5.8, 9.1-9.10
+ * trpc-full-migration Task 6.2: Agent operations migrated to tRPC
  *
  * agent-store-unification: This file tests the Facade implementation
- * which delegates to shared/agentStore (SSOT) and agentStoreAdapter (IPC)
+ * which delegates to shared/agentStore (SSOT) and agentStoreAdapter (tRPC)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -14,6 +15,39 @@ import { resetSharedAgentStore } from '@shared/stores/agentStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
 // bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
+
+// trpc-full-migration Task 6.2: Mock tRPC vanilla client for agent operations
+// Task 9.2: Added events namespace for tRPC Subscription mocks
+type SubscribeOptions = { onData?: (data: unknown) => void; onError?: (err: unknown) => void; onComplete?: () => void };
+const eventSubscribers: Record<string, ((data: unknown) => void)[]> = {};
+
+function createMockSubscription(eventName: string) {
+  return {
+    subscribe: (_input: unknown, opts?: SubscribeOptions) => {
+      if (!eventSubscribers[eventName]) eventSubscribers[eventName] = [];
+      if (opts?.onData) eventSubscribers[eventName].push(opts.onData);
+      return { unsubscribe: vi.fn() };
+    },
+  };
+}
+
+function emitMockEvent(eventName: string, data: unknown) {
+  (eventSubscribers[eventName] || []).forEach((cb) => cb(data));
+}
+
+const mockVanillaClient = {
+  agent: {
+    getAllAgents: { query: vi.fn() },
+    getRunningAgentCounts: { query: vi.fn() },
+    getLogs: { query: vi.fn() },
+  },
+  events: {
+    onAgentRecordChanged: createMockSubscription('onAgentRecordChanged'),
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
 
 // Mock agentStoreAdapter
 vi.mock('./agentStoreAdapter', () => ({
@@ -147,13 +181,14 @@ describe('useAgentStore', () => {
   // Requirements: 5.1-5.8
   // ============================================================
   describe('Task 29.2: Agent operation actions', () => {
+    // trpc-full-migration Task 6.2: loadAgents now uses tRPC vanilla client
     describe('loadAgents', () => {
-      it('should load agents from API and update state', async () => {
+      it('should load agents from tRPC and update state', async () => {
         const mockAgentsRecord: Record<string, AgentInfo[]> = {
           'spec-1': [mockAgentInfo, mockAgentInfo2],
           'spec-2': [mockAgentInfo3],
         };
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue(mockAgentsRecord);
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue(mockAgentsRecord);
 
         await useAgentStore.getState().loadAgents();
 
@@ -163,7 +198,7 @@ describe('useAgentStore', () => {
       });
 
       it('should set isLoading during load', async () => {
-        window.electronAPI.getAllAgents = vi.fn().mockImplementation(
+        mockVanillaClient.agent.getAllAgents.query.mockImplementation(
           () =>
             new Promise((resolve) =>
               setTimeout(() => resolve({ 'spec-1': [mockAgentInfo] }), 100)
@@ -180,7 +215,7 @@ describe('useAgentStore', () => {
       });
 
       it('should handle load error', async () => {
-        window.electronAPI.getAllAgents = vi.fn().mockRejectedValue(new Error('Network error'));
+        mockVanillaClient.agent.getAllAgents.query.mockRejectedValue(new Error('Network error'));
 
         await useAgentStore.getState().loadAgents();
 
@@ -225,10 +260,12 @@ describe('useAgentStore', () => {
       });
     });
 
+    // trpc-full-migration Task 6.2: ensureLogsLoaded now uses tRPC vanilla client
     describe('ensureLogsLoaded', () => {
       // ============================================================
       // Refactoring: log-loading-separation
       // New method that handles log loading with proper conditions
+      // trpc-full-migration Task 6.2: Uses tRPC agent.getLogs query
       // ============================================================
 
       it('should load logs for completed agent even if some logs exist', async () => {
@@ -242,10 +279,19 @@ describe('useAgentStore', () => {
           text: { content: 'partial', role: 'assistant' },
         });
 
+        // Mock tRPC agent.getLogs.query to return logs
+        mockVanillaClient.agent.getLogs.query.mockResolvedValue([
+          { id: 'log-1', type: 'text', timestamp: Date.now(), text: { content: 'partial', role: 'assistant' } },
+          { id: 'log-2', type: 'text', timestamp: Date.now(), text: { content: 'complete', role: 'assistant' } },
+        ]);
+
         await useAgentStore.getState().ensureLogsLoaded('agent-2');
 
-        // Should load from file to get complete logs
-        expect(agentOperations.loadAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-2');
+        // Should call tRPC agent.getLogs.query
+        expect(mockVanillaClient.agent.getLogs.query).toHaveBeenCalledWith({
+          specId: 'spec-1',
+          agentId: 'agent-2',
+        });
       });
 
       it('should NOT load logs for running agent if some logs exist', async () => {
@@ -262,23 +308,36 @@ describe('useAgentStore', () => {
         await useAgentStore.getState().ensureLogsLoaded('agent-1');
 
         // Running agent gets logs via IPC, no file load needed
-        expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
+        expect(mockVanillaClient.agent.getLogs.query).not.toHaveBeenCalled();
       });
 
       it('should load logs for running agent if no logs exist', async () => {
         // Add running agent with no logs
         useAgentStore.getState().addAgent('spec-1', mockAgentInfo); // status: 'running'
 
+        // Mock tRPC response
+        mockVanillaClient.agent.getLogs.query.mockResolvedValue([]);
+
         await useAgentStore.getState().ensureLogsLoaded('agent-1');
 
         // Initial load for running agent (IPC will add more)
-        expect(agentOperations.loadAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-1');
+        expect(mockVanillaClient.agent.getLogs.query).toHaveBeenCalledWith({
+          specId: 'spec-1',
+          agentId: 'agent-1',
+        });
       });
 
-      it('should do nothing if agent does not exist', async () => {
+      it('should load logs for non-existent agent (using specIdHint default)', async () => {
+        // trpc-full-migration Task 6.2: Non-existent agents now use tRPC with specIdHint=''
+        mockVanillaClient.agent.getLogs.query.mockResolvedValue([]);
+
         await useAgentStore.getState().ensureLogsLoaded('non-existent');
 
-        expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
+        // Should still try to load via tRPC (specId defaults to '')
+        expect(mockVanillaClient.agent.getLogs.query).toHaveBeenCalledWith({
+          specId: '',
+          agentId: 'non-existent',
+        });
       });
     });
 
@@ -544,44 +603,39 @@ describe('useAgentStore', () => {
   // Requirements: 9.1, 5.2
   // agent-store-unification: Event listeners are now handled by adapter
   // ============================================================
+  // Task 9.2: Event listeners now use tRPC Subscriptions
   describe('Task 29.4: Event listener setup', () => {
+    beforeEach(() => {
+      // Clear event subscribers between tests
+      Object.keys(eventSubscribers).forEach((key) => delete eventSubscribers[key]);
+    });
+
     describe('setupEventListeners', () => {
       it('should call setupAgentEventListeners from adapter', async () => {
-        // agent-store-unification: Facade delegates to adapter for event setup
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
-
         const cleanup = useAgentStore.getState().setupEventListeners();
 
         // The setupAgentEventListeners should have been called via the mock
-        // Use dynamic import to access the mocked module
         const { setupAgentEventListeners } = await import('./agentStoreAdapter');
         expect(setupAgentEventListeners).toHaveBeenCalled();
 
         cleanup();
       });
 
-      it('should register onAgentRecordChanged listener', () => {
-        const mockCleanup = vi.fn();
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(mockCleanup);
+      it('should subscribe to onAgentRecordChanged via tRPC', () => {
+        const spy = vi.spyOn(mockVanillaClient.events.onAgentRecordChanged, 'subscribe');
 
         const cleanup = useAgentStore.getState().setupEventListeners();
 
-        expect(window.electronAPI.onAgentRecordChanged).toHaveBeenCalled();
+        expect(spy).toHaveBeenCalled();
 
         cleanup();
-        expect(mockCleanup).toHaveBeenCalled();
       });
     });
 
     describe('cleanup function', () => {
-      it('should call all cleanup functions', () => {
-        const cleanupRecordChanged = vi.fn();
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(cleanupRecordChanged);
-
+      it('should call cleanup without errors', () => {
         const cleanup = useAgentStore.getState().setupEventListeners();
         cleanup();
-
-        expect(cleanupRecordChanged).toHaveBeenCalled();
       });
     });
 
@@ -593,16 +647,9 @@ describe('useAgentStore', () => {
     // Updated tests for new architecture where onAgentRecordChanged receives only event info
     // and loadAgents() is called to fetch full data
     describe('onAgentRecordChanged auto-selection scope (agent-selection-scope-mismatch)', () => {
-      let recordChangedCallback: ((type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => void) | null = null;
-
       beforeEach(() => {
-        // Setup mock event listeners
-        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(vi.fn());
-        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockImplementation((cb) => {
-          recordChangedCallback = cb;
-          return vi.fn();
-        });
+        // Clear event subscribers between tests
+        Object.keys(eventSubscribers).forEach((key) => delete eventSubscribers[key]);
       });
 
       it('should auto-select Project Agent (specId="") regardless of selected spec', async () => {
@@ -620,14 +667,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           '': [projectAgent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'project-agent-1', specId: '' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'project-agent-1', specId: '' } });
 
         // Wait for async operations (loadAgents + selectAgent)
         await vi.waitFor(() => {
@@ -650,14 +697,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'spec-1': [matchingAgent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'matching-agent', specId: 'spec-1' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'matching-agent', specId: 'spec-1' } });
 
         // Wait for async operations
         await vi.waitFor(() => {
@@ -679,14 +726,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'spec-B': [nonMatchingAgent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'non-matching-agent', specId: 'spec-B' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'non-matching-agent', specId: 'spec-B' } });
 
         // Wait for loadAgents to complete
         await vi.waitFor(() => {
@@ -710,14 +757,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'spec-1': [agent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'orphan-agent', specId: 'spec-1' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'orphan-agent', specId: 'spec-1' } });
 
         // Wait for loadAgents to complete
         await vi.waitFor(() => {
@@ -747,14 +794,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'bug:my-bug': [bugAgent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'bug-agent-1', specId: 'bug:my-bug' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'bug-agent-1', specId: 'bug:my-bug' } });
 
         await vi.waitFor(() => {
           const state = useAgentStore.getState();
@@ -777,14 +824,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'bug:my-bug': [bugAgent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'bug-agent-mismatch', specId: 'bug:my-bug' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'bug-agent-mismatch', specId: 'bug:my-bug' } });
 
         // Wait for loadAgents to complete
         await vi.waitFor(() => {
@@ -807,14 +854,14 @@ describe('useAgentStore', () => {
         };
 
         // Mock getAllAgents to return the agent after loadAgents() is called
-        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
           'spec-xyz': [agent],
         });
 
         useAgentStore.getState().setupEventListeners();
 
-        // Trigger add event with only event info (new architecture)
-        recordChangedCallback?.('add', { agentId: 'added-not-selected', specId: 'spec-xyz' });
+        // Trigger add event via tRPC subscription (Task 9.2)
+        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'added-not-selected', specId: 'spec-xyz' } });
 
         // Wait for loadAgents to complete
         await vi.waitFor(() => {

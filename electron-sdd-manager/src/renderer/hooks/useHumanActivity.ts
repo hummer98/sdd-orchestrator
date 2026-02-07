@@ -11,6 +11,8 @@ import {
   type ActivityEventType,
   type HumanActivityTracker,
 } from '../services/humanActivityTracker';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for recordHumanSession
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // =============================================================================
 // Types
@@ -42,9 +44,10 @@ function ensureTrackerInitialized(): HumanActivityTracker {
   let tracker = getHumanActivityTracker();
   if (!tracker) {
     // Initialize with IPC callback to send session data to Main process
+    // trpc-full-migration Task 10.6: Use tRPC for recordHumanSession
     tracker = initHumanActivityTracker(async (session) => {
       try {
-        await window.electronAPI.recordHumanSession(session);
+        await getVanillaClient().misc.recordHumanSession.mutate(session);
       } catch (error) {
         console.error('[useHumanActivity] Failed to record session:', error);
       }

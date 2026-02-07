@@ -8,13 +8,13 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { registerIpcHandlers, setInitialProjectPath, selectProject, setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult } from './ipc/handlers';
-import { IPC_CHANNELS } from './ipc/channels';
-import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
-import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
-import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
-import { registerBugWorktreeHandlers } from './ipc/bugWorktreeHandlers';
-import { registerConvertWorktreeHandlers } from './ipc/convertWorktreeHandlers';
+import { initializeEventWiring, setInitialProjectPath, selectProject, setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult } from './trpc/helpers/projectSetup';
+// trpc-full-migration Task 10.7: IPC handlers deleted, utility functions moved to services/
+import { setupStatusNotifications, getRemoteAccessServer } from './services/remoteAccessSetup';
+import { setupSSHStatusNotifications } from './services/sshSetup';
+// worktreeHandlers: tRPC gitルーターに移行・削除済み (Task 8.3)
+// bugWorktreeHandlers: tRPC bugルーターに移行済み (Task 5.4)
+// convertWorktreeHandlers: tRPC bugルーター (convertToWorktree) に移行済み (Task 5.4)
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
@@ -29,6 +29,9 @@ import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 import { getAgentWatchdog } from './services/agentLifecycleSetup';
 // trpc-infrastructure: tRPC IPC handler setup (Requirements 8.1-8.5)
 import { setupTRPCHandler } from './trpc/handler';
+// trpc-full-migration Task 9.2: EventBus for tRPC Subscription event distribution
+import { getGlobalEventBus } from './trpc/services/globalEventBus';
+import { EVENT_NAMES } from './trpc/services/eventBus';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -191,8 +194,8 @@ export async function broadcastInitialProjectSelection(window: BrowserWindow): P
     return;
   }
 
-  // Broadcast to Renderer
-  window.webContents.send(IPC_CHANNELS.PROJECT_SELECTED, cachedResult);
+  // Broadcast to Renderer via EventBus (tRPC Subscription)
+  getGlobalEventBus().emit(EVENT_NAMES.PROJECT_SELECTED, cachedResult);
   logger.info('[main] Broadcasted initial project selection to Renderer', {
     projectPath: cachedResult.projectPath,
   });
@@ -277,25 +280,17 @@ app.whenReady().then(async () => {
   // This must be done early, before any agent processes are started
   await resolveToolPathsAtStartup();
 
-  // Register IPC handlers
-  registerIpcHandlers();
+  // Initialize event wiring (auto-execution events, file watchers)
+  initializeEventWiring();
 
-  // Register Remote Access handlers
-  registerRemoteAccessHandlers();
+  // Remote Access & SSH: IPC handlers deleted (Task 10.7), setup notifications only
   setupStatusNotifications();
-
-  // Register SSH handlers
-  registerSSHHandlers();
   setupSSHStatusNotifications();
 
-  // Register Worktree handlers (git-worktree-support feature)
-  registerWorktreeHandlers();
+  // worktreeHandlers: tRPC gitルーターに移行・削除済み (Task 8.3)
 
-  // Register Bug Worktree handlers (bugs-worktree-support feature)
-  registerBugWorktreeHandlers();
-
-  // Register Convert Worktree handlers (convert-spec-to-worktree feature)
-  registerConvertWorktreeHandlers();
+  // bugWorktreeHandlers: tRPC bugルーターに移行済み (Task 5.4)
+  // convertWorktreeHandlers: tRPC bugルーターに移行済み (Task 5.4)
 
   // Create application menu
   createMenu();

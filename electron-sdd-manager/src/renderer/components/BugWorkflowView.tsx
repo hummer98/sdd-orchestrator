@@ -9,6 +9,8 @@
  */
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
+// trpc-full-migration Task 6.2: Use tRPC vanilla client for agent operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import { ArrowDown } from 'lucide-react';
 // bugs-view-unification Task 6.1: Import useApi for ApiClient access
 import { useApi } from '../../shared/api/ApiClientProvider';
@@ -198,7 +200,8 @@ export function BugWorkflowView() {
       // Requirements: 4.1, 5.1, 6.1
       if (phase === 'deploy') {
         try {
-          await window.electronAPI.updateBugPhase(selectedBug.name, 'deployed');
+          // trpc-full-migration Task 10.6: Use tRPC for updateBugPhase
+          await getVanillaClient().bug.phaseUpdate.mutate({ bugName: selectedBug.name, phase: 'deployed' });
         } catch (phaseError) {
           console.error('[BugWorkflowView] Failed to update phase:', phaseError);
           // Continue with deploy even if phase update fails
@@ -223,21 +226,20 @@ export function BugWorkflowView() {
       const fullCommand = `${command} ${selectedBug.name}`;
 
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
-      // unified-engine-command-resolution: command parameter removed, engineId used instead
-      await window.electronAPI.startAgent(
-        `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
-        effectivePhase,
-        [fullCommand], // Args: full command (base flags added by service)
-        undefined, // group
-        undefined, // sessionId
-        'claude'   // engineId
-      );
+      // trpc-full-migration Task 6.2: Use tRPC agent.start mutation
+      await getVanillaClient().agent.start.mutate({
+        specId: `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
+        phase: effectivePhase,
+        args: [fullCommand], // Args: full command (base flags added by service)
+        engineId: 'claude',
+      });
     } catch (error) {
       // bug-deploy-phase Task 3.2, 4.2: Rollback phase on failure
       // Requirements: 4.3, 5.3, 6.3
       if (phase === 'deploy' && previousPhase !== 'deployed') {
         try {
-          await window.electronAPI.updateBugPhase(selectedBug.name, previousPhase);
+          // trpc-full-migration Task 10.6: Use tRPC for updateBugPhase (rollback)
+          await getVanillaClient().bug.phaseUpdate.mutate({ bugName: selectedBug.name, phase: previousPhase });
           notify.error('デプロイ失敗：ロールバックしました');
         } catch (rollbackError) {
           console.error('[BugWorkflowView] Failed to rollback phase:', rollbackError);
@@ -253,7 +255,7 @@ export function BugWorkflowView() {
   // ============================================================
   // bug-auto-execution-per-bug-state Task 4.2, 4.3: Auto execution handlers
   // Requirements: 4.3, 4.4, 4.5, 5.1, 5.2
-  // Use existing IPC APIs defined in electron.d.ts
+  // Use tRPC APIs (migrated from legacy IPC)
   // ============================================================
 
   // Determine last completed phase from bugDetail
@@ -276,25 +278,26 @@ export function BugWorkflowView() {
       // Update store state first (optimistic update)
       startAutoExecutionInStore(bugName);
 
-      // Call Main Process to start auto-execution using existing IPC API
-      // spec-path-ssot-refactor: Bug auto-execution API still uses bugPath for backward compatibility
-      // The API expects bugPath to be the full path, but we only have name now
-      // Use bugName as the identifier (handlers will resolve the path)
-      // auto-execution-projectpath-fix Task 4.5: Add projectPath from store
-      const result = await window.electronAPI.bugAutoExecutionStart({
+      // trpc-full-migration Task 7.2: Use tRPC vanilla client for bugAutoExecution
+      const result = await getVanillaClient().autoExecution.bugStart.mutate({
         projectPath: currentProject ?? '',
-        bugPath: bugName,  // Using name as path identifier for now
+        bugPath: bugName,
         bugName: selectedBug.name,
         options: {
-          permissions: bugAutoExecutionPermissions,
+          permissions: bugAutoExecutionPermissions as unknown as { analyze: boolean; fix: boolean; verify: boolean } & { [k: string]: unknown },
         },
         lastCompletedPhase: getLastCompletedPhase(),
       });
 
-      if (!result.ok) {
+      // tRPC infers generic types from router; cast to concrete types
+      const typedResult = result as
+        | { ok: true; value: Record<string, unknown> }
+        | { ok: false; error: { type: string; message?: string } };
+
+      if (!typedResult.ok) {
         // Revert optimistic update on failure
         stopAutoExecutionInStore(bugName);
-        const errorMsg = 'message' in result.error ? result.error.message : result.error.type;
+        const errorMsg = typedResult.error.message ?? typedResult.error.type;
         notify.error(errorMsg || '自動実行を開始できませんでした');
       }
     } catch (error) {
@@ -308,9 +311,8 @@ export function BugWorkflowView() {
     if (!bugName) return;
 
     try {
-      // Call Main Process to stop auto-execution using existing IPC API
-      // spec-path-ssot-refactor: API expects bugPath, using bugName as identifier
-      await window.electronAPI.bugAutoExecutionStop({ bugPath: bugName });
+      // trpc-full-migration Task 7.2: Use tRPC vanilla client for bugAutoExecution stop
+      await getVanillaClient().autoExecution.bugStop.mutate({ bugPath: bugName });
       // Store will be updated by IPC event
     } catch (error) {
       // Force stop in store if IPC fails
@@ -326,15 +328,19 @@ export function BugWorkflowView() {
     }
 
     try {
-      // Call Main Process to retry from failed phase using existing IPC API
-      // spec-path-ssot-refactor: API expects bugPath, using bugName as identifier
-      const result = await window.electronAPI.bugAutoExecutionRetryFrom({
+      // trpc-full-migration Task 7.2: Use tRPC vanilla client for bugAutoExecution retry
+      const result = await getVanillaClient().autoExecution.bugRetryFrom.mutate({
         bugPath: bugName,
         phase: lastFailedPhase,
       });
 
-      if (!result.ok) {
-        const errorMsg = 'message' in result.error ? result.error.message : result.error.type;
+      // tRPC infers generic types from router; cast to concrete types
+      const typedResult = result as
+        | { ok: true; value: Record<string, unknown> }
+        | { ok: false; error: { type: string; message?: string } };
+
+      if (!typedResult.ok) {
+        const errorMsg = typedResult.error.message ?? typedResult.error.type;
         notify.error(errorMsg || 'リトライを開始できませんでした');
       }
     } catch (error) {
@@ -377,7 +383,10 @@ export function BugWorkflowView() {
     try {
       // Construct bug path from name (path field was removed in spec-path-ssot-refactor)
       const bugPath = `.kiro/bugs/${bugName}`;
-      const result = await window.electronAPI.rebaseFromMain(bugPath);
+      // trpc-full-migration Task 8.3: tRPC git.worktreeRebaseFromMain に移行
+      const rawResult = await getVanillaClient().git.worktreeRebaseFromMain.mutate({ specOrBugPath: bugPath });
+      // tRPC returns { ok: boolean } which needs type narrowing for handleRebaseResult
+      const result = rawResult as import('../../shared/stores/bugStore').RebaseFromMainResponse;
 
       // handleRebaseResult expects the full result (not just value)
       bugStore.handleRebaseResult(result);

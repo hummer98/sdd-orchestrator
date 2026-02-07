@@ -2,9 +2,49 @@
  * AutoExecutionStore Tests
  * TDD: Testing auto-execution runtime state management
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
+ * Task 9.2: IPC listeners migrated to tRPC Subscriptions
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
+// Task 9.2: Mock tRPC vanilla client for subscription-based event listeners
+type SubscribeOptions = { onData?: (data: unknown) => void; onError?: (err: unknown) => void; onComplete?: () => void };
+const eventSubscribers: Record<string, ((data: unknown) => void)[]> = {};
+const mockUnsubscribeFns: Record<string, ReturnType<typeof vi.fn>[]> = {};
+
+function createMockSubscription(eventName: string) {
+  return {
+    subscribe: (_input: unknown, opts?: SubscribeOptions) => {
+      if (!eventSubscribers[eventName]) eventSubscribers[eventName] = [];
+      if (!mockUnsubscribeFns[eventName]) mockUnsubscribeFns[eventName] = [];
+      if (opts?.onData) eventSubscribers[eventName].push(opts.onData);
+      const unsub = vi.fn();
+      mockUnsubscribeFns[eventName].push(unsub);
+      return { unsubscribe: unsub };
+    },
+  };
+}
+
+function emitMockEvent(eventName: string, data: unknown) {
+  (eventSubscribers[eventName] || []).forEach((cb) => cb(data));
+}
+
+function clearEventSubscribers() {
+  Object.keys(eventSubscribers).forEach((key) => delete eventSubscribers[key]);
+  Object.keys(mockUnsubscribeFns).forEach((key) => delete mockUnsubscribeFns[key]);
+}
+
+const mockVanillaClient = {
+  events: {
+    onAutoExecutionStatusChanged: createMockSubscription('onAutoExecutionStatusChanged'),
+    onAutoExecutionPhaseCompleted: createMockSubscription('onAutoExecutionPhaseCompleted'),
+    onAutoExecutionError: createMockSubscription('onAutoExecutionError'),
+  },
+};
+vi.mock('../../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { useAutoExecutionStore, initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './autoExecutionStore';
 import { DEFAULT_AUTO_EXECUTION_RUNTIME } from './types';
 
@@ -227,53 +267,18 @@ describe('useAutoExecutionStore', () => {
 });
 
 // ============================================================
-// IPC Listener Tests (bug fix: auto-execution-state-sync)
+// IPC Listener Tests (Task 9.2: migrated to tRPC Subscriptions)
 // ============================================================
 
-describe('IPC Listeners for Auto-Execution State Sync', () => {
-  // Store callbacks registered via mock electronAPI
-  let statusChangedCallback: ((data: { specPath: string; state: unknown }) => void) | null = null;
-  let phaseCompletedCallback: ((data: { specPath: string; phase: string }) => void) | null = null;
-  let errorCallback: ((data: { specPath: string; error: { type: string; message?: string } }) => void) | null = null;
-
-  // Mock unsubscribe functions
-  const mockUnsubscribeStatus = vi.fn();
-  const mockUnsubscribePhase = vi.fn();
-  const mockUnsubscribeError = vi.fn();
-
+describe('IPC Listeners for Auto-Execution State Sync (tRPC Subscription)', () => {
   beforeEach(() => {
     // Reset store state
     useAutoExecutionStore.setState({
       autoExecutionRuntimeMap: new Map(),
     });
 
-    // Reset callbacks
-    statusChangedCallback = null;
-    phaseCompletedCallback = null;
-    errorCallback = null;
-
-    // Reset mocks
-    mockUnsubscribeStatus.mockClear();
-    mockUnsubscribePhase.mockClear();
-    mockUnsubscribeError.mockClear();
-
-    // Mock window.electronAPI
-    (global as unknown as { window: { electronAPI: unknown } }).window = {
-      electronAPI: {
-        onAutoExecutionStatusChanged: vi.fn((callback) => {
-          statusChangedCallback = callback;
-          return mockUnsubscribeStatus;
-        }),
-        onAutoExecutionPhaseCompleted: vi.fn((callback) => {
-          phaseCompletedCallback = callback;
-          return mockUnsubscribePhase;
-        }),
-        onAutoExecutionError: vi.fn((callback) => {
-          errorCallback = callback;
-          return mockUnsubscribeError;
-        }),
-      },
-    };
+    // Clear event subscribers
+    clearEventSubscribers();
   });
 
   afterEach(() => {
@@ -282,39 +287,49 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
   });
 
   describe('initAutoExecutionIpcListeners', () => {
-    it('should register all IPC event listeners', () => {
+    it('should subscribe to all tRPC event subscriptions', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onAutoExecutionStatusChanged, 'subscribe');
+      const phaseSpy = vi.spyOn(mockVanillaClient.events.onAutoExecutionPhaseCompleted, 'subscribe');
+      const errorSpy = vi.spyOn(mockVanillaClient.events.onAutoExecutionError, 'subscribe');
+
       initAutoExecutionIpcListeners();
 
-      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
-      expect(window.electronAPI.onAutoExecutionPhaseCompleted).toHaveBeenCalledTimes(1);
-      expect(window.electronAPI.onAutoExecutionError).toHaveBeenCalledTimes(1);
+      expect(statusSpy).toHaveBeenCalledTimes(1);
+      expect(phaseSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should not register duplicate listeners on second call', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onAutoExecutionStatusChanged, 'subscribe');
+
       initAutoExecutionIpcListeners();
       initAutoExecutionIpcListeners();
 
       // Should only be called once due to duplicate prevention
-      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
+      expect(statusSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('cleanupAutoExecutionIpcListeners', () => {
-    it('should call unsubscribe functions for all listeners', () => {
+    it('should call unsubscribe on all subscriptions', () => {
       initAutoExecutionIpcListeners();
       cleanupAutoExecutionIpcListeners();
 
-      expect(mockUnsubscribeStatus).toHaveBeenCalledTimes(1);
-      expect(mockUnsubscribePhase).toHaveBeenCalledTimes(1);
-      expect(mockUnsubscribeError).toHaveBeenCalledTimes(1);
+      // All unsubscribe functions should have been called
+      const allUnsubs = Object.values(mockUnsubscribeFns).flat();
+      expect(allUnsubs.length).toBeGreaterThanOrEqual(3);
+      allUnsubs.forEach((unsub) => expect(unsub).toHaveBeenCalled());
     });
 
     it('should allow re-registration after cleanup', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onAutoExecutionStatusChanged, 'subscribe');
+
       initAutoExecutionIpcListeners();
       cleanupAutoExecutionIpcListeners();
+      clearEventSubscribers();
       initAutoExecutionIpcListeners();
 
-      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(2);
+      expect(statusSpy).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -322,8 +337,8 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
     it('should update specStore when status changed event is received with running status', () => {
       initAutoExecutionIpcListeners();
 
-      // Simulate IPC event from Main Process
-      statusChangedCallback?.({
+      // Simulate tRPC Subscription event
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -347,7 +362,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
       initAutoExecutionIpcListeners();
 
       // First set to running
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -362,7 +377,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
       });
 
       // Then complete
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -385,7 +400,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
     it('should update specStore when status changed event is received with error status', () => {
       initAutoExecutionIpcListeners();
 
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -407,7 +422,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
     it('should handle paused status as still executing', () => {
       initAutoExecutionIpcListeners();
 
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -429,7 +444,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
     it('should handle completing status as still executing', () => {
       initAutoExecutionIpcListeners();
 
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/test-feature',
         state: {
           specPath: '/project/.kiro/specs/test-feature',
@@ -452,7 +467,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
       initAutoExecutionIpcListeners();
 
       // Start spec-a
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/spec-a',
         state: {
           specPath: '/project/.kiro/specs/spec-a',
@@ -467,7 +482,7 @@ describe('IPC Listeners for Auto-Execution State Sync', () => {
       });
 
       // Start spec-b
-      statusChangedCallback?.({
+      emitMockEvent('onAutoExecutionStatusChanged', {
         specPath: '/project/.kiro/specs/spec-b',
         state: {
           specPath: '/project/.kiro/specs/spec-b',

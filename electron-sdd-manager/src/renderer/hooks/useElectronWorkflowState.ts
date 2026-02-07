@@ -24,6 +24,8 @@ import { useAutoExecution } from './useAutoExecution';
 import { useConvertToWorktree } from './useConvertToWorktree';
 import { useHumanActivity } from './useHumanActivity';
 import { notify } from '../stores';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import { hasWorktreePath } from '../types/worktree';
 import { normalizeInspectionState } from '../types/inspection';
 import { getImplMode } from '../types/implMode';
@@ -191,9 +193,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     const apiClient = {
       getSpecMetrics: async (id: string) => {
         try {
-          // IPC handler already returns { ok, value } or { ok, error } format
-          const result = await window.electronAPI.getSpecMetrics(id);
-          return result;
+          // trpc-full-migration Task 10.6: Use tRPC for getSpecMetrics
+          const result = await getVanillaClient().misc.getSpecMetrics.query({ specId: id });
+          // tRPC returns Record<string, unknown>, cast to expected type
+          return result as { ok: true; value: import('../../main/types/metrics').SpecMetrics } | { ok: false; error: string };
         } catch (error) {
           return { ok: false as const, error: error instanceof Error ? error.message : String(error) };
         }
@@ -217,7 +220,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
 
     await wrapExecution(async () => {
       if (phase === 'deploy' && hasWorktreePath({ worktree: specJson?.worktree })) {
-        await window.electronAPI.execute({
+        // trpc-full-migration Task 5.3: Use tRPC for execute (spec-merge)
+        await getVanillaClient().spec.execute.mutate({
           type: 'spec-merge',
           specId: specDetail.metadata.name,
           featureName: specDetail.metadata.name,
@@ -226,12 +230,13 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         return;
       }
 
-      await window.electronAPI.execute({
-        type: phase as 'requirements' | 'design' | 'tasks' | 'deploy',
-        specId: specDetail.metadata.name,
-        featureName: specDetail.metadata.name,
-        commandPrefix: workflowStore.commandPrefix,
-      });
+      // trpc-full-migration Task 5.3: Use tRPC for execute
+        await getVanillaClient().spec.execute.mutate({
+          type: phase as 'requirements' | 'design' | 'tasks' | 'deploy',
+          specId: specDetail.metadata.name,
+          featureName: specDetail.metadata.name,
+          commandPrefix: workflowStore.commandPrefix,
+        });
     });
   }, [specDetail, specJson?.worktree, workflowStore.commandPrefix, wrapExecution]);
 
@@ -239,11 +244,12 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
     recordActivity('approval-button');
     try {
-      await window.electronAPI.updateApproval(
-        specDetail.metadata.name,
-        phase as 'requirements' | 'design' | 'tasks',
-        true
-      );
+      // trpc-full-migration Task 5.3: Use tRPC for updateApproval
+      await getVanillaClient().spec.updateApproval.mutate({
+        specName: specDetail.metadata.name,
+        phase: phase as 'requirements' | 'design' | 'tasks',
+        approved: true,
+      });
     } catch (error) {
       console.error('Failed to approve phase:', error);
     }
@@ -273,10 +279,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     };
 
     try {
-      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
-        autoExecution: {
-          ...specJson?.autoExecution,
-          permissions: newPermissions,
+      // trpc-full-migration Task 5.3: Use tRPC for updateSpecJson
+      await getVanillaClient().spec.updateSpecJson.mutate({
+        specName: specDetail.metadata.name,
+        updates: {
+          autoExecution: {
+            ...specJson?.autoExecution,
+            permissions: newPermissions,
+          },
         },
       });
     } catch (error) {
@@ -323,13 +333,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (document-review)
+      await getVanillaClient().spec.execute.mutate({
         type: 'document-review',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         commandPrefix: workflowStore.commandPrefix,
         scheme: documentReviewScheme,
-      });
+      } as any);
     });
   }, [specDetail, workflowStore.commandPrefix, wrapExecution, documentReviewScheme]);
 
@@ -337,7 +348,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (document-review-reply)
+      await getVanillaClient().spec.execute.mutate({
         type: 'document-review-reply',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
@@ -351,7 +363,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (document-review-fix)
+      await getVanillaClient().spec.execute.mutate({
         type: 'document-review-fix',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
@@ -365,10 +378,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     try {
-      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
-        documentReview: {
-          ...specDetail.specJson.documentReview,
-          scheme: newScheme,
+      // trpc-full-migration Task 5.3: Use tRPC for updateSpecJson (scheme change)
+      await getVanillaClient().spec.updateSpecJson.mutate({
+        specName: specDetail.metadata.name,
+        updates: {
+          documentReview: {
+            ...specDetail.specJson.documentReview,
+            scheme: newScheme,
+          },
         },
       });
     } catch (error) {
@@ -389,7 +406,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (inspection)
+      await getVanillaClient().spec.execute.mutate({
         type: 'inspection',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
@@ -402,7 +420,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (inspection-fix)
+      await getVanillaClient().spec.execute.mutate({
         type: 'inspection-fix',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
@@ -424,21 +443,16 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     const featureName = specDetail.metadata.name;
 
     await wrapExecution(async () => {
-      const result = await window.electronAPI.startImpl(
+      // trpc-full-migration Task 5.3: Use tRPC for startImpl
+      // spec-worktree-early-creation: NOT_ON_MAIN_BRANCH, WORKTREE_CREATE_FAILED removed
+      const result = await getVanillaClient().spec.startImpl.mutate({
         specName,
         featureName,
-        workflowStore.commandPrefix
-      );
+        commandPrefix: workflowStore.commandPrefix,
+      });
 
       if (!result.ok) {
-        let message = 'impl 開始に失敗しました';
-        if (result.error.type === 'NOT_ON_MAIN_BRANCH') {
-          message = `Worktreeモードはmainブランチでのみ使用できます。現在: ${result.error.currentBranch}`;
-        } else if (result.error.type === 'WORKTREE_CREATE_FAILED') {
-          message = result.error.message || 'Worktree作成に失敗しました';
-        } else if (result.error.message) {
-          message = result.error.message;
-        }
+        const message = result.error.message || 'impl 開始に失敗しました';
         notify.error(message);
       }
     });
@@ -448,7 +462,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (impl task)
+      await getVanillaClient().spec.execute.mutate({
         type: 'impl',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
@@ -466,7 +481,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     // spec-auto-impl-command: Use /kiro:spec-auto-impl for autonomous parallel batch execution
     // This command handles all parallel batch execution internally using Task tool
     await wrapExecution(async () => {
-      await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (auto-impl)
+      await getVanillaClient().spec.execute.mutate({
         type: 'auto-impl',
         specId: specName,
         featureName: specName,
@@ -486,8 +502,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
 
     const newMode = implMode === 'sequential' ? 'parallel' : 'sequential';
     try {
-      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
-        impl: { mode: newMode },
+      // trpc-full-migration Task 5.3: Use tRPC for updateSpecJson (impl mode)
+      await getVanillaClient().spec.updateSpecJson.mutate({
+        specName: specDetail.metadata.name,
+        updates: { impl: { mode: newMode } },
       });
     } catch (error) {
       console.error('Failed to update impl mode:', error);
@@ -503,11 +521,13 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     setEventLogError(null);
 
     try {
-      const result = await window.electronAPI.getEventLog(specDetail.metadata.name);
+      // trpc-full-migration Task 5.3: Use tRPC for getEventLog
+      const result = await getVanillaClient().spec.getEventLog.query({ specId: specDetail.metadata.name });
       if (result.ok) {
         setEventLogEntries(result.value);
       } else {
-        setEventLogError(result.error);
+        // trpc-full-migration: Cast error (tRPC infers wider string type for error.type)
+        setEventLogError(result.error as EventLogError);
       }
     } catch (error) {
       setEventLogError({
@@ -526,6 +546,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   // worktree-rebase-from-main: Task 8.1a - Rebase from main handler
   // Requirements: 1.1, 1.5
   // Task 13.2, 13.4: Use shared specStore for rebase state and construct specPath from specName
+  // trpc-full-migration Task 8.3: tRPC git.worktreeRebaseFromMain に移行
   const handleRebaseFromMain = useCallback(async () => {
     if (!specDetail || !currentProject) return;
 
@@ -536,10 +557,11 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     try {
       // Construct spec path from name (path field was removed in spec-path-ssot-refactor)
       const specPath = `.kiro/specs/${specDetail.metadata.name}`;
-      const result = await window.electronAPI.rebaseFromMain(specPath);
+      const result = await getVanillaClient().git.worktreeRebaseFromMain.mutate({ specOrBugPath: specPath });
 
       // Task 13.2: handleRebaseResult handles isRebasing reset and notifications
-      sharedSpecStore.handleRebaseResult(result);
+      // trpc-full-migration Task 8.3: tRPC returns { ok: boolean } which needs type narrowing
+      sharedSpecStore.handleRebaseResult(result as import('@shared/stores/specStore').RebaseFromMainResponse);
     } catch (error) {
       sharedSpecStore.setIsRebasing(false);
       notify.error(error instanceof Error ? error.message : 'Rebaseに失敗しました');

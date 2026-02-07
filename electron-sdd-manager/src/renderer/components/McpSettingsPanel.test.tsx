@@ -3,17 +3,27 @@
  * TDD: Testing MCP Server settings UI
  * mcp-server-integration: Task 7.2
  * Requirements: 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8
+ *
+ * trpc-full-migration Task 11.4: Migrated from window.electronAPI to tRPC vanilla client
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { McpSettingsPanel } from './McpSettingsPanel';
 
-// Mock electronAPI
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for MCP operations
 const mockGetSettings = vi.fn();
 const mockSetEnabled = vi.fn();
 const mockSetPort = vi.fn();
-const mockGetStatus = vi.fn();
+
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    mcp: {
+      getSettings: { query: mockGetSettings },
+      setEnabled: { mutate: mockSetEnabled },
+      setPort: { mutate: mockSetPort },
+    },
+  }),
+}));
 
 // Mock clipboard API
 const mockWriteText = vi.fn();
@@ -25,8 +35,9 @@ vi.mock('../stores/projectStore', () => ({
   })),
 }));
 
+import { McpSettingsPanel } from './McpSettingsPanel';
+
 describe('McpSettingsPanel', () => {
-  // Setup window.electronAPI mock
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -34,23 +45,9 @@ describe('McpSettingsPanel', () => {
       enabled: true,
       port: 3001,
     });
-    mockGetStatus.mockResolvedValue({
-      isRunning: true,
-      port: 3001,
-      url: 'http://localhost:3001',
-    });
     mockSetEnabled.mockResolvedValue(undefined);
     mockSetPort.mockResolvedValue(undefined);
     mockWriteText.mockResolvedValue(undefined);
-
-    (window as any).electronAPI = {
-      mcpServer: {
-        getSettings: mockGetSettings,
-        setEnabled: mockSetEnabled,
-        setPort: mockSetPort,
-        getStatus: mockGetStatus,
-      },
-    };
 
     Object.assign(navigator, {
       clipboard: {
@@ -121,7 +118,7 @@ describe('McpSettingsPanel', () => {
       });
     });
 
-    it('should call setEnabled when toggle is clicked', async () => {
+    it('should call setEnabled via tRPC when toggle is clicked', async () => {
       mockGetSettings.mockResolvedValue({ enabled: true, port: 3001 });
       render(<McpSettingsPanel />);
 
@@ -133,11 +130,11 @@ describe('McpSettingsPanel', () => {
       fireEvent.click(toggle);
 
       await waitFor(() => {
-        expect(mockSetEnabled).toHaveBeenCalledWith(false);
+        expect(mockSetEnabled).toHaveBeenCalledWith({ enabled: false });
       });
     });
 
-    it('should call setEnabled(true) when enabling', async () => {
+    it('should call setEnabled(true) via tRPC when enabling', async () => {
       mockGetSettings.mockResolvedValue({ enabled: false, port: 3001 });
       render(<McpSettingsPanel />);
 
@@ -149,7 +146,7 @@ describe('McpSettingsPanel', () => {
       fireEvent.click(toggle);
 
       await waitFor(() => {
-        expect(mockSetEnabled).toHaveBeenCalledWith(true);
+        expect(mockSetEnabled).toHaveBeenCalledWith({ enabled: true });
       });
     });
   });
@@ -191,7 +188,7 @@ describe('McpSettingsPanel', () => {
       expect(portInput.value).toBe('4000');
     });
 
-    it('should call setPort when port is changed and saved', async () => {
+    it('should call setPort via tRPC when port is changed and saved', async () => {
       render(<McpSettingsPanel />);
 
       await waitFor(() => {
@@ -203,7 +200,7 @@ describe('McpSettingsPanel', () => {
       fireEvent.blur(portInput);
 
       await waitFor(() => {
-        expect(mockSetPort).toHaveBeenCalledWith(4000);
+        expect(mockSetPort).toHaveBeenCalledWith({ port: 4000 });
       });
     });
 

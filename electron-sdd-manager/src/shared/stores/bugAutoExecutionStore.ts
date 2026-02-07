@@ -10,6 +10,10 @@
  */
 
 import { create } from 'zustand';
+// trpc-full-migration Task 7.2: Use tRPC vanilla client for bugAutoExecution operations
+import { getVanillaClient } from '../trpc/vanillaClient';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import type { Unsubscribable } from '@trpc/server/observable';
 import type { BugWorkflowPhase } from '../../renderer/types/bug';
 import type { BugAutoExecutionStatus } from '../../renderer/types/bugAutoExecution';
 import type { ApiClient } from '../api/types';
@@ -141,22 +145,30 @@ export const useBugAutoExecutionStore = create<BugAutoExecutionStore>((set, get)
   /**
    * Fetch bug auto execution state from Main Process (pull)
    * Requirements: 3.1, 3.2, 3.3, 3.4
+   * trpc-full-migration Task 7.2: Use tRPC vanilla client
    */
   fetchBugAutoExecutionState: async (bugPath: string): Promise<void> => {
     try {
-      const result = await window.electronAPI.bugAutoExecutionStatus({ bugPath });
+      const result = await getVanillaClient().autoExecution.bugGetStatus.query({ bugPath });
 
       const map = new Map(get().bugAutoExecutionRuntimeMap);
 
       if (result) {
         // Req 3.2: Update store with fetched state
-        const status = result.status as MainProcessBugAutoExecutionState['status'];
+        // tRPC infers generic types from router; cast fields to concrete types
+        const typedResult = result as {
+          status: string;
+          currentPhase: string | null;
+          lastFailedPhase: string | null;
+          retryCount: number;
+        };
+        const status = typedResult.status as MainProcessBugAutoExecutionState['status'];
         map.set(bugPath, {
           isAutoExecuting: status === 'running' || status === 'paused',
-          currentAutoPhase: result.currentPhase as BugWorkflowPhase | null,
+          currentAutoPhase: typedResult.currentPhase as BugWorkflowPhase | null,
           autoExecutionStatus: status as BugAutoExecutionStatus,
-          lastFailedPhase: result.lastFailedPhase as BugWorkflowPhase | null,
-          retryCount: result.retryCount,
+          lastFailedPhase: typedResult.lastFailedPhase as BugWorkflowPhase | null,
+          retryCount: typedResult.retryCount,
         });
       } else {
         // Req 3.3: Set default state if Main Process returns null
@@ -343,9 +355,13 @@ export function initBugAutoExecutionIpcListeners(): void {
     return;
   }
 
+  // Task 9.2: Migrated from window.electronAPI.on* to tRPC Subscription
+  const subscriptions: Unsubscribable[] = [];
+
   // Req 2.1: Listen for status changed events
-  const unsubscribeStatus = window.electronAPI.onBugAutoExecutionStatusChanged?.(
-    (data: BugAutoExecutionStatusChangedEvent) => {
+  const statusSub = getVanillaClient().events.onBugAutoExecutionStatusChanged.subscribe(undefined, {
+    onData: (rawData: Record<string, unknown>) => {
+      const data = rawData as unknown as BugAutoExecutionStatusChangedEvent;
       const { bugPath, state } = data;
       useBugAutoExecutionStore.getState().updateFromMainProcess(bugPath, {
         status: state.status as MainProcessBugAutoExecutionState['status'],
@@ -353,26 +369,32 @@ export function initBugAutoExecutionIpcListeners(): void {
         retryCount: state.retryCount,
         lastFailedPhase: state.lastFailedPhase,
       });
-    }
-  );
+    },
+  });
+  subscriptions.push(statusSub);
 
   // Req 2.2: Listen for phase completed events (log only)
-  const unsubscribePhase = window.electronAPI.onBugAutoExecutionPhaseCompleted?.(
-    (data: { bugPath: string; phase: string }) => {
+  const phaseSub = getVanillaClient().events.onBugAutoExecutionPhaseCompleted.subscribe(undefined, {
+    onData: (rawData: Record<string, unknown>) => {
+      const data = rawData as { bugPath: string; phase: string };
       console.log(`[BugAutoExecutionStore] Phase completed: ${data.phase}`, { bugPath: data.bugPath });
-    }
-  );
+    },
+  });
+  subscriptions.push(phaseSub);
 
   // Req 2.3: Listen for execution completed events
-  const unsubscribeCompleted = window.electronAPI.onBugAutoExecutionCompleted?.(
-    (data: { bugPath: string }) => {
+  const completedSub = getVanillaClient().events.onBugAutoExecutionCompleted.subscribe(undefined, {
+    onData: (rawData: Record<string, unknown>) => {
+      const data = rawData as { bugPath: string };
       useBugAutoExecutionStore.getState().setCompletedState(data.bugPath);
-    }
-  );
+    },
+  });
+  subscriptions.push(completedSub);
 
   // Req 2.4: Listen for error events
-  const unsubscribeError = window.electronAPI.onBugAutoExecutionError?.(
-    (data) => {
+  const errorSub = getVanillaClient().events.onBugAutoExecutionError.subscribe(undefined, {
+    onData: (rawData: Record<string, unknown>) => {
+      const data = rawData as { bugPath: string; error: Record<string, unknown> };
       console.error('[BugAutoExecutionStore] Bug auto-execution error:', data.error);
       // Extract phase from error if available
       const phase = 'phase' in data.error ? (data.error.phase as BugWorkflowPhase | null) : null;
@@ -383,21 +405,21 @@ export function initBugAutoExecutionIpcListeners(): void {
         phase,
         currentState.retryCount
       );
-    }
-  );
+    },
+  });
+  subscriptions.push(errorSub);
 
   // Bug fix: bug-auto-execution-worktree-cwd
   // execute-next-phase is now handled in Main Process (handlers.ts)
   // This ensures worktree cwd is correctly resolved using BugService.getAgentCwd()
   // Renderer no longer needs to execute agents - Main Process handles it
 
-  // Store cleanup functions
-  if (unsubscribeStatus) ipcCleanupFunctions.push(unsubscribeStatus);
-  if (unsubscribePhase) ipcCleanupFunctions.push(unsubscribePhase);
-  if (unsubscribeCompleted) ipcCleanupFunctions.push(unsubscribeCompleted);
-  if (unsubscribeError) ipcCleanupFunctions.push(unsubscribeError);
+  // Store cleanup functions (wrap subscriptions as cleanup functions)
+  subscriptions.forEach((sub) => {
+    ipcCleanupFunctions.push(() => sub.unsubscribe());
+  });
 
-  console.debug('[BugAutoExecutionStore] IPC listeners registered');
+  console.debug('[BugAutoExecutionStore] tRPC Subscription listeners registered');
 }
 
 /**

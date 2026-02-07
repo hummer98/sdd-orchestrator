@@ -6,6 +6,8 @@
 
 import { create } from 'zustand';
 import type { VersionCheckResult } from '../types';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for install operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Version status state for a single project
@@ -69,19 +71,21 @@ export const useVersionStatusStore = create<VersionStatusStore>((set, get) => ({
     });
 
     try {
-      const result = await window.electronAPI.checkCommandsetVersions(projectPath);
+      // trpc-full-migration Task 10.6: Use tRPC for checkCommandsetVersions
+      const result = await getVanillaClient().install.checkCommandsetVersions.query({ projectPath });
+      const typedResult = result as VersionCheckResult;
 
       set((state) => {
         const newStatuses = new Map(state.projectStatuses);
         newStatuses.set(projectPath, {
-          result,
+          result: typedResult,
           isChecking: false,
           lastCheckedAt: new Date().toISOString(),
         });
         return { projectStatuses: newStatuses, isChecking: false };
       });
 
-      return result;
+      return typedResult;
     } catch (error) {
       console.error('[versionStatusStore] Failed to check versions:', error);
 

@@ -9,6 +9,8 @@ import { create } from 'zustand';
 import type { SpecMetadata, SpecJson, SpecPhase } from '../../types';
 import type { SpecListState, SpecListActions, SpecMetadataWithPhase } from './types';
 import { DEFAULT_SPEC_LIST_STATE } from './types';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../../shared/trpc/vanillaClient';
 
 type SpecListStore = SpecListState & SpecListActions;
 
@@ -124,7 +126,8 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
   updateSpecMetadata: async (specId: string, projectPath: string) => {
     try {
       // Re-read specs list
-      const specs = await window.electronAPI.readSpecs(projectPath);
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecs and readSpecJson
+      const specs = await getVanillaClient().file.readSpecs.query({ projectPath });
       set({ specs });
 
       // Also update specJsonMap for the specific spec
@@ -132,7 +135,7 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
       const spec = specs.find((s) => s.name === specId);
       if (spec) {
         try {
-          const specJson = await window.electronAPI.readSpecJson(spec.name);
+          const specJson = await getVanillaClient().file.readSpecJson.query({ specName: spec.name });
           const { specJsonMap } = get();
           const newMap = new Map(specJsonMap);
           newMap.set(specId, specJson);

@@ -75,28 +75,36 @@ export const useMcpStore = create<McpStore>((set) => ({
   },
 
   initialize: async () => {
-    // Skip if already initialized or if electronAPI is not available (Remote UI)
-    if (statusUnsubscribe || typeof window === 'undefined' || !window.electronAPI?.mcpServer) {
+    // Skip if already initialized
+    if (statusUnsubscribe) {
       return;
     }
 
     try {
+      // trpc-full-migration Task 10.6: Use tRPC for MCP status
+      // Dynamic import to avoid bundling electron-trpc in Remote UI
+      const { getVanillaClient } = await import('../trpc/vanillaClient');
+      const client = getVanillaClient();
+
       // Load initial status
-      const status = await window.electronAPI.mcpServer.getStatus();
+      const status = await client.mcp.getStatus.query();
       set({
         isRunning: status.isRunning,
         port: status.port,
         url: status.url,
       });
 
-      // Subscribe to status changes
-      statusUnsubscribe = window.electronAPI.mcpServer.onStatusChanged((newStatus) => {
-        set({
-          isRunning: newStatus.isRunning,
-          port: newStatus.port,
-          url: newStatus.url,
-        });
+      // Subscribe to status changes via tRPC Subscription
+      const sub = client.events.onMcpStatusChanged.subscribe(undefined, {
+        onData: (newStatus) => {
+          set({
+            isRunning: newStatus.isRunning,
+            port: newStatus.port,
+            url: newStatus.url,
+          });
+        },
       });
+      statusUnsubscribe = () => sub.unsubscribe();
     } catch (error) {
       console.error('[mcpStore] Failed to initialize:', error);
     }

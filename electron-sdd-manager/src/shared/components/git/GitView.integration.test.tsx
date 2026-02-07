@@ -60,11 +60,22 @@ vi.mock('@shared/api/ApiClientProvider', () => ({
   useApi: () => mockApiClient,
 }));
 
-// Mock electron API
-const mockOnGitChangesDetected = vi.fn(() => () => {});
-Object.defineProperty(window, 'electronAPI', {
-  value: { onGitChangesDetected: mockOnGitChangesDetected },
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for git change subscriptions
+const mockOnGitChangesDetected = vi.fn().mockReturnValue({ unsubscribe: vi.fn() });
+
+vi.mock('../../trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    events: {
+      onGitChangesDetected: { subscribe: mockOnGitChangesDetected },
+    },
+  }),
+}));
+
+// Set electronTRPC on window to simulate Electron environment
+Object.defineProperty(window, 'electronTRPC', {
+  value: {},
   writable: true,
+  configurable: true,
 });
 
 describe('GitView Integration Tests', () => {
@@ -617,11 +628,11 @@ index abc123..def456 100644
           value: undefined,
         });
 
-        // Capture the callback passed to onGitChangesDetected
-        let gitChangesCallback: ((event: unknown, data: { projectPath: string }) => void) | null = null;
-        mockOnGitChangesDetected.mockImplementation((callback) => {
-          gitChangesCallback = callback;
-          return () => {};
+        // trpc-full-migration Task 11.4: Capture the onData callback from tRPC subscribe
+        let onDataCallback: ((data: { projectPath: string }) => void) | null = null;
+        mockOnGitChangesDetected.mockImplementation((_input: unknown, opts: { onData: (data: { projectPath: string }) => void }) => {
+          onDataCallback = opts.onData;
+          return { unsubscribe: vi.fn() };
         });
 
         render(<GitView workingPath={WORKTREE_PATH} />);
@@ -631,9 +642,9 @@ index abc123..def456 100644
         });
 
         // Simulate git changes detected in worktree
-        if (gitChangesCallback) {
+        if (onDataCallback) {
           await act(async () => {
-            gitChangesCallback!(null, { projectPath: WORKTREE_PATH });
+            onDataCallback!({ projectPath: WORKTREE_PATH });
           });
         }
 
@@ -660,10 +671,11 @@ index abc123..def456 100644
           value: undefined,
         });
 
-        let gitChangesCallback: ((event: unknown, data: { projectPath: string }) => void) | null = null;
-        mockOnGitChangesDetected.mockImplementation((callback) => {
-          gitChangesCallback = callback;
-          return () => {};
+        // trpc-full-migration Task 11.4: Capture the onData callback from tRPC subscribe
+        let onDataCallback: ((data: { projectPath: string }) => void) | null = null;
+        mockOnGitChangesDetected.mockImplementation((_input: unknown, opts: { onData: (data: { projectPath: string }) => void }) => {
+          onDataCallback = opts.onData;
+          return { unsubscribe: vi.fn() };
         });
 
         render(<GitView workingPath={WORKTREE_PATH} />);
@@ -673,9 +685,9 @@ index abc123..def456 100644
         });
 
         // Simulate git changes detected in a DIFFERENT path
-        if (gitChangesCallback) {
+        if (onDataCallback) {
           await act(async () => {
-            gitChangesCallback!(null, { projectPath: '/different/project' });
+            onDataCallback!({ projectPath: '/different/project' });
           });
         }
 

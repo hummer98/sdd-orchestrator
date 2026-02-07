@@ -8,12 +8,14 @@
 
 import { useState } from 'react';
 import { X, Loader2, AlertCircle, GitBranch } from 'lucide-react';
-import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../stores';
+import { useProjectStore, useAgentStore, useWorkflowStore, notify, type AgentInfo } from '../stores';
 import { clsx } from 'clsx';
 // create-spec-dialog-simplify: Task 1.3 - AgentIcon/AgentBranchIconインポート
 import { AgentIcon, AgentBranchIcon } from '@shared/components/ui/AgentIcon';
 // submit-shortcut-key: Task 2.2 - Keyboard shortcut hook
 import { useSubmitShortcut } from '@shared/hooks';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 interface CreateSpecDialogProps {
   isOpen: boolean;
@@ -60,7 +62,14 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
       // Call spec-plan via IPC (uses /kiro:spec-plan based on commandPrefix)
       // spec-worktree-early-creation: Pass worktreeMode to IPC
       // Don't wait for completion - just start the agent and close dialog
-      const agentInfo = await window.electronAPI.executeSpecPlan(currentProject, trimmed, commandPrefix, worktreeMode);
+      // trpc-full-migration Task 5.3: Use tRPC for executeSpecPlan
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.executeSpecPlan.mutate({
+        projectPath: currentProject,
+        description: trimmed,
+        commandPrefix,
+        worktreeMode,
+      }) as unknown as AgentInfo;
 
       // Add agent to store and navigate to project agents panel
       addAgent('', agentInfo);

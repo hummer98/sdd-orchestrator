@@ -6,6 +6,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// trpc-full-migration Task 3.2: Mock tRPC vanilla client for config operations
+const mockVanillaClient = {
+  config: {
+    loadProjectDefaults: { query: vi.fn().mockResolvedValue({ documentReview: { scheme: 'claude-code' } }) },
+    saveProjectDefaults: { mutate: vi.fn().mockResolvedValue(undefined) },
+    getVcsScheme: { query: vi.fn().mockResolvedValue('git') },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { ProjectSettingsDialog } from './ProjectSettingsDialog';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
@@ -26,15 +39,12 @@ describe('ProjectSettingsDialog', () => {
       projectDefaultScheme: undefined,
     });
 
-    // Mock electronAPI
-    window.electronAPI = {
-      ...window.electronAPI,
-      loadProjectDefaults: vi.fn().mockResolvedValue({ documentReview: { scheme: 'claude-code' } }),
-      saveProjectDefaults: vi.fn().mockResolvedValue(undefined),
-      // vcs-scheme-switching: Mock VCS scheme API
-      getVcsScheme: vi.fn().mockResolvedValue('git'),
-      setVcsScheme: vi.fn().mockResolvedValue({ success: true }),
-    };
+    // Reset tRPC mocks to default values
+    mockVanillaClient.config.loadProjectDefaults.query.mockResolvedValue({ documentReview: { scheme: 'claude-code' } });
+    mockVanillaClient.config.saveProjectDefaults.mutate.mockResolvedValue(undefined);
+    mockVanillaClient.config.getVcsScheme.query.mockResolvedValue('git');
+
+    // trpc-full-migration Task 11.4: setVcsScheme now uses tRPC (via VcsSchemeSelector component)
   });
 
   // ============================================================
@@ -101,12 +111,12 @@ describe('ProjectSettingsDialog', () => {
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalledWith('/test/project');
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
       });
     });
 
     it('should display current scheme from project defaults', async () => {
-      window.electronAPI.loadProjectDefaults = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.loadProjectDefaults.query.mockResolvedValue({
         documentReview: { scheme: 'gemini-cli' },
       });
 
@@ -123,7 +133,7 @@ describe('ProjectSettingsDialog', () => {
 
       // Wait for initial load
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       // Click on scheme selector to open dropdown
@@ -155,21 +165,21 @@ describe('ProjectSettingsDialog', () => {
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       const saveButton = screen.getByRole('button', { name: /保存/i });
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(window.electronAPI.saveProjectDefaults).toHaveBeenCalledWith(
-          '/test/project',
-          expect.objectContaining({
+        expect(mockVanillaClient.config.saveProjectDefaults.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          defaults: expect.objectContaining({
             documentReview: expect.objectContaining({
               scheme: expect.any(String),
             }),
-          })
-        );
+          }),
+        });
       });
     });
 
@@ -177,7 +187,7 @@ describe('ProjectSettingsDialog', () => {
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       // Click on scheme selector
@@ -196,12 +206,12 @@ describe('ProjectSettingsDialog', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(window.electronAPI.saveProjectDefaults).toHaveBeenCalledWith(
-          '/test/project',
-          expect.objectContaining({
+        expect(mockVanillaClient.config.saveProjectDefaults.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          defaults: expect.objectContaining({
             documentReview: { scheme: 'debatex' },
-          })
-        );
+          }),
+        });
       });
     });
 
@@ -209,7 +219,7 @@ describe('ProjectSettingsDialog', () => {
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       // Change scheme
@@ -235,7 +245,7 @@ describe('ProjectSettingsDialog', () => {
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       const saveButton = screen.getByRole('button', { name: /保存/i });
@@ -247,12 +257,12 @@ describe('ProjectSettingsDialog', () => {
     });
 
     it('should show error message on save failure', async () => {
-      window.electronAPI.saveProjectDefaults = vi.fn().mockRejectedValue(new Error('Save failed'));
+      mockVanillaClient.config.saveProjectDefaults.mutate.mockRejectedValue(new Error('Save failed'));
 
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       const saveButton = screen.getByRole('button', { name: /保存/i });
@@ -264,14 +274,14 @@ describe('ProjectSettingsDialog', () => {
     });
 
     it('should show loading state while saving', async () => {
-      window.electronAPI.saveProjectDefaults = vi.fn().mockImplementation(
+      mockVanillaClient.config.saveProjectDefaults.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
       );
 
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       const saveButton = screen.getByRole('button', { name: /保存/i });
@@ -300,17 +310,17 @@ describe('ProjectSettingsDialog', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(window.electronAPI.saveProjectDefaults).not.toHaveBeenCalled();
+        expect(mockVanillaClient.config.saveProjectDefaults.mutate).not.toHaveBeenCalled();
       });
     });
 
     it('should handle case when loadProjectDefaults returns undefined', async () => {
-      window.electronAPI.loadProjectDefaults = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.config.loadProjectDefaults.query.mockResolvedValue(undefined);
 
       render(<ProjectSettingsDialog isOpen={true} onClose={mockOnClose} />);
 
       await waitFor(() => {
-        expect(window.electronAPI.loadProjectDefaults).toHaveBeenCalled();
+        expect(mockVanillaClient.config.loadProjectDefaults.query).toHaveBeenCalled();
       });
 
       // Should still render and default to claude-code

@@ -53,3 +53,4 @@ export { useAgentLogSubscription } from './useAgentLogSubscription';
 
 // zustand-agent-selector-hooks: Reactive agent state hooks
 export { useAgentsBySpec, useProjectAgents, useRunningAgentCount } from './useAgentsBySpec';
+

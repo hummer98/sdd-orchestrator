@@ -5,24 +5,28 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act } from '@testing-library/react';
 
-// Mock electronAPI
-const mockElectronAPI = {
-  sshConnect: vi.fn(),
-  sshDisconnect: vi.fn(),
-  getSSHStatus: vi.fn(),
-  getSSHConnectionInfo: vi.fn(),
-  getRecentRemoteProjects: vi.fn(),
-  removeRecentRemoteProject: vi.fn(),
-  onSSHStatusChanged: vi.fn(),
-};
+// Mock tRPC vanillaClient (trpc-full-migration: electronAPI → tRPC)
+const mockSshConnect = vi.fn();
+const mockSshDisconnect = vi.fn();
+const mockSshGetStatus = vi.fn();
+const mockSshGetConnectionInfo = vi.fn();
+const mockSshGetRecentRemoteProjects = vi.fn();
+const mockSshRemoveRecentRemoteProject = vi.fn();
 
-// Install mock before tests
-Object.defineProperty(window, 'electronAPI', {
-  value: mockElectronAPI,
-  writable: true,
-});
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: vi.fn(() => ({
+    misc: {
+      sshConnect: { mutate: mockSshConnect },
+      sshDisconnect: { mutate: mockSshDisconnect },
+      sshGetStatus: { query: mockSshGetStatus },
+      sshGetConnectionInfo: { query: mockSshGetConnectionInfo },
+      sshGetRecentRemoteProjects: { query: mockSshGetRecentRemoteProjects },
+      sshRemoveRecentRemoteProject: { mutate: mockSshRemoveRecentRemoteProject },
+    },
+  })),
+  resetVanillaClient: vi.fn(),
+}));
 
 // Import after mock is set up
 import { useConnectionStore, type ConnectionState } from './connectionStore';
@@ -62,13 +66,13 @@ describe('Connection Store', () => {
 
   describe('connectSSH', () => {
     it('should set loading state when connecting', async () => {
-      mockElectronAPI.sshConnect.mockResolvedValue({ ok: true, value: undefined });
-      mockElectronAPI.getSSHStatus.mockResolvedValue('connected');
-      mockElectronAPI.getSSHConnectionInfo.mockResolvedValue({
+      mockSshConnect.mockResolvedValue({ ok: true, value: undefined });
+      mockSshGetStatus.mockResolvedValue({ connected: true });
+      mockSshGetConnectionInfo.mockResolvedValue({
         host: 'test.com',
         port: 22,
         user: 'testuser',
-        connectedAt: new Date(),
+        connectedAt: new Date().toISOString(),
         bytesTransferred: 0,
       });
 
@@ -82,17 +86,17 @@ describe('Connection Store', () => {
     });
 
     it('should update state on successful connection', async () => {
-      const connectionInfo = {
+      const connectionInfoSerialized = {
         host: 'test.com',
         port: 22,
         user: 'testuser',
-        connectedAt: new Date(),
+        connectedAt: new Date().toISOString(),
         bytesTransferred: 0,
       };
 
-      mockElectronAPI.sshConnect.mockResolvedValue({ ok: true, value: undefined });
-      mockElectronAPI.getSSHStatus.mockResolvedValue('connected');
-      mockElectronAPI.getSSHConnectionInfo.mockResolvedValue(connectionInfo);
+      mockSshConnect.mockResolvedValue({ ok: true, value: undefined });
+      mockSshGetStatus.mockResolvedValue({ connected: true });
+      mockSshGetConnectionInfo.mockResolvedValue(connectionInfoSerialized);
 
       await useConnectionStore.getState().connectSSH('ssh://testuser@test.com/path');
 
@@ -100,12 +104,18 @@ describe('Connection Store', () => {
       expect(state.status).toBe('connected');
       expect(state.projectUri).toBe('ssh://testuser@test.com/path');
       expect(state.projectType).toBe('ssh');
-      expect(state.connectionInfo).toEqual(connectionInfo);
+      expect(state.connectionInfo).toEqual(expect.objectContaining({
+        host: 'test.com',
+        port: 22,
+        user: 'testuser',
+        bytesTransferred: 0,
+      }));
+      expect(state.connectionInfo?.connectedAt).toBeInstanceOf(Date);
       expect(state.error).toBeNull();
     });
 
     it('should update state on connection failure', async () => {
-      mockElectronAPI.sshConnect.mockResolvedValue({
+      mockSshConnect.mockResolvedValue({
         ok: false,
         error: { type: 'AUTH_FAILED', message: 'Authentication failed' },
       });
@@ -135,7 +145,7 @@ describe('Connection Store', () => {
         },
       });
 
-      mockElectronAPI.sshDisconnect.mockResolvedValue(undefined);
+      mockSshDisconnect.mockResolvedValue(undefined);
 
       await useConnectionStore.getState().disconnectSSH();
 
@@ -171,7 +181,7 @@ describe('Connection Store', () => {
         { uri: 'ssh://user@host2.com/path2', displayName: 'host2', lastConnectedAt: '2025-01-02', connectionSuccessful: false },
       ];
 
-      mockElectronAPI.getRecentRemoteProjects.mockResolvedValue(projects);
+      mockSshGetRecentRemoteProjects.mockResolvedValue(projects);
 
       await useConnectionStore.getState().loadRecentRemoteProjects();
 
@@ -187,11 +197,11 @@ describe('Connection Store', () => {
       ];
 
       useConnectionStore.setState({ recentRemoteProjects: projects });
-      mockElectronAPI.removeRecentRemoteProject.mockResolvedValue(undefined);
+      mockSshRemoveRecentRemoteProject.mockResolvedValue(undefined);
 
       await useConnectionStore.getState().removeRecentRemoteProject('ssh://user@host1.com/path1');
 
-      expect(mockElectronAPI.removeRecentRemoteProject).toHaveBeenCalledWith('ssh://user@host1.com/path1');
+      expect(mockSshRemoveRecentRemoteProject).toHaveBeenCalledWith({ uri: 'ssh://user@host1.com/path1' });
       expect(useConnectionStore.getState().recentRemoteProjects).toEqual([
         { uri: 'ssh://user@host2.com/path2', displayName: 'host2', lastConnectedAt: '2025-01-02', connectionSuccessful: true },
       ]);

@@ -42,6 +42,26 @@ vi.mock('./index', () => ({
   createWindow: vi.fn(),
 }));
 
+// Mock globalEventBus (trpc-full-migration: webContents.send → eventBus.emit)
+const mockEmit = vi.fn();
+vi.mock('./trpc/services/globalEventBus', () => ({
+  getGlobalEventBus: vi.fn(() => ({
+    emit: mockEmit,
+    on: vi.fn(),
+    off: vi.fn(),
+  })),
+}));
+
+vi.mock('./trpc/services/eventBus', () => ({
+  EVENT_NAMES: {
+    MENU_OPEN_PROJECT: 'events:menu-open-project',
+    MENU_INSTALL_CLI: 'events:menu-install-cli',
+    MENU_INSTALL_COMMANDSET: 'events:menu-install-commandset',
+    MENU_INSTALL_EXPERIMENTAL_DEBUG: 'events:menu-install-experimental-debug',
+    MENU_INSTALL_EXPERIMENTAL_GEMINI: 'events:menu-install-experimental-gemini',
+  },
+}));
+
 // Import after mocks
 import { createMenu, updateMenu, setMenuProjectPath, updateWindowTitle } from './menu';
 import { getConfigStore } from './services/configStore';
@@ -53,6 +73,7 @@ describe('Menu Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(createWindow).mockClear();
+    mockEmit.mockClear();
 
     mockWindow = {
       webContents: {
@@ -173,7 +194,7 @@ describe('Menu Module', () => {
 
       // Verify createWindow was called
       expect(createWindow).toHaveBeenCalledOnce();
-      expect(mockWindow.webContents!.send).toHaveBeenCalledWith('menu:open-project', '/path/to/project1');
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
     });
 
     it('should not create window if window already exists when opening recent project', () => {
@@ -202,7 +223,7 @@ describe('Menu Module', () => {
 
       // Verify createWindow was NOT called
       expect(createWindow).not.toHaveBeenCalled();
-      expect(mockWindow.webContents!.send).toHaveBeenCalledWith('menu:open-project', '/path/to/project1');
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
     });
 
     it('should wait for window to load before sending event when opening recent project', () => {
@@ -248,8 +269,8 @@ describe('Menu Module', () => {
 
       // Verify window.webContents.once was called to wait for load
       expect(mockLoadingWindow.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function));
-      // Verify send was called after load
-      expect(mockLoadingWindow.webContents.send).toHaveBeenCalledWith('menu:open-project', '/path/to/project1');
+      // Verify eventBus.emit was called after load
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
     });
   });
 
@@ -286,7 +307,7 @@ describe('Menu Module', () => {
         properties: ['openDirectory'],
         title: 'プロジェクトディレクトリを選択',
       });
-      expect(mockWindow.webContents!.send).toHaveBeenCalledWith('menu:open-project', '/selected/project');
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
     });
 
     it('should not create window if window already exists when opening project dialog', async () => {
@@ -354,8 +375,8 @@ describe('Menu Module', () => {
 
       // Verify window.webContents.once was called to wait for load
       expect(mockLoadingWindow.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function));
-      // Verify send was called after load
-      expect(mockLoadingWindow.webContents.send).toHaveBeenCalledWith('menu:open-project', '/selected/project');
+      // Verify eventBus.emit was called after load
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
     });
   });
 
@@ -416,8 +437,8 @@ describe('Menu Module', () => {
       // Trigger the click handler
       installCommandsetItem.click();
 
-      // Verify the correct IPC channel was sent
-      expect(mockWindow.webContents!.send).toHaveBeenCalledWith('menu:install-commandset');
+      // Verify the eventBus was used instead of webContents.send
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-install-commandset', {});
     });
   });
 });

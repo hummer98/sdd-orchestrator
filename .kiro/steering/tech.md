@@ -7,7 +7,7 @@ Electronベースのデスクトップアプリケーション。
 ### electron-sdd-manager
 - **フロントエンド**: React + TypeScript (Vite)
 - **バックエンド**: Node.js (Electron 35)
-- **IPC**: contextBridge + preload
+- **IPC**: tRPC (electron-trpc) + Zod schema validation
 
 ## Core Technologies
 
@@ -91,10 +91,18 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 
 ## Key Technical Decisions
 
-### IPC設計パターン
-- `channels.ts`: チャンネル名定義（型安全）
-- `handlers.ts`: IPCハンドラ実装
-- preload経由でrendererに公開
+### tRPC IPC設計パターン
+- **ルーター構成**: `src/main/trpc/routers/` に15のドメイン別ルーター（system, config, project, file, bug, spec, agent, autoExecution, git, events, mcp, schedule, cloudflare, install, misc）
+- **Context DI**: `ctx.services.*` 経由でサービスインスタンスを注入。テスト時はモックサービスを注入可能
+- **Zodバリデーション**: 全プロシージャに入力/出力スキーマを定義
+- **Subscriptions**: `events` ルーターで37のリアルタイムイベントをSubscription経由で配信（EventBusパターン）
+- **vanillaClient**: Zustand storeなどReact外からの呼び出しは `getVanillaClient()` シングルトンを使用
+
+**新しいAPI追加の手順**:
+1. Zodスキーマ定義（入力/出力）
+2. ルーターにプロシージャ追加（`t.procedure.input(schema).query/mutation`）
+3. `createTestContext` でテスト作成
+4. Renderer側で `trpc.{router}.{procedure}.useQuery/useMutation()` または `getVanillaClient().{router}.{procedure}.query/mutate()` で呼び出し
 
 ### spec.json updated_at 更新ルール
 
@@ -124,9 +132,8 @@ await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete', { skipTimes
 Electronアプリはブラウザからアクセス可能なRemote UIを提供する。
 
 **アーキテクチャ概要**:
-- **API抽象化層**: `ApiClient`インタフェースで通信方式を透過化
-  - `IpcApiClient`: Electron IPC経由（preload + contextBridge）
-  - `WebSocketApiClient`: WebSocket経由（Remote UI）
+- **Electron通信**: tRPC (electron-trpc) でMain/Renderer間の型安全IPC通信
+- **Remote UI通信**: `WebSocketApiClient` でWebSocket経由のAPI呼び出し
 - **共有コンポーネント**: `src/shared/`でElectron版とRemote UI版で85%以上のコード共有
 - **PlatformProvider**: プラットフォーム固有機能の有無を条件分岐
 
@@ -151,7 +158,7 @@ Electronアプリはブラウザからアクセス可能なRemote UIを提供す
 | 観点 | Desktop UI | Remote UI |
 |------|------------|-----------|
 | アクセス | Electronウィンドウ | ブラウザ（localhost / Cloudflare Tunnel） |
-| 通信 | IpcApiClient | WebSocketApiClient |
+| 通信 | tRPC (electron-trpc) | WebSocketApiClient |
 | Provider | ApiClientProvider + PlatformProvider | 同左 |
 | レスポンシブ | - | MobileLayout / DesktopLayout |
 | 機能範囲 | フル機能 | 閲覧・実行（設定変更は制限あり） |

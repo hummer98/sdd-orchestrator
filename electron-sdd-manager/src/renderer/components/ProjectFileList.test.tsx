@@ -23,6 +23,7 @@ describe('ProjectFileList', () => {
     files: {
       claudeMd: null,
       steeringFiles: [],
+      docsTree: [],
       isLoading: false,
       error: null,
     } as ProjectFilesState,
@@ -41,6 +42,7 @@ describe('ProjectFileList', () => {
           exists: true,
         },
         steeringFiles: [],
+        docsTree: [],
         isLoading: false,
         error: null,
       };
@@ -67,6 +69,7 @@ describe('ProjectFileList', () => {
           { relativePath: '.kiro/steering/product.md', fileName: 'product.md', group: 'steering', exists: true },
           { relativePath: '.kiro/steering/tech.md', fileName: 'tech.md', group: 'steering', exists: true },
         ],
+        docsTree: [],
         isLoading: false,
         error: null,
       };
@@ -82,7 +85,9 @@ describe('ProjectFileList', () => {
       render(<ProjectFileList {...defaultProps} />);
 
       expect(screen.getByText('Steering Files')).toBeInTheDocument();
-      expect(screen.getByText('ファイルなし')).toBeInTheDocument();
+      // Both Steering and Docs sections show "ファイルなし" when empty
+      const noFileMessages = screen.getAllByText('ファイルなし');
+      expect(noFileMessages.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -97,6 +102,7 @@ describe('ProjectFileList', () => {
           exists: true,
         },
         steeringFiles: [],
+        docsTree: [],
         isLoading: false,
         error: null,
       };
@@ -120,6 +126,7 @@ describe('ProjectFileList', () => {
           exists: true,
         },
         steeringFiles: [],
+        docsTree: [],
         isLoading: false,
         error: null,
       };
@@ -143,6 +150,7 @@ describe('ProjectFileList', () => {
       const files: ProjectFilesState = {
         claudeMd: null,
         steeringFiles: [],
+        docsTree: [],
         isLoading: true,
         error: null,
       };
@@ -156,6 +164,7 @@ describe('ProjectFileList', () => {
       const files: ProjectFilesState = {
         claudeMd: null,
         steeringFiles: [],
+        docsTree: [],
         isLoading: false,
         error: 'Failed to load files',
       };

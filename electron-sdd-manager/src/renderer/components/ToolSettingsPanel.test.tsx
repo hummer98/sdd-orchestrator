@@ -12,7 +12,7 @@ import { ToolSettingsPanel } from './ToolSettingsPanel';
 import type {
   ToolStatus,
   ToolResolutionResult,
-} from '../types/electron';
+} from '../../shared/types/toolPath';
 
 // Mock toolPathStore
 const mockFetchStatuses = vi.fn();

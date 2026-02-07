@@ -1,5 +1,6 @@
 /**
  * tRPC Instance and Context initialization tests
+ * Task 1.1: Context DI対応に更新
  * Requirements: 2.1, 2.4
  * Verifies: initTRPC.create, router, publicProcedure, Context
  */
@@ -28,9 +29,11 @@ describe('tRPC Context (context.ts)', () => {
     expect(typeof createContext).toBe('function');
   });
 
-  it('should return an empty context object', async () => {
+  it('should return a context object with services property', async () => {
     const { createContext } = await import('../context');
     const ctx = createContext();
-    expect(ctx).toEqual({});
+    expect(ctx).toHaveProperty('services');
+    expect(ctx.services).toBeDefined();
+    expect(typeof ctx.services.getCurrentProjectPath).toBe('function');
   });
 });

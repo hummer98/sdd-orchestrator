@@ -19,14 +19,16 @@ vi.mock('@uiw/react-md-editor', () => ({
   ),
 }));
 
-// Mock window.electronAPI
-const mockElectronAPI = {
-  readArtifact: vi.fn().mockResolvedValue('# Test Content'),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-};
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for getArtifactPath
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    file: {
+      getArtifactPath: { query: vi.fn().mockResolvedValue('/mocked/path') },
+    },
+  }),
+}));
 
-// @ts-expect-error - Mock window.electronAPI
-window.electronAPI = mockElectronAPI;
+// trpc-full-migration Task 11.4: readArtifact/writeFile now use tRPC (editorStore)
 
 /** Spec artifact tabs */
 const SPEC_TABS: TabInfo[] = [

@@ -1,13 +1,18 @@
 /**
  * useAutoExecution Hook
- * Provides auto-execution functionality via IPC to Main Process
+ * Provides auto-execution functionality via tRPC to Main Process
  * Requirements: 3.1, 3.4, 3.5
  *
  * auto-execution-projectpath-fix Task 4.5:
  * Requirements: 4.3 - Renderer側store/hookでprojectPath取得・送信
+ *
+ * trpc-full-migration Task 7.2: Replace window.electronAPI with tRPC vanilla client
+ * Requirements: 6.2 - AutoExecution全チャンネル移行
  */
 
 import { useCallback, useState } from 'react';
+// trpc-full-migration Task 7.2: Use tRPC vanilla client for autoExecution operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import type { WorkflowPhase } from '../types/workflow';
 import type { AutoExecutionStatus, AutoExecutionPermissions } from '../types';
 
@@ -142,8 +147,9 @@ export function useAutoExecution(): UseAutoExecutionReturn {
   // ============================================================
 
   /**
-   * Start auto-execution via IPC
+   * Start auto-execution via tRPC
    * auto-execution-projectpath-fix Task 4.5: Added projectPath parameter
+   * trpc-full-migration Task 7.2: Use tRPC vanilla client
    */
   const startAutoExecution = useCallback(
     async (
@@ -153,18 +159,21 @@ export function useAutoExecution(): UseAutoExecutionReturn {
       options: AutoExecutionOptions
     ): Promise<Result<AutoExecutionState, AutoExecutionError>> => {
       try {
-        const result = await window.electronAPI.autoExecutionStart({
+        const result = await getVanillaClient().autoExecution.start.mutate({
           projectPath,
           specPath,
           specId,
           options,
         });
 
-        if (result.ok) {
-          setState(result.value);
+        // tRPC infers generic types from router; cast to concrete types
+        const typedResult = result as Result<AutoExecutionState, AutoExecutionError>;
+
+        if (typedResult.ok) {
+          setState(typedResult.value);
         }
 
-        return result;
+        return typedResult;
       } catch (error) {
         return {
           ok: false,
@@ -180,22 +189,26 @@ export function useAutoExecution(): UseAutoExecutionReturn {
   );
 
   /**
-   * Stop auto-execution via IPC
+   * Stop auto-execution via tRPC
+   * trpc-full-migration Task 7.2: Use tRPC vanilla client
    */
   const stopAutoExecution = useCallback(
     async (specPath: string): Promise<Result<void, AutoExecutionError>> => {
       try {
-        const result = await window.electronAPI.autoExecutionStop({ specPath });
+        const result = await getVanillaClient().autoExecution.stop.mutate({ specPath });
 
-        if (result.ok) {
-          // Refresh status after stop
-          const statusResult = await window.electronAPI.autoExecutionStatus({ specPath });
+        // tRPC infers generic types from router; cast to concrete types
+        const typedResult = result as Result<void, AutoExecutionError>;
+
+        if (typedResult.ok) {
+          // Refresh status after stop via tRPC
+          const statusResult = await getVanillaClient().autoExecution.getStatus.query({ specPath });
           if (statusResult) {
-            setState(statusResult);
+            setState(statusResult as unknown as AutoExecutionState);
           }
         }
 
-        return result;
+        return typedResult;
       } catch (error) {
         return {
           ok: false,
@@ -210,7 +223,8 @@ export function useAutoExecution(): UseAutoExecutionReturn {
   );
 
   /**
-   * Retry from a specific phase via IPC
+   * Retry from a specific phase via tRPC
+   * trpc-full-migration Task 7.2: Use tRPC vanilla client
    */
   const retryFromPhase = useCallback(
     async (
@@ -218,16 +232,19 @@ export function useAutoExecution(): UseAutoExecutionReturn {
       phase: WorkflowPhase
     ): Promise<Result<AutoExecutionState, AutoExecutionError>> => {
       try {
-        const result = await window.electronAPI.autoExecutionRetryFrom({
+        const result = await getVanillaClient().autoExecution.retryFrom.mutate({
           specPath,
           phase,
         });
 
-        if (result.ok) {
-          setState(result.value);
+        // tRPC infers generic types from router; cast to concrete types
+        const typedResult = result as Result<AutoExecutionState, AutoExecutionError>;
+
+        if (typedResult.ok) {
+          setState(typedResult.value);
         }
 
-        return result;
+        return typedResult;
       } catch (error) {
         return {
           ok: false,
@@ -242,12 +259,13 @@ export function useAutoExecution(): UseAutoExecutionReturn {
   );
 
   /**
-   * Refresh status from Main Process
+   * Refresh status from Main Process via tRPC
+   * trpc-full-migration Task 7.2: Use tRPC vanilla client
    */
   const refreshStatus = useCallback(async (specPath: string): Promise<void> => {
     try {
-      const result = await window.electronAPI.autoExecutionStatus({ specPath });
-      setState(result);
+      const result = await getVanillaClient().autoExecution.getStatus.query({ specPath });
+      setState(result as AutoExecutionState | null);
     } catch {
       // Ignore errors
     }

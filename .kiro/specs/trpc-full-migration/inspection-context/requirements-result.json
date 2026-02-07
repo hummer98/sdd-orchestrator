@@ -1,0 +1,690 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-07T00:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: GET_APP_VERSION, GET_PLATFORM, getNodeEnv, getAppPath all migrated to system router procedures with Zod schemas",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/system.ts:78 (getAppVersion)",
+        "electron-sdd-manager/src/main/trpc/routers/system.ts:88 (getPlatform)",
+        "electron-sdd-manager/src/main/trpc/routers/system.ts:108 (getNodeEnv)",
+        "electron-sdd-manager/src/main/trpc/routers/system.ts:98 (getAppPath)"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: Zod schemas defined for all system router procedures (appVersionOutputSchema, platformOutputSchema, nodeEnvOutputSchema, appPathOutputSchema)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/system.ts:24-33"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: Renderer-side calls replaced with tRPC hooks via useSystemInfo hook",
+      "evidence": [
+        "electron-sdd-manager/src/shared/hooks/useSystemInfo.ts:37 (trpc.system.getAppVersion.useQuery)"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: Integration tests created for system router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/system-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.5: Old IPC handlers deleted - src/main/ipc/ directory no longer exists",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)",
+        "electron-sdd-manager/src/main/trpc/__tests__/ipc-cleanup.test.ts:23-26"
+      ]
+    },
+    {
+      "id": "req-1.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.6: preload/index.ts reduced to minimal tRPC-only import (13 lines, only imports './trpc')",
+      "evidence": [
+        "electron-sdd-manager/src/preload/index.ts (13 lines, only 'import ./trpc')"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: config router exists at src/main/trpc/routers/config.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:155 (configRouter definition)"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: All config domains migrated - Recent Projects (2), HangThreshold (2), LayoutConfig (3), SkipPermissions (2), ProjectDefaults (2), Profile (1), EngineConfig (3), ToolPath (3), VcsScheme (2), RemoteUiAutoStart (2) = 22 procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:164 (getRecentProjects)",
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:177 (addRecentProject)",
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:441 (getVcsScheme)",
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:462 (setVcsScheme)"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: Zod schemas defined for all config procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/config.ts:28-149 (extensive Zod schemas)"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: All 22 procedures' legacy handlers deleted (configHandlers.ts, projectHandlers.ts portions, handlers.ts VCS portions) - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.5: Integration tests created for config router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/config-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: project router exists at src/main/trpc/routers/project.ts with 9 procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:68 (projectRouter definition)"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: file router exists at src/main/trpc/routers/file.ts with 11 procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/file.ts:125 (fileRouter definition)"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: All project/file domains migrated - selectProject, showOpenDialog, validateKiroDirectory, file read/write, path resolution",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:80 (selectProject)",
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:95 (showOpenDialog)",
+        "electron-sdd-manager/src/main/trpc/routers/file.ts:135 (readSpecs)",
+        "electron-sdd-manager/src/main/trpc/routers/file.ts:401 (readFileContent)"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: Zod schemas defined for all project/file procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:27-62 (project schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/file.ts:32-95 (file schemas)"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.5: Legacy projectHandlers.ts and fileHandlers.ts deleted - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-3.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.6: Integration tests created for project and file routers",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/file-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: spec router (27 procedures) and bug router (12 procedures) exist",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/spec.ts:281 (specRouter)",
+        "electron-sdd-manager/src/main/trpc/routers/bug.ts:86 (bugRouter)"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: Bug router not separate from req 4.1",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/bug.ts:86 (bugRouter with readBugs, readBugDetail, executeBugCreate, phaseUpdate, worktree operations)"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: All Spec/Bug domains migrated - Spec CRUD, execution, approval, inspection, Bug CRUD, execution, worktree operations",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/spec.ts:290 (create)",
+        "electron-sdd-manager/src/main/trpc/routers/spec.ts:591 (execute unified)",
+        "electron-sdd-manager/src/main/trpc/routers/bug.ts:208 (executeBugCreate)",
+        "electron-sdd-manager/src/main/trpc/routers/bug.ts:296 (worktreeCreate)"
+      ]
+    },
+    {
+      "id": "req-4.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.4: Zod schemas defined for all spec/bug procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/spec.ts:35-255 (spec schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/bug.ts:32-65 (bug schemas)"
+      ]
+    },
+    {
+      "id": "req-4.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.5: Legacy specHandlers.ts, bugHandlers.ts, worktree handlers deleted - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-4.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.6: Integration tests created for spec and bug routers",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/spec-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/bug-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: agent router exists with 11 procedures (start, stop, resume, delete, getAgents, getAllAgents, sendInput, getLogs, getRunningAgentCounts, checkFolderExists, deleteFolder)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:84 (agentRouter)"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: All Agent domains migrated - start/stop/resume, state query, logs, delete, folder management",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:95 (start)",
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:130 (stop)",
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:152 (resume)",
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:262 (getLogs)"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: Zod schemas defined for all agent procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/agent.ts:32-78 (agent schemas)"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.4: Legacy agentHandlers.ts deleted - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-5.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.5: Integration tests created for agent router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/agent-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: autoExecution router exists with 14 procedures (8 spec + 6 bug auto execution)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:172 (autoExecutionRouter)"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: All Auto Execution domains migrated - Spec and Bug auto execution control, status, retry",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:184 (start)",
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:402 (bugStart)",
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:254 (getStatus)",
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:455 (bugGetStatus)"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: Zod schemas defined for all auto execution procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/autoExecution.ts:40-127 (schemas)"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.4: Legacy autoExecutionHandlers.ts, bugAutoExecutionHandlers.ts deleted - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-6.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.5: Integration tests created for autoExecution router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/autoExecution-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-7.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.1: git router exists with 13 procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:102 (gitRouter)"
+      ]
+    },
+    {
+      "id": "req-7.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.2: All Git/Worktree domains migrated - getStatus, getDiff, watchChanges, worktree CRUD, convertToWorktree, rebase",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:112 (getStatus)",
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:136 (getDiff)",
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:221 (worktreeCreate)",
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:383 (convertToWorktree)"
+      ]
+    },
+    {
+      "id": "req-7.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.3: Zod schemas defined for all git procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/git.ts:35-96 (schemas)"
+      ]
+    },
+    {
+      "id": "req-7.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.4: Legacy gitHandlers.ts, worktree handlers deleted - ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-7.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.5: Integration tests created for git router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/git-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-8.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.1: tRPC Subscriptions correctly set up using observable() + EventBus pattern with 37 subscriptions in events router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:118-138 (createEventSubscription helper)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:144 (eventsRouter)"
+      ]
+    },
+    {
+      "id": "req-8.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.2: All event notifications migrated - Agent (6), Spec/Bug (3), Auto Execution (11), Server/Tunnel (3), File (2), Schedule (1), MCP (1), Metrics (1), SSH (1), Menu (8)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:150 (onAgentOutput)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:184 (onSpecsChanged)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:203 (onAutoExecutionStatusChanged)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:285 (onGitChangesDetected)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:335 (onMenuOpenProject)"
+      ]
+    },
+    {
+      "id": "req-8.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.3: ipcRenderer.on listeners fully removed from Renderer code - zero matches",
+      "evidence": [
+        "Grep 'ipcRenderer.on' in renderer/ returned: No files found"
+      ]
+    },
+    {
+      "id": "req-8.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.4: Renderer uses Subscription hooks via getVanillaClient().events.on* subscriptions",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStoreAdapter.ts:209 (getVanillaClient().events.onAgentStatusChange.subscribe)",
+        "electron-sdd-manager/src/renderer/services/specWatcherService.ts:72"
+      ]
+    },
+    {
+      "id": "req-8.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.5: Integration tests created for events router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-9.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.1: All remaining domains migrated - Cloudflare (10), Install (20), MCP (6), Schedule (9), SSH (7), Remote Access (4), Metrics (4), Logging/Misc (15+)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/cloudflare.ts:125 (cloudflareRouter, 10 procedures)",
+        "electron-sdd-manager/src/main/trpc/routers/install.ts:86 (installRouter, 20 procedures)",
+        "electron-sdd-manager/src/main/trpc/routers/mcp.ts:72 (mcpRouter, 6 procedures)",
+        "electron-sdd-manager/src/main/trpc/routers/schedule.ts:109 (scheduleRouter, 9 procedures)",
+        "electron-sdd-manager/src/main/trpc/routers/misc.ts:104 (miscRouter, 22 procedures including SSH 7, Remote 4, Metrics 4, etc.)"
+      ]
+    },
+    {
+      "id": "req-9.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.2: Zod schemas defined for all misc domain procedures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/cloudflare.ts:31-105 (schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/install.ts:28-80 (schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/mcp.ts:26-66 (schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/schedule.ts:38-103 (schemas)",
+        "electron-sdd-manager/src/main/trpc/routers/misc.ts:27-98 (schemas)"
+      ]
+    },
+    {
+      "id": "req-9.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.3: All legacy handler files deleted - entire ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)"
+      ]
+    },
+    {
+      "id": "req-9.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.4: Integration tests created for all misc domain routers",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/cloudflare-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/install-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/mcp-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/schedule-router.test.ts",
+        "electron-sdd-manager/src/main/trpc/__tests__/misc-router.test.ts"
+      ]
+    },
+    {
+      "id": "req-10.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.1: preload/index.ts minimal - only imports './trpc' (13 lines total). No electronAPI exposed.",
+      "evidence": [
+        "electron-sdd-manager/src/preload/index.ts:12 (import './trpc' only)"
+      ]
+    },
+    {
+      "id": "req-10.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.2: src/main/ipc/channels.ts deleted - entire ipc/ directory removed",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)",
+        "electron-sdd-manager/src/main/trpc/__tests__/ipc-cleanup.test.ts:28-29"
+      ]
+    },
+    {
+      "id": "req-10.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.3: src/main/ipc/handlers.ts and all domain handler files deleted",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/ (directory does not exist)",
+        "electron-sdd-manager/src/main/trpc/__tests__/ipc-cleanup.test.ts:31-33"
+      ]
+    },
+    {
+      "id": "req-10.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.4: electron.d.ts legacy API type definition deleted",
+      "evidence": [
+        "Glob '**/electron.d.ts' returned: No files found",
+        "electron-sdd-manager/src/main/trpc/__tests__/electron-dts-cleanup.test.ts:24-25"
+      ]
+    },
+    {
+      "id": "req-10.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.5: contextBridge.exposeInMainWorld('electronAPI',...) deleted - only found in test verifying deletion",
+      "evidence": [
+        "electron-sdd-manager/src/preload/index.test.ts:39-44 (test verifying absence)",
+        "electron-sdd-manager/src/preload/index.ts (no contextBridge usage)"
+      ]
+    },
+    {
+      "id": "req-10.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.6: window.electronAPI references only in comments (migration documentation), not in executable code. Verified by dedicated test.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/window-electronapi-cleanup.test.ts (dedicated cleanup verification test)",
+        "All 31 occurrences in renderer/ are in comments only"
+      ]
+    },
+    {
+      "id": "req-10.7",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 10.7: TypeScript compilation status cannot be verified in this agent run (no build execution). However, tasks.md marks Task 11.5 as completed with TypeScript/test pass.",
+      "evidence": [
+        "tasks.md Task 11.5 marked [x] as completed"
+      ]
+    },
+    {
+      "id": "req-10.8",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 10.8: All integration tests pass status cannot be verified in this agent run (no test execution). However, tasks.md marks Task 11.5 as completed.",
+      "evidence": [
+        "tasks.md Task 11.5 marked [x] as completed"
+      ]
+    },
+    {
+      "id": "req-11.1",
+      "category": "requirements-coverage",
+      "status": "FAIL",
+      "severity": "Critical",
+      "details": "Requirement 11.1: E2E tests and human test checklists not created. Tasks 12.1 and 12.2 were explicitly skipped due to E2E infrastructure issues.",
+      "evidence": [
+        "tasks.md: '12.1 ... (skipped: E2E issues)'",
+        "tasks.md: '12.2 ... (skipped: same reason)'"
+      ]
+    },
+    {
+      "id": "req-11.2",
+      "category": "requirements-coverage",
+      "status": "FAIL",
+      "severity": "Critical",
+      "details": "Requirement 11.2: E2E test automation not done - Task 12.1 was skipped",
+      "evidence": [
+        "tasks.md: '12.1 ... (skipped)'"
+      ]
+    },
+    {
+      "id": "req-11.3",
+      "category": "requirements-coverage",
+      "status": "FAIL",
+      "severity": "Critical",
+      "details": "Requirement 11.3: Human test checklist documentation not created - Task 12.2 was skipped",
+      "evidence": [
+        "tasks.md: '12.2 ... (skipped)'"
+      ]
+    },
+    {
+      "id": "req-12.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 12.1: .kiro/steering/tech.md updated with tRPC IPC design patterns section listing 15 domain routers, Context DI, Subscriptions, vanillaClient pattern",
+      "evidence": [
+        ".kiro/steering/tech.md:94 ('tRPC IPC設計パターン')",
+        ".kiro/steering/tech.md:95 ('15のドメイン別ルーター')"
+      ]
+    },
+    {
+      "id": "req-12.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 12.2: .kiro/steering/structure.md updated with tRPC directory structure, tRPC Pattern section",
+      "evidence": [
+        ".kiro/steering/structure.md:20 ('trpc/ tRPCルーター・サービス')",
+        ".kiro/steering/structure.md:314 ('tRPC Pattern')"
+      ]
+    },
+    {
+      "id": "req-12.3",
+      "category": "requirements-coverage",
+      "status": "FAIL",
+      "severity": "Critical",
+      "details": "Requirement 12.3: docs/future-concepts/trpc-migration-plan.md does not exist - Task 13.3 was skipped because the file was already deleted/moved",
+      "evidence": [
+        "Glob '**/trpc-migration-plan.md' returned: No files found",
+        "tasks.md Task 13.3 skipped note"
+      ]
+    },
+    {
+      "id": "req-12.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 12.4: New developer tRPC API addition guide documented in tech.md",
+      "evidence": [
+        ".kiro/steering/tech.md:101-105 ('新しいAPI追加の手順': Zod schema -> Router -> Test -> Renderer integration)"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 57,
+    "passed": 50,
+    "failed": 4,
+    "partial": 2,
+    "critical": 4,
+    "major": 2,
+    "minor": 0,
+    "info": 50
+  }
+}

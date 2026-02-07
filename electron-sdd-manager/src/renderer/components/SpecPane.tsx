@@ -10,6 +10,8 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSpecStore } from '../stores';
 import { useProjectStore } from '../stores/projectStore';
+// trpc-full-migration Task 11.4: Use tRPC vanilla client for layout config
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import {
   AgentListPanel,
   ResizeHandle,
@@ -53,14 +55,15 @@ export function SpecPane({
   const [viewMode, setViewMode] = useState<'artifacts' | 'git-diff'>('artifacts');
 
   // Handle view mode change with layout persistence
+  // trpc-full-migration Task 11.4: Use tRPC vanilla client
   const handleViewModeChange = useCallback(async (mode: 'artifacts' | 'git-diff') => {
     setViewMode(mode);
     // Save to layout config (fire-and-forget for UX)
     // Read current config first, then update viewMode
     try {
-      const currentConfig = await window.electronAPI?.loadLayoutConfig?.();
+      const currentConfig = await getVanillaClient().config.loadLayoutConfig.query();
       if (currentConfig) {
-        await window.electronAPI?.saveLayoutConfig?.({ ...currentConfig, viewMode: mode });
+        await getVanillaClient().config.saveLayoutConfig.mutate({ config: { ...currentConfig, viewMode: mode } });
       }
     } catch (err) {
       console.error('[SpecPane] Failed to save viewMode:', err);
@@ -68,10 +71,11 @@ export function SpecPane({
   }, []);
 
   // Load view mode from layout config on mount
+  // trpc-full-migration Task 11.4: Use tRPC vanilla client
   useEffect(() => {
     const loadViewMode = async () => {
       try {
-        const config = await window.electronAPI?.loadLayoutConfig?.();
+        const config = await getVanillaClient().config.loadLayoutConfig.query();
         if (config?.viewMode) {
           setViewMode(config.viewMode);
         }

@@ -9,16 +9,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { VcsSchemeSelector } from './VcsSchemeSelector';
 import type { VcsScheme } from '../../shared/types/worktree';
 
-// Mock window.electronAPI
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for VCS operations
 const mockCheckJjAvailability = vi.fn();
 const mockSetVcsScheme = vi.fn();
 
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    install: {
+      checkJjAvailability: { query: mockCheckJjAvailability },
+    },
+    config: {
+      setVcsScheme: { mutate: mockSetVcsScheme },
+    },
+  }),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
-  (global.window as unknown as { electronAPI: unknown }).electronAPI = {
-    checkJjAvailability: mockCheckJjAvailability,
-    setVcsScheme: mockSetVcsScheme,
-  };
 });
 
 describe('VcsSchemeSelector', () => {

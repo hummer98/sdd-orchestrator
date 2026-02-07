@@ -8,6 +8,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { VcsScheme } from '../../shared/types/worktree';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // ============================================================
 // VCS Scheme options configuration
@@ -131,7 +133,8 @@ export function VcsSchemeSelector({
       setError(null);
 
       try {
-        const jjCheck = await window.electronAPI.checkJjAvailability();
+        // trpc-full-migration Task 10.6: Use tRPC for checkJjAvailability
+        const jjCheck = await getVanillaClient().install.checkJjAvailability.query();
 
         if (!jjCheck.available) {
           // Requirement 2.3: エラーメッセージ日本語
@@ -141,7 +144,8 @@ export function VcsSchemeSelector({
         }
 
         // jj is available, try to set the scheme
-        const result = await window.electronAPI.setVcsScheme(projectPath, selectedScheme);
+        // trpc-full-migration Task 3.2: Use tRPC for setVcsScheme
+        const result = await getVanillaClient().config.setVcsScheme.mutate({ projectPath, scheme: selectedScheme });
 
         if (!result.success) {
           setError(result.error || 'VCSスキームの設定に失敗しました');

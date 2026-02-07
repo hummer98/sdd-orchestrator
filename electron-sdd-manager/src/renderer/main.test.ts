@@ -2,6 +2,9 @@
  * Test for main.tsx renderer entry point
  * agent-error-notification Task 7.2
  * Requirements: 3.3, 3.5, 5.3
+ *
+ * trpc-full-migration Task 11.4: Updated to reflect tRPC Subscription migration.
+ * Agent start error listener now uses tRPC Subscription instead of window.electronAPI.
  */
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
@@ -17,6 +20,7 @@ describe('main.tsx', () => {
   // ===========================================================================
   // agent-error-notification Task 7.2: Error notification listener
   // Requirements: 3.3, 3.5, 5.3
+  // trpc-full-migration Task 9.2/11.4: Migrated to tRPC Subscription
   // ===========================================================================
 
   describe('Agent start error notification', () => {
@@ -26,10 +30,23 @@ describe('main.tsx', () => {
       expect(content).toMatch(/import.*getAgentStartErrorMessage.*from/);
     });
 
-    it('should register onAgentStartError listener via window.electronAPI', () => {
+    it('should use tRPC Subscription for onAgentStartError', () => {
       const content = readFileSync(mainPath, 'utf-8');
-      // Should call window.electronAPI.onAgentStartError
-      expect(content).toContain('window.electronAPI.onAgentStartError');
+      // Task 9.2: Uses tRPC subscription instead of window.electronAPI
+      expect(content).toContain('events.onAgentStartError.subscribe');
+    });
+
+    it('should not use window.electronAPI for agent start error', () => {
+      const content = readFileSync(mainPath, 'utf-8');
+      // Ensure no executable window.electronAPI references
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {
+          continue;
+        }
+        expect(line).not.toContain('window.electronAPI');
+      }
     });
 
     it('should call notify.error to display Toast', () => {

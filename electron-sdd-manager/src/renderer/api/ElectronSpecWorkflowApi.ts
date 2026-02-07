@@ -26,6 +26,8 @@ import type {
 } from '@shared/api/types';
 import type { EventLogEntry, EventLogError } from '@shared/types';
 import { DEFAULT_LLM_ENGINE } from '@shared/registry';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // =============================================================================
 // ElectronSpecWorkflowApi Implementation
@@ -57,7 +59,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async executePhase(specId: string, phase: WorkflowPhase): Promise<Result<AgentInfo, ApiError>> {
     try {
-      const result = await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute
+      const result = await getVanillaClient().spec.execute.mutate({
         type: phase as 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy',
         specId,
         featureName: specId,
@@ -88,7 +91,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async updateApproval(specId: string, phase: Phase, approved: boolean): Promise<Result<void, ApiError>> {
     try {
-      await window.electronAPI.updateApproval(specId, phase, approved);
+      // trpc-full-migration Task 5.3: Use tRPC for updateApproval
+      await getVanillaClient().spec.updateApproval.mutate({ specName: specId, phase, approved });
       return { ok: true, value: undefined };
     } catch (error) {
       return {
@@ -103,7 +107,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async executeDocumentReview(specId: string): Promise<Result<AgentInfo, ApiError>> {
     try {
-      const result = await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (document-review)
+      const result = await getVanillaClient().spec.execute.mutate({
         type: 'document-review',
         specId,
         featureName: specId,
@@ -134,7 +139,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async executeInspection(specId: string): Promise<Result<AgentInfo, ApiError>> {
     try {
-      const result = await window.electronAPI.execute({
+      // trpc-full-migration Task 5.3: Use tRPC for execute (inspection)
+      const result = await getVanillaClient().spec.execute.mutate({
         type: 'inspection',
         specId,
         featureName: specId,
@@ -163,6 +169,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
     }
   }
 
+  // trpc-full-migration Task 7.2: Use tRPC vanilla client for autoExecution operations
   async startAutoExecution(
     projectPath: string,
     specPath: string,
@@ -170,9 +177,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, ApiError>> {
     try {
-      // Electron版では autoExecutionStart を使用
-      // auto-execution-projectpath-fix: projectPathを明示的に渡す
-      const result = await window.electronAPI.autoExecutionStart({
+      const result = await getVanillaClient().autoExecution.start.mutate({
         projectPath,
         specPath: specPath || specId,
         specId,
@@ -186,24 +191,28 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
             inspection: options.permissions.inspection ?? true,
             deploy: options.permissions.deploy ?? false,
           },
-          // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
         },
       });
-      if (result.ok) {
+      // tRPC infers generic types from router; cast to concrete types
+      const typedResult = result as
+        | { ok: true; value: { status: string; currentPhase?: string | null; executedPhases: string[] } }
+        | { ok: false; error: { type: string; message?: string } };
+
+      if (typedResult.ok) {
         return {
           ok: true,
           value: {
-            status: result.value.status,
-            currentPhase: result.value.currentPhase ?? undefined,
-            completedPhases: result.value.executedPhases as WorkflowPhase[],
+            status: typedResult.value.status as AutoExecutionState['status'],
+            currentPhase: (typedResult.value.currentPhase ?? undefined) as WorkflowPhase | undefined,
+            completedPhases: typedResult.value.executedPhases as WorkflowPhase[],
           },
         };
       }
       return {
         ok: false,
         error: {
-          type: result.error.type,
-          message: 'message' in result.error ? result.error.message ?? 'Unknown error' : 'Unknown error',
+          type: typedResult.error.type,
+          message: typedResult.error.message ?? 'Unknown error',
         },
       };
     } catch (error) {
@@ -217,18 +226,23 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
     }
   }
 
+  // trpc-full-migration Task 7.2: Use tRPC vanilla client for autoExecution stop
   async stopAutoExecution(specPath: string): Promise<Result<void, ApiError>> {
     try {
-      // Electron版では autoExecutionStop を使用
-      const result = await window.electronAPI.autoExecutionStop({ specPath });
-      if (result.ok) {
+      const result = await getVanillaClient().autoExecution.stop.mutate({ specPath });
+      // tRPC infers generic types from router; cast to concrete types
+      const typedResult = result as
+        | { ok: true; value?: unknown }
+        | { ok: false; error: { type: string; message?: string } };
+
+      if (typedResult.ok) {
         return { ok: true, value: undefined };
       }
       return {
         ok: false,
         error: {
-          type: result.error.type,
-          message: 'message' in result.error ? result.error.message ?? 'Unknown error' : 'Unknown error',
+          type: typedResult.error.type,
+          message: typedResult.error.message ?? 'Unknown error',
         },
       };
     } catch (error) {
@@ -245,7 +259,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
   async getSpecDetail(specId: string): Promise<Result<SpecDetail, ApiError>> {
     try {
       // Electron版では readSpecJson と readArtifact を組み合わせる
-      const specJson = await window.electronAPI.readSpecJson(specId);
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
+      const specJson = await getVanillaClient().file.readSpecJson.query({ specName: specId });
 
       // 基本的なSpecDetailを構築
       const specDetail: SpecDetail = {
@@ -266,7 +281,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
       // アーティファクトを読み込み
       try {
-        const requirementsContent = await window.electronAPI.readArtifact(specId, 'requirements.md');
+        // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+        const requirementsContent = await getVanillaClient().file.readArtifact.query({ name: specId, filename: 'requirements.md', entityType: 'spec' });
         specDetail.artifacts.requirements = {
           exists: true,
           updatedAt: specJson.updated_at ?? null,
@@ -277,7 +293,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       }
 
       try {
-        const designContent = await window.electronAPI.readArtifact(specId, 'design.md');
+        const designContent = await getVanillaClient().file.readArtifact.query({ name: specId, filename: 'design.md', entityType: 'spec' });
         specDetail.artifacts.design = {
           exists: true,
           updatedAt: specJson.updated_at ?? null,
@@ -288,7 +304,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       }
 
       try {
-        const tasksContent = await window.electronAPI.readArtifact(specId, 'tasks.md');
+        const tasksContent = await getVanillaClient().file.readArtifact.query({ name: specId, filename: 'tasks.md', entityType: 'spec' });
         specDetail.artifacts.tasks = {
           exists: true,
           updatedAt: specJson.updated_at ?? null,
@@ -316,7 +332,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async updateSpecJson(specId: string, updates: Record<string, unknown>): Promise<Result<void, ApiError>> {
     try {
-      await window.electronAPI.updateSpecJson(specId, updates);
+      // trpc-full-migration Task 5.3: Use tRPC for updateSpecJson
+      await getVanillaClient().spec.updateSpecJson.mutate({ specName: specId, updates });
       return { ok: true, value: undefined };
     } catch (error) {
       return {
@@ -331,8 +348,10 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async getEventLog(specId: string): Promise<Result<EventLogEntry[], EventLogError>> {
     try {
-      const result = await window.electronAPI.getEventLog(specId);
-      return result;
+      // trpc-full-migration Task 5.3: Use tRPC for getEventLog
+      // trpc-full-migration: Cast result (tRPC infers wider string type for error.type)
+      const result = await getVanillaClient().spec.getEventLog.query({ specId });
+      return result as Result<EventLogEntry[], EventLogError>;
     } catch (error) {
       return {
         ok: false,
@@ -350,12 +369,14 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
     commandPrefix?: string
   ): Promise<Result<{ agentId: string }, ImplStartError>> {
     try {
-      const result = await window.electronAPI.startImpl(
-        specId,
+      // trpc-full-migration Task 5.3: Use tRPC for startImpl
+      // trpc-full-migration: Cast result (tRPC infers wider string type for error.type)
+      const result = await getVanillaClient().spec.startImpl.mutate({
+        specName: specId,
         featureName,
-        commandPrefix ?? this.commandPrefix
-      );
-      return result;
+        commandPrefix: commandPrefix ?? this.commandPrefix,
+      });
+      return result as Result<{ agentId: string }, ImplStartError>;
     } catch (error) {
       return {
         ok: false,
@@ -369,7 +390,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
 
   async parseTasksForParallel(specName: string): Promise<ParseResult | null> {
     try {
-      return await window.electronAPI.parseTasksForParallel(specName);
+      // trpc-full-migration Task 5.3: Use tRPC for parseTasksForParallel
+      return await getVanillaClient().spec.parseTasksForParallel.query({ specName });
     } catch (error) {
       console.error('Failed to parse tasks for parallel:', error);
       return null;
@@ -407,7 +429,8 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
         executeParams.taskId = options.taskId;
       }
 
-      const result = await window.electronAPI.execute(executeParams as Parameters<typeof window.electronAPI.execute>[0]);
+      // trpc-full-migration Task 5.3: Use tRPC for execute (with options)
+      const result = await getVanillaClient().spec.execute.mutate(executeParams as any);
 
       return {
         ok: true,

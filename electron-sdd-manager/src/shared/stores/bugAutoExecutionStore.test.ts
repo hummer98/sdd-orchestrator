@@ -3,7 +3,53 @@
  * TDD: Testing bug auto-execution per-bug state management
  * bug-auto-execution-per-bug-state: Tasks 1.1, 1.2, 2.1, 2.2, 2.3, 3.1, 8.1, 8.2
  * Requirements: 1.1-1.4, 2.1-2.5, 3.1-3.4
+ *
+ * trpc-full-migration Task 7.2: Replace window.electronAPI with tRPC vanilla client
+ * Requirements: 6.2 - AutoExecution全チャンネル移行
  */
+
+// trpc-full-migration Task 7.2: Mock tRPC vanilla client for bugAutoExecution operations
+// Task 9.2: Added events namespace for tRPC Subscription mocks
+type SubscribeOptions = { onData?: (data: unknown) => void; onError?: (err: unknown) => void; onComplete?: () => void };
+const eventSubscribers: Record<string, ((data: unknown) => void)[]> = {};
+const mockUnsubscribeFns: Record<string, ReturnType<typeof vi.fn>[]> = {};
+
+function createMockSubscription(eventName: string) {
+  return {
+    subscribe: (_input: unknown, opts?: SubscribeOptions) => {
+      if (!eventSubscribers[eventName]) eventSubscribers[eventName] = [];
+      if (!mockUnsubscribeFns[eventName]) mockUnsubscribeFns[eventName] = [];
+      if (opts?.onData) eventSubscribers[eventName].push(opts.onData);
+      const unsub = vi.fn();
+      mockUnsubscribeFns[eventName].push(unsub);
+      return { unsubscribe: unsub };
+    },
+  };
+}
+
+function emitMockEvent(eventName: string, data: unknown) {
+  (eventSubscribers[eventName] || []).forEach((cb) => cb(data));
+}
+
+function clearEventSubscribers() {
+  Object.keys(eventSubscribers).forEach((key) => delete eventSubscribers[key]);
+  Object.keys(mockUnsubscribeFns).forEach((key) => delete mockUnsubscribeFns[key]);
+}
+
+const mockVanillaClient = {
+  autoExecution: {
+    bugGetStatus: { query: vi.fn() },
+  },
+  events: {
+    onBugAutoExecutionStatusChanged: createMockSubscription('onBugAutoExecutionStatusChanged'),
+    onBugAutoExecutionPhaseCompleted: createMockSubscription('onBugAutoExecutionPhaseCompleted'),
+    onBugAutoExecutionCompleted: createMockSubscription('onBugAutoExecutionCompleted'),
+    onBugAutoExecutionError: createMockSubscription('onBugAutoExecutionError'),
+  },
+};
+vi.mock('../trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
@@ -237,18 +283,14 @@ describe('useBugAutoExecutionStore', () => {
     });
   });
 
-  describe('fetchBugAutoExecutionState (Req 3.1, 3.2, 3.3, 3.4)', () => {
+  // trpc-full-migration Task 7.2: tRPC integration tests
+  describe('fetchBugAutoExecutionState via tRPC (Req 3.1, 3.2, 3.3, 3.4, Task 7.2)', () => {
     beforeEach(() => {
-      // Mock window.electronAPI
-      (global as unknown as { window: { electronAPI: unknown } }).window = {
-        electronAPI: {
-          bugAutoExecutionStatus: vi.fn(),
-        },
-      };
+      vi.clearAllMocks();
     });
 
-    it('should update store with fetched state', async () => {
-      vi.mocked(window.electronAPI.bugAutoExecutionStatus).mockResolvedValue({
+    it('should update store with fetched state via tRPC', async () => {
+      mockVanillaClient.autoExecution.bugGetStatus.query.mockResolvedValue({
         bugPath: TEST_BUG_PATH,
         bugName: 'test-bug',
         status: 'running',
@@ -269,8 +311,8 @@ describe('useBugAutoExecutionStore', () => {
       expect(runtime.currentAutoPhase).toBe('verify');
     });
 
-    it('should set default state when Main Process returns null (Req 3.3)', async () => {
-      vi.mocked(window.electronAPI.bugAutoExecutionStatus).mockResolvedValue(null);
+    it('should set default state when tRPC returns null (Req 3.3)', async () => {
+      mockVanillaClient.autoExecution.bugGetStatus.query.mockResolvedValue(null);
 
       await useBugAutoExecutionStore.getState().fetchBugAutoExecutionState(TEST_BUG_PATH);
 
@@ -278,16 +320,16 @@ describe('useBugAutoExecutionStore', () => {
       expect(runtime).toEqual(DEFAULT_BUG_AUTO_EXECUTION_RUNTIME);
     });
 
-    it('should call bugAutoExecutionStatus API with correct bugPath (Req 3.4)', async () => {
-      vi.mocked(window.electronAPI.bugAutoExecutionStatus).mockResolvedValue(null);
+    it('should call tRPC bugGetStatus with correct bugPath (Req 3.4)', async () => {
+      mockVanillaClient.autoExecution.bugGetStatus.query.mockResolvedValue(null);
 
       await useBugAutoExecutionStore.getState().fetchBugAutoExecutionState(TEST_BUG_PATH);
 
-      expect(window.electronAPI.bugAutoExecutionStatus).toHaveBeenCalledWith({ bugPath: TEST_BUG_PATH });
+      expect(mockVanillaClient.autoExecution.bugGetStatus.query).toHaveBeenCalledWith({ bugPath: TEST_BUG_PATH });
     });
 
-    it('should handle API errors gracefully and set default state', async () => {
-      vi.mocked(window.electronAPI.bugAutoExecutionStatus).mockRejectedValue(new Error('IPC error'));
+    it('should handle tRPC errors gracefully and set default state', async () => {
+      mockVanillaClient.autoExecution.bugGetStatus.query.mockRejectedValue(new Error('tRPC error'));
 
       await useBugAutoExecutionStore.getState().fetchBugAutoExecutionState(TEST_BUG_PATH);
 
@@ -384,70 +426,16 @@ describe('useBugAutoExecutionStore - ApiClient abstraction (Task 6.2)', () => {
   });
 });
 
-describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
-  // Store callbacks registered via mock electronAPI
-  let statusChangedCallback: ((data: { bugPath: string; state: unknown }) => void) | null = null;
-  let phaseCompletedCallback: ((data: { bugPath: string; phase: string }) => void) | null = null;
-  let completedCallback: ((data: { bugPath: string }) => void) | null = null;
-  let errorCallback: ((data: { bugPath: string; error: { type: string; message?: string; phase?: string } }) => void) | null = null;
-  // Bug fix: bug-auto-execution-execute-phase-missing
-  let executePhaseCallback: ((data: { bugPath: string; phase: string; bugName: string }) => void) | null = null;
-
-  // Mock unsubscribe functions
-  const mockUnsubscribeStatus = vi.fn();
-  const mockUnsubscribePhase = vi.fn();
-  const mockUnsubscribeCompleted = vi.fn();
-  const mockUnsubscribeError = vi.fn();
-  const mockUnsubscribeExecutePhase = vi.fn();
-
+// Task 9.2: IPC Listeners migrated to tRPC Subscriptions
+describe('IPC Listeners for Bug Auto-Execution State Sync (tRPC Subscription)', () => {
   beforeEach(() => {
     // Reset store state
     useBugAutoExecutionStore.setState({
       bugAutoExecutionRuntimeMap: new Map(),
     });
 
-    // Reset callbacks
-    statusChangedCallback = null;
-    phaseCompletedCallback = null;
-    completedCallback = null;
-    executePhaseCallback = null;
-    errorCallback = null;
-
-    // Reset mocks
-    mockUnsubscribeStatus.mockClear();
-    mockUnsubscribeExecutePhase.mockClear();
-    mockUnsubscribePhase.mockClear();
-    mockUnsubscribeCompleted.mockClear();
-    mockUnsubscribeError.mockClear();
-
-    // Mock window.electronAPI
-    (global as unknown as { window: { electronAPI: unknown } }).window = {
-      electronAPI: {
-        onBugAutoExecutionStatusChanged: vi.fn((callback) => {
-          statusChangedCallback = callback;
-          return mockUnsubscribeStatus;
-        }),
-        onBugAutoExecutionPhaseCompleted: vi.fn((callback) => {
-          phaseCompletedCallback = callback;
-          return mockUnsubscribePhase;
-        }),
-        onBugAutoExecutionCompleted: vi.fn((callback) => {
-          completedCallback = callback;
-          return mockUnsubscribeCompleted;
-        }),
-        onBugAutoExecutionError: vi.fn((callback) => {
-          errorCallback = callback;
-          return mockUnsubscribeError;
-        }),
-        // Bug fix: bug-auto-execution-execute-phase-missing
-        onBugAutoExecutionExecutePhase: vi.fn((callback) => {
-          executePhaseCallback = callback;
-          return mockUnsubscribeExecutePhase;
-        }),
-        startAgent: vi.fn().mockResolvedValue({ agentId: 'test-agent-id' }),
-        bugAutoExecutionStatus: vi.fn(),
-      },
-    };
+    // Clear event subscribers
+    clearEventSubscribers();
   });
 
   afterEach(() => {
@@ -456,47 +444,51 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
   });
 
   describe('initBugAutoExecutionIpcListeners (Req 2.5)', () => {
-    it('should register all IPC event listeners', () => {
+    it('should subscribe to all tRPC event subscriptions', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionStatusChanged, 'subscribe');
+      const phaseSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionPhaseCompleted, 'subscribe');
+      const completedSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionCompleted, 'subscribe');
+      const errorSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionError, 'subscribe');
+
       initBugAutoExecutionIpcListeners();
 
-      expect(window.electronAPI.onBugAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
-      expect(window.electronAPI.onBugAutoExecutionPhaseCompleted).toHaveBeenCalledTimes(1);
-      expect(window.electronAPI.onBugAutoExecutionCompleted).toHaveBeenCalledTimes(1);
-      expect(window.electronAPI.onBugAutoExecutionError).toHaveBeenCalledTimes(1);
-      // Bug fix: bug-auto-execution-worktree-cwd
-      // execute-next-phase is now handled in Main Process (handlers.ts)
-      // Renderer no longer registers onBugAutoExecutionExecutePhase listener
+      expect(statusSpy).toHaveBeenCalledTimes(1);
+      expect(phaseSpy).toHaveBeenCalledTimes(1);
+      expect(completedSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should not register duplicate listeners on second call (Req 2.5)', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionStatusChanged, 'subscribe');
+
       initBugAutoExecutionIpcListeners();
       initBugAutoExecutionIpcListeners();
 
       // Should only be called once due to duplicate prevention
-      expect(window.electronAPI.onBugAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
+      expect(statusSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('cleanupBugAutoExecutionIpcListeners', () => {
-    it('should call unsubscribe functions for all listeners', () => {
+    it('should call unsubscribe on all subscriptions', () => {
       initBugAutoExecutionIpcListeners();
       cleanupBugAutoExecutionIpcListeners();
 
-      expect(mockUnsubscribeStatus).toHaveBeenCalledTimes(1);
-      expect(mockUnsubscribePhase).toHaveBeenCalledTimes(1);
-      expect(mockUnsubscribeCompleted).toHaveBeenCalledTimes(1);
-      expect(mockUnsubscribeError).toHaveBeenCalledTimes(1);
-      // Bug fix: bug-auto-execution-worktree-cwd
-      // execute-next-phase is now handled in Main Process (handlers.ts)
-      // No cleanup needed for onBugAutoExecutionExecutePhase
+      // All unsubscribe functions should have been called
+      const allUnsubs = Object.values(mockUnsubscribeFns).flat();
+      expect(allUnsubs.length).toBeGreaterThanOrEqual(4);
+      allUnsubs.forEach((unsub) => expect(unsub).toHaveBeenCalled());
     });
 
     it('should allow re-registration after cleanup', () => {
+      const statusSpy = vi.spyOn(mockVanillaClient.events.onBugAutoExecutionStatusChanged, 'subscribe');
+
       initBugAutoExecutionIpcListeners();
       cleanupBugAutoExecutionIpcListeners();
+      clearEventSubscribers();
       initBugAutoExecutionIpcListeners();
 
-      expect(window.electronAPI.onBugAutoExecutionStatusChanged).toHaveBeenCalledTimes(2);
+      expect(statusSpy).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -504,8 +496,8 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
     it('should update store when status changed event is received (Req 2.1)', () => {
       initBugAutoExecutionIpcListeners();
 
-      // Simulate IPC event from Main Process
-      statusChangedCallback?.({
+      // Simulate tRPC Subscription event
+      emitMockEvent('onBugAutoExecutionStatusChanged', {
         bugPath: TEST_BUG_PATH,
         state: {
           bugPath: TEST_BUG_PATH,
@@ -531,7 +523,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       initBugAutoExecutionIpcListeners();
 
-      phaseCompletedCallback?.({
+      emitMockEvent('onBugAutoExecutionPhaseCompleted', {
         bugPath: TEST_BUG_PATH,
         phase: 'fix',
       });
@@ -549,7 +541,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       initBugAutoExecutionIpcListeners();
 
       // First set to running
-      statusChangedCallback?.({
+      emitMockEvent('onBugAutoExecutionStatusChanged', {
         bugPath: TEST_BUG_PATH,
         state: {
           bugPath: TEST_BUG_PATH,
@@ -566,7 +558,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       });
 
       // Then complete
-      completedCallback?.({ bugPath: TEST_BUG_PATH });
+      emitMockEvent('onBugAutoExecutionCompleted', { bugPath: TEST_BUG_PATH });
 
       const runtime = useBugAutoExecutionStore.getState().getBugAutoExecutionRuntime(TEST_BUG_PATH);
       expect(runtime.isAutoExecuting).toBe(false);
@@ -577,7 +569,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       initBugAutoExecutionIpcListeners();
 
       // First set to running
-      statusChangedCallback?.({
+      emitMockEvent('onBugAutoExecutionStatusChanged', {
         bugPath: TEST_BUG_PATH,
         state: {
           bugPath: TEST_BUG_PATH,
@@ -594,7 +586,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       });
 
       // Then error
-      errorCallback?.({
+      emitMockEvent('onBugAutoExecutionError', {
         bugPath: TEST_BUG_PATH,
         error: { type: 'PHASE_EXECUTION_FAILED', phase: 'fix' },
       });
@@ -609,7 +601,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       initBugAutoExecutionIpcListeners();
 
       // Start bug-a
-      statusChangedCallback?.({
+      emitMockEvent('onBugAutoExecutionStatusChanged', {
         bugPath: TEST_BUG_PATH,
         state: {
           bugPath: TEST_BUG_PATH,
@@ -626,7 +618,7 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       });
 
       // Start bug-b
-      statusChangedCallback?.({
+      emitMockEvent('onBugAutoExecutionStatusChanged', {
         bugPath: TEST_BUG_PATH_2,
         state: {
           bugPath: TEST_BUG_PATH_2,
@@ -651,10 +643,5 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(runtime2.isAutoExecuting).toBe(true);
       expect(runtime2.currentAutoPhase).toBe('fix');
     });
-
-    // Bug fix: bug-auto-execution-worktree-cwd
-    // execute-next-phase is now handled in Main Process (handlers.ts)
-    // Tests for execute phase event handling have been removed
-    // Main Process handles worktree cwd resolution via BugService.getAgentCwd()
   });
 });

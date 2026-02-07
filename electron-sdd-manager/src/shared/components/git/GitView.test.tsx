@@ -52,16 +52,22 @@ vi.mock('@shared/api/ApiClientProvider', () => ({
   useApi: () => mockApiClient,
 }));
 
-// Mock electron API for git:changes-detected event
-const mockOnGitChangesDetected = vi.fn(() => () => {});
-const mockElectronAPI = {
-  onGitChangesDetected: mockOnGitChangesDetected,
-};
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for git change subscriptions
+const mockOnGitChangesDetected = vi.fn().mockReturnValue({ unsubscribe: vi.fn() });
 
-// Set up window.electronAPI
-Object.defineProperty(window, 'electronAPI', {
-  value: mockElectronAPI,
+vi.mock('../../trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    events: {
+      onGitChangesDetected: { subscribe: mockOnGitChangesDetected },
+    },
+  }),
+}));
+
+// Set electronTRPC on window to simulate Electron environment
+Object.defineProperty(window, 'electronTRPC', {
+  value: {},
   writable: true,
+  configurable: true,
 });
 
 describe('GitView Component (Shared)', () => {
@@ -182,11 +188,11 @@ describe('GitView Component (Shared)', () => {
         value: undefined,
       });
 
-      // Capture the callback passed to onGitChangesDetected
-      let gitChangesCallback: ((event: unknown, data: { projectPath: string }) => void) | null = null;
-      mockOnGitChangesDetected.mockImplementation((callback) => {
-        gitChangesCallback = callback;
-        return () => {};
+      // trpc-full-migration Task 11.4: Capture the onData callback from tRPC subscribe
+      let onDataCallback: ((data: { projectPath: string }) => void) | null = null;
+      mockOnGitChangesDetected.mockImplementation((_input: unknown, opts: { onData: (data: { projectPath: string }) => void }) => {
+        onDataCallback = opts.onData;
+        return { unsubscribe: vi.fn() };
       });
 
       render(<GitView workingPath={worktreePath} />);
@@ -198,7 +204,7 @@ describe('GitView Component (Shared)', () => {
       // Simulate git changes for the worktree path
       vi.mocked(mockApiClient.getGitStatus).mockClear();
       await act(async () => {
-        gitChangesCallback!(null, { projectPath: worktreePath });
+        onDataCallback!({ projectPath: worktreePath });
       });
 
       // Should refresh because the path matches
@@ -207,7 +213,7 @@ describe('GitView Component (Shared)', () => {
       // Simulate git changes for a different path
       vi.mocked(mockApiClient.getGitStatus).mockClear();
       await act(async () => {
-        gitChangesCallback!(null, { projectPath: '/some/other/path' });
+        onDataCallback!({ projectPath: '/some/other/path' });
       });
 
       // Should NOT refresh because the path doesn't match

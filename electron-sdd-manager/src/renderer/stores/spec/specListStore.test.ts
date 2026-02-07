@@ -6,8 +6,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSpecListStore } from './specListStore';
 import type { SpecMetadata, SpecJson } from '../../types';
+
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
+const mockVanillaClient = {
+  file: {
+    readSpecs: { query: vi.fn() },
+    readSpecJson: { query: vi.fn() },
+  },
+};
+vi.mock('../../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
+import { useSpecListStore } from './specListStore';
 
 /**
  * spec-path-ssot-refactor: SpecMetadata now only contains name field
@@ -226,8 +238,9 @@ describe('useSpecListStore', () => {
   describe('updateSpecMetadata (Req 1.6)', () => {
     it('should refresh single spec metadata in list', async () => {
       // spec-metadata-ssot-refactor: SpecMetadata no longer has phase, mock just returns name/path
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
+      // trpc-full-migration Task 4.3: Use tRPC mocks
+      mockVanillaClient.file.readSpecs.query.mockResolvedValue(mockSpecs);
+      mockVanillaClient.file.readSpecJson.query.mockResolvedValue({
         ...mockSpecJsons['feature-a'],
         phase: 'tasks-generated',
       });
@@ -236,8 +249,8 @@ describe('useSpecListStore', () => {
 
       await useSpecListStore.getState().updateSpecMetadata('feature-a', '/project');
 
-      expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalled();
+      expect(mockVanillaClient.file.readSpecs.query).toHaveBeenCalledWith({ projectPath: '/project' });
+      expect(mockVanillaClient.file.readSpecJson.query).toHaveBeenCalled();
       const state = useSpecListStore.getState();
       // spec-metadata-ssot-refactor: phase is now in specJsonMap, not in specs
       const specJson = state.specJsonMap.get('feature-a');

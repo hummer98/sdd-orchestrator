@@ -5,8 +5,33 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SpecWatcherService } from './specWatcherService';
 import type { SpecSyncService } from './specSyncService';
+
+// trpc-full-migration Task 5.3: Mock tRPC vanilla client for stopSpecsWatcher
+// Task 9.2: Added events namespace for tRPC Subscription mocks
+type SubscribeOptions = { onData?: (data: unknown) => void; onError?: (err: unknown) => void; onComplete?: () => void };
+let onSpecsChangedSubscribeCallback: ((data: unknown) => void) | null = null;
+let latestUnsubscribeMock: ReturnType<typeof vi.fn> = vi.fn();
+
+const mockVanillaClient = {
+  spec: {
+    stopSpecsWatcher: { mutate: vi.fn() },
+  },
+  events: {
+    onSpecsChanged: {
+      subscribe: (_input: unknown, opts?: SubscribeOptions) => {
+        onSpecsChangedSubscribeCallback = opts?.onData ?? null;
+        latestUnsubscribeMock = vi.fn();
+        return { unsubscribe: latestUnsubscribeMock };
+      },
+    },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
+import { SpecWatcherService } from './specWatcherService';
 
 const mockSpec = {
   name: 'feature-a',
@@ -32,7 +57,6 @@ describe('SpecWatcherService', () => {
   let mockGetSelectedSpec: ReturnType<typeof vi.fn>;
   let mockUpdateSpecMetadata: ReturnType<typeof vi.fn>;
   let mockReloadSpecs: ReturnType<typeof vi.fn>;
-  let onSpecsChangedCallback: ((event: { specId: string; path: string; type?: string }) => void) | null = null;
   let cleanupFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -47,13 +71,10 @@ describe('SpecWatcherService', () => {
     mockUpdateSpecMetadata = vi.fn().mockResolvedValue(undefined);
     mockReloadSpecs = vi.fn().mockResolvedValue(undefined);
     cleanupFn = vi.fn();
-    onSpecsChangedCallback = null;
+    onSpecsChangedSubscribeCallback = null;
 
-    window.electronAPI.onSpecsChanged = vi.fn().mockImplementation((callback) => {
-      onSpecsChangedCallback = callback;
-      return cleanupFn;
-    });
-    window.electronAPI.stopSpecsWatcher = vi.fn().mockResolvedValue(undefined);
+    // trpc-full-migration Task 5.3: stopSpecsWatcher via tRPC
+    mockVanillaClient.spec.stopSpecsWatcher.mutate.mockResolvedValue(undefined);
 
     service = new SpecWatcherService();
     vi.clearAllMocks();
@@ -88,22 +109,22 @@ describe('SpecWatcherService', () => {
       });
     });
 
-    it('should register onSpecsChanged listener', async () => {
+    // Task 9.2: Now uses tRPC Subscription instead of window.electronAPI.onSpecsChanged
+    it('should subscribe to onSpecsChanged via tRPC', async () => {
       await service.startWatching();
 
-      expect(window.electronAPI.onSpecsChanged).toHaveBeenCalled();
-      expect(onSpecsChangedCallback).toBeTruthy();
+      expect(onSpecsChangedSubscribeCallback).toBeTruthy();
       expect(service.isWatching).toBe(true);
     });
 
-    it('should clean up existing listener before registering new one', async () => {
+    // Task 9.2: Cleanup now calls unsubscribe() on the tRPC subscription
+    it('should clean up existing subscription before registering new one', async () => {
       await service.startWatching();
-      const firstCleanupFn = cleanupFn;
+      const firstUnsubscribe = latestUnsubscribeMock;
 
-      cleanupFn = vi.fn();
       await service.startWatching();
 
-      expect(firstCleanupFn).toHaveBeenCalled();
+      expect(firstUnsubscribe).toHaveBeenCalled();
     });
   });
 
@@ -117,12 +138,14 @@ describe('SpecWatcherService', () => {
       });
     });
 
-    it('should call cleanup function and stop watcher', async () => {
+    // Task 9.2: Cleanup now calls unsubscribe() on the tRPC subscription
+    it('should call unsubscribe and stop watcher', async () => {
       await service.startWatching();
+      const unsubMock = latestUnsubscribeMock;
       await service.stopWatching();
 
-      expect(cleanupFn).toHaveBeenCalled();
-      expect(window.electronAPI.stopSpecsWatcher).toHaveBeenCalled();
+      expect(unsubMock).toHaveBeenCalled();
+      expect(mockVanillaClient.spec.stopSpecsWatcher.mutate).toHaveBeenCalled();
       expect(service.isWatching).toBe(false);
     });
 
@@ -147,7 +170,7 @@ describe('SpecWatcherService', () => {
 
     describe('spec.json changes (Req 4.4)', () => {
       it('should call syncService.updateSpecJson for selected spec', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
         });
@@ -160,7 +183,7 @@ describe('SpecWatcherService', () => {
 
     describe('artifact changes (Req 4.5)', () => {
       it('should call syncService.updateArtifact for requirements.md', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/requirements.md',
         });
@@ -171,7 +194,7 @@ describe('SpecWatcherService', () => {
       });
 
       it('should call syncService.updateArtifact for design.md', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/design.md',
         });
@@ -182,7 +205,7 @@ describe('SpecWatcherService', () => {
       });
 
       it('should call syncService.updateArtifact for research.md', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/research.md',
         });
@@ -195,7 +218,7 @@ describe('SpecWatcherService', () => {
 
     describe('tasks.md changes (Req 4.6)', () => {
       it('should call both updateArtifact and syncTaskProgress', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/tasks.md',
         });
@@ -209,7 +232,7 @@ describe('SpecWatcherService', () => {
 
     describe('document-review-*.md changes (Req 4.7)', () => {
       it('should call syncService.syncDocumentReviewState', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/document-review-requirements.md',
         });
@@ -222,7 +245,7 @@ describe('SpecWatcherService', () => {
 
     describe('inspection-*.md changes (Req 4.8)', () => {
       it('should call syncService.syncInspectionState', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/inspection-1.md',
         });
@@ -237,7 +260,7 @@ describe('SpecWatcherService', () => {
       it('should only call updateSpecMetadata for non-selected spec', async () => {
         mockGetSelectedSpec.mockReturnValue(mockSpec);
 
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-b', // Different from selected 'feature-a'
           path: '/project/.kiro/specs/feature-b/spec.json',
         });
@@ -252,7 +275,7 @@ describe('SpecWatcherService', () => {
 
     describe('unknown file types', () => {
       it('should call updateSpecJson as fallback for unknown files', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/unknown-file.txt',
         });
@@ -265,7 +288,7 @@ describe('SpecWatcherService', () => {
 
     describe('empty specId', () => {
       it('should ignore events with empty specId', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: '',
           path: '/project/.kiro/specs/unknown/spec.json',
         });
@@ -282,7 +305,7 @@ describe('SpecWatcherService', () => {
       it('should only call updateSpecMetadata when no spec is selected', async () => {
         mockGetSelectedSpec.mockReturnValue(null);
 
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
         });
@@ -297,7 +320,7 @@ describe('SpecWatcherService', () => {
     // spec-worktree-early-creation: Tests for addDir/unlinkDir events
     describe('directory add/remove events', () => {
       it('should call reloadSpecs on addDir event', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'new-feature',
           path: '/project/.kiro/specs/new-feature',
           type: 'addDir',
@@ -311,7 +334,7 @@ describe('SpecWatcherService', () => {
       });
 
       it('should call reloadSpecs on unlinkDir event', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'deleted-feature',
           path: '/project/.kiro/specs/deleted-feature',
           type: 'unlinkDir',
@@ -325,7 +348,7 @@ describe('SpecWatcherService', () => {
       });
 
       it('should not call reloadSpecs for other event types', async () => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
           type: 'change',

@@ -12,6 +12,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { SpecMetadata, SpecJson, AutoExecutionStatus } from '../../types';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../../shared/trpc/vanillaClient';
 import type { WorkflowPhase } from '../../types/workflow';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
@@ -228,7 +230,8 @@ export function initSpecStoreFacade(): void {
 
       try {
         // Fetch updated specs list from main process
-        const specs = await window.electronAPI.readSpecs(projectPath);
+        // trpc-full-migration Task 4.3: Use tRPC for readSpecs and readSpecJson
+        const specs = await getVanillaClient().file.readSpecs.query({ projectPath });
         useSpecListStore.getState().setSpecs(specs);
 
         // Also update specJsonMap for each spec
@@ -236,7 +239,7 @@ export function initSpecStoreFacade(): void {
         const specJsonMap: Record<string, SpecJson> = {};
         for (const spec of specs) {
           try {
-            const specJson = await window.electronAPI.readSpecJson(spec.name);
+            const specJson = await getVanillaClient().file.readSpecJson.query({ specName: spec.name });
             if (specJson) {
               specJsonMap[spec.name] = specJson;
             }
@@ -392,9 +395,10 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
       // when the agent starts. We just call the IPC here.
       // execute-method-unification: Task 5.2 - Use unified execute API
       try {
+        // trpc-full-migration Task 5.3: Use tRPC for execute
         if (phase === 'impl' && taskId) {
           // Use unified execute API for impl phase
-          await window.electronAPI.execute({
+          await getVanillaClient().spec.execute.mutate({
             type: 'impl',
             specId,
             featureName,
@@ -403,7 +407,7 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
         } else {
           // Use unified execute API for other phases
           // Cast phase to the appropriate type (requirements, design, tasks)
-          await window.electronAPI.execute({
+          await getVanillaClient().spec.execute.mutate({
             type: phase as 'requirements' | 'design' | 'tasks',
             specId,
             featureName,

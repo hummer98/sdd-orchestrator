@@ -3,15 +3,18 @@
  *
  * This component provides the ApiClient instance to the React component tree.
  * It supports:
- * - Auto-selection between IpcApiClient and WebSocketApiClient based on environment
+ * - Auto-selection of WebSocketApiClient for Remote UI
  * - Manual client injection for testing
+ * - Electron environment uses tRPC directly (no ApiClient needed for most operations)
+ *
+ * trpc-full-migration Task 11.4: Legacy IPC client removed; Electron uses tRPC directly.
+ * ApiClientProvider is now only needed for Remote UI (WebSocketApiClient).
  *
  * Design Decision: DD-002 in design.md
  */
 
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import type { ApiClient } from './types';
-import { IpcApiClient } from './IpcApiClient';
 import { WebSocketApiClient } from './WebSocketApiClient';
 
 // =============================================================================
@@ -26,12 +29,12 @@ const ApiClientContext = createContext<ApiClient | null>(null);
 
 /**
  * Check if running in Electron environment
+ * trpc-full-migration Task 11.4: Use electronTRPC (set by exposeElectronTRPC) instead of electronAPI
  */
 function isElectronEnvironment(): boolean {
   return (
     typeof window !== 'undefined' &&
-    'electronAPI' in window &&
-    window.electronAPI !== undefined
+    'electronTRPC' in window
   );
 }
 
@@ -91,6 +94,9 @@ interface ApiClientProviderProps {
 /**
  * ApiClientProvider - Provides ApiClient to the React component tree
  *
+ * After tRPC migration, Electron renderer uses tRPC hooks/vanillaClient directly.
+ * This provider is primarily used for Remote UI (WebSocketApiClient).
+ *
  * Usage:
  * ```tsx
  * // Auto-detection (recommended)
@@ -115,15 +121,16 @@ export function ApiClientProvider({
   wsUrl,
   token,
 }: ApiClientProviderProps): React.ReactElement {
-  const apiClient = useMemo<ApiClient>(() => {
+  const apiClient = useMemo<ApiClient | null>(() => {
     // Use custom client if provided (for testing)
     if (client) {
       return client;
     }
 
-    // Check for Electron environment first
+    // Electron environment: ApiClient is not used (tRPC hooks/vanillaClient)
+    // Return null - components that need ApiClient are Remote UI only
     if (isElectronEnvironment()) {
-      return new IpcApiClient();
+      return null;
     }
 
     // WebSocket mode for Remote UI
@@ -137,9 +144,8 @@ export function ApiClientProvider({
       return new WebSocketApiClient(wsConfig.url, wsConfig.token);
     }
 
-    // Fallback to IpcApiClient (will throw if not in Electron)
-    // This allows development outside Electron with proper error messages
-    return new IpcApiClient();
+    // Fallback: return null (Electron without electronTRPC in test env)
+    return null;
   }, [client, wsUrl, token]);
 
   return (
@@ -156,7 +162,8 @@ export function ApiClientProvider({
 /**
  * useApi - Hook to access the ApiClient instance
  *
- * Must be used within an ApiClientProvider.
+ * After tRPC migration, this is primarily used by Remote UI components.
+ * Electron renderer components should use tRPC hooks directly.
  *
  * Usage:
  * ```tsx

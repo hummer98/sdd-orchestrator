@@ -8,10 +8,11 @@
  * @file mcpStatusBroadcast.ts
  */
 
-import { BrowserWindow } from 'electron';
-import { IPC_CHANNELS } from '../../ipc/channels';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../projectLogger';
+// trpc-full-migration Task 9.2: EventBus for tRPC Subscription event distribution
+import { getGlobalEventBus } from '../../trpc/services/globalEventBus';
+import { EVENT_NAMES } from '../../trpc/services/eventBus';
 import type { McpServerService, McpServerStatus } from './mcpServerService';
 
 /**
@@ -34,22 +35,16 @@ export function setupMcpStatusBroadcast(service: McpServerService): () => void {
 }
 
 /**
- * Broadcast MCP status to all Renderer windows
+ * Broadcast MCP status via EventBus for tRPC Subscription
  *
  * @param status - Current MCP server status
  */
 function broadcastMcpStatus(status: McpServerStatus): void {
-  const windows = BrowserWindow.getAllWindows();
-
-  for (const window of windows) {
-    if (!window.isDestroyed()) {
-      window.webContents.send(IPC_CHANNELS.MCP_STATUS_CHANGED, status);
-    }
-  }
+  // Emit to EventBus for tRPC Subscription (primary path after IPC removal)
+  getGlobalEventBus().emit(EVENT_NAMES.MCP_STATUS_CHANGED, status);
 
   logger.debug('[McpStatusBroadcast] Status broadcast sent', {
     isRunning: status.isRunning,
     port: status.port,
-    windowCount: windows.length,
   });
 }

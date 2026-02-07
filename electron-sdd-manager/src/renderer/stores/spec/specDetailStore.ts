@@ -14,6 +14,8 @@ import { useEditorStore } from '../editorStore';
 import { DEFAULT_REVIEWER_SCHEME, type ReviewerScheme } from '@shared/registry';
 import { parseTasksContent } from '@shared/utils/taskParallelParser';
 import { parseTaskProgress } from '@shared/utils/taskProgressParser';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../../shared/trpc/vanillaClient';
 
 type SpecDetailStore = SpecDetailState & SpecDetailActions;
 
@@ -94,15 +96,17 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       console.log('[specDetailStore] Auto-selected agent for spec:', spec.name);
 
       // spec-path-ssot-refactor: Use spec.name instead of spec.path
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
       const t1 = performance.now();
-      const specJson = await window.electronAPI.readSpecJson(spec.name);
+      const specJson = await getVanillaClient().file.readSpecJson.query({ specName: spec.name });
       timings['readSpecJson'] = performance.now() - t1;
 
       // Get artifact info with content for tasks
       // spec-path-ssot-refactor: Use (specName, filename) instead of full path
+      // trpc-full-migration Task 4.3: Use tRPC for readArtifact
       const getArtifactInfo = async (name: string): Promise<ArtifactInfo | null> => {
         try {
-          const content = await window.electronAPI.readArtifact(spec.name, `${name}.md`);
+          const content = await getVanillaClient().file.readArtifact.query({ name: spec.name, filename: `${name}.md`, entityType: 'spec' });
           return { exists: true, updatedAt: null, content };
         } catch {
           return null;
@@ -120,7 +124,8 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         }
 
         try {
-          const content = await window.electronAPI.readArtifact(spec.name, reportFile);
+          // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+          const content = await getVanillaClient().file.readArtifact.query({ name: spec.name, filename: reportFile, entityType: 'spec' });
           return { exists: true, updatedAt: null, content };
         } catch {
           return null;
@@ -156,7 +161,8 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
             console.log('[specDetailStore] Auto-fixing phase to implementation-complete', { spec: spec.name, currentPhase });
             try {
               // spec-path-ssot-refactor: Use spec.name instead of spec.path
-              await window.electronAPI.syncSpecPhase(spec.name, 'impl-complete', { skipTimestamp: true });
+              // trpc-full-migration Task 5.3: Use tRPC for syncSpecPhase
+              await getVanillaClient().spec.syncSpecPhase.mutate({ specName: spec.name, completedPhase: 'impl-complete', options: { skipTimestamp: true } });
               specJson.phase = 'implementation-complete';
             } catch (error) {
               console.error('[specDetailStore] Failed to auto-fix phase:', error);
@@ -179,9 +185,10 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
 
       // artifact-all-markdown-files: Get additional markdown files
       // Bug fix: 2026-02-05-markdown-files-electron-not-displayed
+      // trpc-full-migration Task 4.3: Use tRPC for listMarkdownFilesInSpec
       let markdownFiles: string[] = [];
       try {
-        markdownFiles = await window.electronAPI.listMarkdownFilesInSpec(spec.name, 'spec');
+        markdownFiles = await getVanillaClient().file.listMarkdownFilesInSpec.query({ name: spec.name, entityType: 'spec' });
       } catch (error) {
         console.error('[specDetailStore] Failed to list markdown files:', error);
         // Graceful degradation: continue with empty array
@@ -191,11 +198,13 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       // spec-path-ssot-refactor: Use spec.name instead of spec.path
       const t3 = performance.now();
       try {
-        const wasModified = await window.electronAPI.syncDocumentReview(spec.name);
+        // trpc-full-migration Task 5.3: Use tRPC for syncDocumentReview
+        const wasModified = await getVanillaClient().spec.syncDocumentReview.mutate({ specName: spec.name });
         timings['syncDocumentReview'] = performance.now() - t3;
         if (wasModified) {
           console.log('[specDetailStore] Auto-synced documentReview state', { spec: spec.name });
-          const updatedSpecJson = await window.electronAPI.readSpecJson(spec.name);
+          // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
+          const updatedSpecJson = await getVanillaClient().file.readSpecJson.query({ specName: spec.name });
           Object.assign(specJson, updatedSpecJson);
         }
       } catch (error) {

@@ -1,0 +1,286 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-07T12:00:00Z",
+  "checks": [
+    {
+      "id": "impact-delete-ipc-directory",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/main/ipc/ directory fully deleted (all 22+ handler files, channels.ts, handlers.ts, ipcUtils.ts, sshChannels.ts, startImplPhase.ts)",
+      "evidence": ["Glob for **/main/ipc/** returned no files"]
+    },
+    {
+      "id": "impact-delete-electron-dts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/types/electron.d.ts deleted as specified in Impact Analysis",
+      "evidence": ["Glob for **/renderer/types/electron.d.ts returned no files"]
+    },
+    {
+      "id": "impact-delete-ipcapiclient",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/api/IpcApiClient.ts deleted as specified in Impact Analysis",
+      "evidence": ["Glob for **/shared/api/IpcApiClient.ts returned no files"]
+    },
+    {
+      "id": "impact-update-preload",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "preload/index.ts reduced to minimal tRPC import only (13 lines, import './trpc' only)",
+      "evidence": ["src/preload/index.ts contains only 'import ./trpc' - electronAPI completely removed"]
+    },
+    {
+      "id": "impact-update-router-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "router.ts properly imports and registers all 15 domain routers in appRouter",
+      "evidence": [
+        "All 15 routers registered: system, config, project, file, bug, spec, agent, autoExecution, git, events, mcp, schedule, cloudflare, install, misc"
+      ]
+    },
+    {
+      "id": "impact-update-context-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts updated with comprehensive ContextServices interface supporting DD-006 DI pattern",
+      "evidence": ["ContextServices has ~80+ service methods/properties covering all domains"]
+    },
+    {
+      "id": "impact-create-all-routers",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 15 domain router files created as specified in Impact Analysis Contract",
+      "evidence": [
+        "Verified: system.ts, config.ts, project.ts, file.ts, spec.ts, bug.ts, agent.ts, autoExecution.ts, git.ts, events.ts, cloudflare.ts, install.ts, mcp.ts, schedule.ts, misc.ts"
+      ]
+    },
+    {
+      "id": "impact-update-tech-md",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md updated with tRPC IPC design pattern section, 15 domain routers documented",
+      "evidence": ["tech.md contains 'tRPC IPC設計パターン' section with router list and procedure patterns"]
+    },
+    {
+      "id": "impact-update-structure-md",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "structure.md updated with tRPC directory patterns, vanillaClient pattern, and EventBus",
+      "evidence": ["structure.md contains tRPC Pattern section with routers/, helpers/, services/ layout"]
+    },
+    {
+      "id": "impact-no-window-electronapi-executable",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No executable window.electronAPI references remain in production code. All 32 file matches are comments, JSDoc, or test assertions verifying removal",
+      "evidence": [
+        "32 files contain 'window.electronAPI' but all are in comments (// Task X.X: ...), JSDoc (@description), or test assertions (expect(...).not.toContain)"
+      ]
+    },
+    {
+      "id": "impact-no-ipcrenderer-on",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No executable ipcRenderer.on references remain. Only 1 match is a comment in globalEventBus.ts",
+      "evidence": ["globalEventBus.ts:3 is a comment: 'Task 9.2: Renderer側のipcRenderer.onリスナーをtRPC Subscriptionに置換'"]
+    },
+    {
+      "id": "impact-no-ipcrenderer-invoke",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No ipcRenderer.invoke references remain in codebase",
+      "evidence": ["Grep for ipcRenderer.invoke returned no files"]
+    },
+    {
+      "id": "principle-ssot-zod-schemas",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Zod schemas serve as SSOT for tRPC procedure types (DD-004). Each router defines inline schemas with z.infer<> for type derivation",
+      "evidence": [
+        "config.ts: 20+ Zod schemas (recentProjectsOutputSchema, layoutValuesSchema, etc.)",
+        "project.ts: selectProjectResultSchema, kiroValidationSchema, etc.",
+        "file.ts: artifactInputSchema, fileContentOutputSchema, etc.",
+        "events.ts: Event payload schemas for all 37 Subscriptions"
+      ]
+    },
+    {
+      "id": "principle-dry-projectPathInputSchema",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "projectPathInputSchema (z.object({ projectPath: z.string().min(1) })) is defined identically in 5 separate router files. Per DD-004 inline schema strategy this is acceptable but represents a DRY opportunity",
+      "evidence": [
+        "config.ts:70 - export const projectPathInputSchema = z.object({ projectPath: z.string().min(1) })",
+        "project.ts:57 - export const projectPathInputSchema = z.object({ projectPath: z.string().min(1) })",
+        "agent.ts:76 - export const projectPathInputSchema = z.object({ projectPath: z.string().min(1) })",
+        "install.ts:28 - export const projectPathInputSchema = z.object({ projectPath: z.string().min(1) })",
+        "misc.ts:65 - export const projectPathInputSchema = z.object({ projectPath: z.string().min(1) })"
+      ]
+    },
+    {
+      "id": "principle-dry-router-patterns",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Router implementation follows consistent thin adapter pattern (Zod validation + ctx.services.* call). No logic duplication across routers",
+      "evidence": [
+        "project.ts: selectProject -> ctx.services.selectProject(input.projectPath)",
+        "config.ts: getRecentProjects -> ctx.services.configStore.getRecentProjects()",
+        "All routers follow DD-002 thin adapter pattern"
+      ]
+    },
+    {
+      "id": "principle-kiss-router-thin",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Routers are thin adapters per DD-002: Zod validation + Service call only. No business logic in routers",
+      "evidence": [
+        "project.ts: selectProject is a single ctx.services.selectProject() call",
+        "file.ts: read/write operations delegate to ctx.services.fileService",
+        "events.ts: Subscriptions wrap EventBus listeners in observable()"
+      ]
+    },
+    {
+      "id": "principle-ssot-eventbus",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EventBus is SSOT for Main->Renderer event distribution. EVENT_NAMES defines all 37 event types in one place. GlobalEventBus singleton ensures single source",
+      "evidence": [
+        "eventBus.ts: EVENT_NAMES const with all 37 event names",
+        "globalEventBus.ts: singleton pattern with getGlobalEventBus()"
+      ]
+    },
+    {
+      "id": "principle-ssot-context-di",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ContextServices interface (DD-006) is SSOT for service DI. All routers access services via ctx.services.*, no direct imports of services",
+      "evidence": [
+        "context.ts: ContextServices interface with ~80 properties",
+        "createContext() function with defaults and overrides for testing"
+      ]
+    },
+    {
+      "id": "principle-yagni-hooks",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "useSystemInfo hook is exported but not imported by any production component (only test file). useRecentProjects and useLayoutConfig are similarly unused outside tests. These hooks may be YAGNI or intended for future use",
+      "evidence": [
+        "useSystemInfo: only imported in useSystemInfo.test.ts (no production consumer)",
+        "useRecentProjects: only imported in useConfigTrpc.test.ts (no production consumer)",
+        "useLayoutConfig: only imported in useConfigTrpc.test.ts (no production consumer)",
+        "useRemoteUiAutoStart: imported in RemoteAccessPanel.tsx (has production consumer - OK)"
+      ]
+    },
+    {
+      "id": "dead-code-vanillaclient",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient is actively used across 30 files with 97 total occurrences - well consumed",
+      "evidence": ["getVanillaClient referenced in stores, services, components, and tests"]
+    },
+    {
+      "id": "dead-code-all-routers",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 15 domain routers are imported and registered in router.ts appRouter. No orphaned routers",
+      "evidence": ["router.ts imports and registers all 15 routers in appRouter object"]
+    },
+    {
+      "id": "dead-code-helpers",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "trpc/helpers/ directory contains utility files (test-helpers.ts, projectSetup.ts, etc.) - these are consumed by router implementations and tests",
+      "evidence": ["8 files in helpers/ directory: index.ts, projectFileUtils.ts, projectSetup.ts, projectUtils.ts, startImplPhase.ts, test-helpers.ts, watcherUtils.ts, worktreeUtils.ts"]
+    },
+    {
+      "id": "placeholder-todo-remaining",
+      "category": "impact",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "TODO/FIXME/placeholder comments found in 8 production files. Most are pre-existing (non-migration scope) but should be tracked",
+      "evidence": [
+        "src/main/services/specsWatcherService.ts:649 - '// TODO: Uncomment when git-worktree-support feature is complete' (pre-existing, scope: git-worktree-support)",
+        "src/main/services/webSocketHandler.ts:1358 - '// TODO: Implement in task 3.3' (pre-existing WebSocket scope)",
+        "src/remote-ui/views/SpecActionsView.tsx:311 - '// TODO: Implement via apiClient.toggleAutoPermission' (Remote UI scope)",
+        "src/remote-ui/components/SpecDetailPage.tsx:342 - '// TODO: Add proper error notification' (Remote UI scope)",
+        "src/shared/components/schedule/ScheduleTaskSettingView.tsx:438 - '// TODO: ImmediateExecutionWarningDialog integration (Task 5.3)' (schedule feature scope)",
+        "src/shared/components/schedule/ScheduleTaskEditPage.tsx:312 - '回避ルール設定はTask 6.4で実装予定' (schedule feature scope)",
+        "src/renderer/electron-specific/index.ts:10 - '// TODO: 以下のコンポーネントを将来的に移動予定' (refactoring note)"
+      ]
+    },
+    {
+      "id": "logging-no-console-in-routers",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No console.log/warn/error/info/debug calls found in any router file. Routers comply with logging.md prohibition of direct console.* usage",
+      "evidence": ["Grep for console.(log|warn|error|info|debug) in routers/ returned 0 matches"]
+    },
+    {
+      "id": "logging-no-logger-in-routers",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "No logger usage found in router files. Error handling uses TRPCError (correct for client-side errors) but per logging.md, error conditions should also be logged server-side for debugging/monitoring",
+      "evidence": [
+        "Grep for 'logger.' in routers/ returned 0 matches",
+        "Routers use TRPCError for error propagation but do not log errors before throwing",
+        "Design doc section 'Monitoring' states: 'ルーター内でtry/catchし、エラーをログ記録後にTRPCErrorとしてスロー'",
+        "Actual implementation: directly throws TRPCError without logging"
+      ]
+    },
+    {
+      "id": "logging-renderer-logger",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer logging infrastructure properly migrated to tRPC. misc.ts router provides logRenderer procedure for forwarding renderer logs to Main process",
+      "evidence": [
+        "misc.ts:37 - logRendererInputSchema with level, message, context",
+        "consoleHook.ts and rendererLogger.ts use getVanillaClient() for log forwarding"
+      ]
+    },
+    {
+      "id": "logging-log-levels",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Log level support (debug/info/warning/error) is maintained through the logRenderer tRPC procedure and existing logger infrastructure",
+      "evidence": [
+        "logRendererInputSchema: z.enum(['error', 'warn', 'info', 'debug'])",
+        "rendererLogger.ts provides debug/info/warn/error methods"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 26,
+    "passed": 22,
+    "failed": 4,
+    "critical": 0,
+    "major": 0,
+    "minor": 4,
+    "info": 22
+  }
+}

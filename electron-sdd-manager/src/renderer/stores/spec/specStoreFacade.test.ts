@@ -7,15 +7,40 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useSpecStoreFacade, initSpecStoreFacade, setupAgentStoreSubscription } from './specStoreFacade';
-import { useSpecListStore } from './specListStore';
-import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
 // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
 // import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
 import { useAgentStore, resetAgentStore } from '../agentStore';
 import { resetSharedAgentStore } from '@shared/stores/agentStore';
 import type { SpecMetadata } from '../../types';
+
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
+// Task 9.2: Added events namespace for tRPC Subscription mocks
+const mockVanillaClient = {
+  file: {
+    readSpecJson: { query: vi.fn() },
+    readArtifact: { query: vi.fn() },
+    readSpecs: { query: vi.fn() },
+    listMarkdownFilesInSpec: { query: vi.fn().mockResolvedValue([]) },
+  },
+  // trpc-full-migration Task 5.3: Mock spec procedures
+  spec: {
+    syncDocumentReview: { mutate: vi.fn() },
+    execute: { mutate: vi.fn() },
+    stopSpecsWatcher: { mutate: vi.fn() },
+  },
+  events: {
+    onSpecsChanged: {
+      subscribe: () => ({ unsubscribe: vi.fn() }),
+    },
+    onAgentRecordChanged: {
+      subscribe: () => ({ unsubscribe: vi.fn() }),
+    },
+  },
+};
+vi.mock('../../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
 
 // Mock agentStoreAdapter for agentStore tests
 vi.mock('../agentStoreAdapter', () => ({
@@ -33,6 +58,10 @@ vi.mock('../agentStoreAdapter', () => ({
     loadSkipPermissions: vi.fn().mockResolvedValue(false),
   },
 }));
+
+import { useSpecStoreFacade, initSpecStoreFacade, setupAgentStoreSubscription } from './specStoreFacade';
+import { useSpecListStore } from './specListStore';
+import { useSpecDetailStore } from './specDetailStore';
 
 const mockSpecs: SpecMetadata[] = [
   {
@@ -178,9 +207,9 @@ describe('useSpecStoreFacade', () => {
 
     describe('SpecDetailStore actions', () => {
       it('should delegate selectSpec to SpecDetailStore', async () => {
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-        window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-        window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+        mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+        mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+        mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
         await useSpecStoreFacade.getState().selectSpec(mockSpecs[0]);
 
@@ -197,13 +226,13 @@ describe('useSpecStoreFacade', () => {
 
       it('should delegate refreshSpecDetail to SpecDetailStore', async () => {
         useSpecDetailStore.setState({ selectedSpec: mockSpecs[0] });
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-        window.electronAPI.readArtifact = vi.fn().mockResolvedValue('');
-        window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+        mockVanillaClient.file.readSpecJson.query.mockResolvedValue(mockSpecJson);
+        mockVanillaClient.file.readArtifact.query.mockResolvedValue('');
+        mockVanillaClient.spec.syncDocumentReview.mutate.mockResolvedValue(false);
 
         await useSpecStoreFacade.getState().refreshSpecDetail();
 
-        expect(window.electronAPI.readSpecJson).toHaveBeenCalled();
+        expect(mockVanillaClient.file.readSpecJson.query).toHaveBeenCalled();
       });
     });
 
@@ -234,8 +263,9 @@ describe('useSpecStoreFacade', () => {
     // execution-store-consolidation: SpecManagerExecutionStore actions (Req 4.2-4.6)
     // execute-method-unification: Updated to use new execute API
     describe('SpecManagerExecution actions (derived from agentStore)', () => {
-      it('should call IPC for executeSpecManagerGeneration', async () => {
-        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
+      it('should call tRPC for executeSpecManagerGeneration', async () => {
+        // trpc-full-migration Task 5.3: execute via tRPC
+        mockVanillaClient.spec.execute.mutate.mockResolvedValue(undefined);
 
         await useSpecStoreFacade.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -245,7 +275,7 @@ describe('useSpecStoreFacade', () => {
           'manual'
         );
 
-        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+        expect(mockVanillaClient.spec.execute.mutate).toHaveBeenCalledWith({
           type: 'design',
           specId: 'test-spec',
           featureName: 'test-feature',
@@ -273,9 +303,8 @@ describe('useSpecStoreFacade', () => {
   });
 
   describe('watcher actions (Req 7.6)', () => {
+    // Task 9.2: Now uses tRPC Subscription instead of window.electronAPI.onSpecsChanged
     it('should delegate startWatching to watcher service', async () => {
-      window.electronAPI.onSpecsChanged = vi.fn().mockReturnValue(vi.fn());
-
       // Initialize facade first
       initSpecStoreFacade();
 
@@ -285,8 +314,8 @@ describe('useSpecStoreFacade', () => {
     });
 
     it('should delegate stopWatching to watcher service', async () => {
-      window.electronAPI.onSpecsChanged = vi.fn().mockReturnValue(vi.fn());
-      window.electronAPI.stopSpecsWatcher = vi.fn().mockResolvedValue(undefined);
+      // trpc-full-migration Task 5.3: stopSpecsWatcher via tRPC
+      mockVanillaClient.spec.stopSpecsWatcher.mutate.mockResolvedValue(undefined);
 
       // Initialize facade first
       initSpecStoreFacade();

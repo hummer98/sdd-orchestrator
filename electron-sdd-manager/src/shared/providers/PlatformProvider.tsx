@@ -85,12 +85,12 @@ export interface PlatformCapabilities {
 
 /**
  * Check if running in Electron environment
+ * trpc-full-migration Task 11.4: Use electronTRPC (set by exposeElectronTRPC) instead of electronAPI
  */
 function isElectronEnvironment(): boolean {
   return (
     typeof window !== 'undefined' &&
-    'electronAPI' in window &&
-    window.electronAPI !== undefined
+    'electronTRPC' in window
   );
 }
 

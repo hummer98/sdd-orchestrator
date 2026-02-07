@@ -8,6 +8,8 @@ import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress, SpecJson, Pa
 import { getLatestInspectionReportFile, normalizeInspectionState } from '../types/inspection';
 import type { ArtifactType } from '../stores/spec/types';
 import { parseTasksContent } from '@shared/utils/taskParallelParser';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Callbacks for SpecSyncService initialization
@@ -55,8 +57,9 @@ export class SpecSyncService {
 
     try {
       // spec-path-ssot-refactor: Use spec.name instead of spec.path
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
       console.log('[specSyncService] updateSpecJson:', selectedSpec.name);
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
+      const specJson = await getVanillaClient().file.readSpecJson.query({ specName: selectedSpec.name });
 
       // Update spec.json in store
       this.callbacks.setSpecJson(specJson);
@@ -69,7 +72,8 @@ export class SpecSyncService {
       if (reportFile) {
         try {
           // spec-path-ssot-refactor: Use (specName, filename) instead of full path
-          const content = await window.electronAPI.readArtifact(selectedSpec.name, reportFile);
+          // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+          const content = await getVanillaClient().file.readArtifact.query({ name: selectedSpec.name, filename: reportFile, entityType: 'spec' });
           this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] updateSpecJson: Loaded inspection artifact', reportFile);
         } catch {
@@ -111,7 +115,8 @@ export class SpecSyncService {
 
       try {
         // spec-path-ssot-refactor: Use (specName, filename) instead of full path
-        const content = await window.electronAPI.readArtifact(selectedSpec.name, `${artifact}.md`);
+        // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+        const content = await getVanillaClient().file.readArtifact.query({ name: selectedSpec.name, filename: `${artifact}.md`, entityType: 'spec' });
         artifactInfo = { exists: true, updatedAt: null, content };
       } catch {
         artifactInfo = null;
@@ -157,10 +162,12 @@ export class SpecSyncService {
       console.log('[specSyncService] syncDocumentReviewState:', selectedSpec.name);
 
       // Sync file system state to spec.json
-      await window.electronAPI.syncDocumentReview(selectedSpec.name);
+      // trpc-full-migration Task 5.3: Use tRPC for syncDocumentReview
+      await getVanillaClient().spec.syncDocumentReview.mutate({ specName: selectedSpec.name });
 
       // Re-read spec.json to get updated state
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
+      const specJson = await getVanillaClient().file.readSpecJson.query({ specName: selectedSpec.name });
 
       // Update specJson in store
       this.callbacks.setSpecJson(specJson);
@@ -191,7 +198,8 @@ export class SpecSyncService {
       console.log('[specSyncService] syncInspectionState:', selectedSpec.name);
 
       // Re-read spec.json to get current inspection field
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
+      // trpc-full-migration Task 4.3: Use tRPC for readSpecJson
+      const specJson = await getVanillaClient().file.readSpecJson.query({ specName: selectedSpec.name });
 
       // Update specJson in store
       this.callbacks.setSpecJson(specJson);
@@ -203,7 +211,8 @@ export class SpecSyncService {
       if (reportFile) {
         try {
           // spec-path-ssot-refactor: Use (specName, filename) instead of full path
-          const content = await window.electronAPI.readArtifact(selectedSpec.name, reportFile);
+          // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+          const content = await getVanillaClient().file.readArtifact.query({ name: selectedSpec.name, filename: reportFile, entityType: 'spec' });
           this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] Loaded inspection artifact:', reportFile);
         } catch {

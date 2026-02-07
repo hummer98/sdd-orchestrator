@@ -1,0 +1,400 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-07T10:00:00Z",
+  "checks": [
+    {
+      "id": "design-component-systemRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "systemRouter found at expected path with healthCheck + 4 system info procedures (getAppVersion, getPlatform, getAppPath, getNodeEnv)",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/system.ts"]
+    },
+    {
+      "id": "design-component-configRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "configRouter found at expected path with all 22 procedures matching design spec",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/config.ts"]
+    },
+    {
+      "id": "design-component-projectRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectRouter found at expected path with all 9 procedures matching design spec",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/project.ts"]
+    },
+    {
+      "id": "design-component-fileRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "fileRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/file.ts"]
+    },
+    {
+      "id": "design-component-specRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "specRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/spec.ts"]
+    },
+    {
+      "id": "design-component-bugRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bugRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/bug.ts"]
+    },
+    {
+      "id": "design-component-agentRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/agent.ts"]
+    },
+    {
+      "id": "design-component-autoExecutionRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "autoExecutionRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/autoExecution.ts"]
+    },
+    {
+      "id": "design-component-gitRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "gitRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/git.ts"]
+    },
+    {
+      "id": "design-component-eventsRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "eventsRouter found at expected path with 37 Subscription procedures matching design spec count",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/events.ts"]
+    },
+    {
+      "id": "design-component-cloudflareRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "cloudflareRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/cloudflare.ts"]
+    },
+    {
+      "id": "design-component-installRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "installRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/install.ts"]
+    },
+    {
+      "id": "design-component-mcpRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "mcpRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/mcp.ts"]
+    },
+    {
+      "id": "design-component-scheduleRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "scheduleRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/schedule.ts"]
+    },
+    {
+      "id": "design-component-miscRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "miscRouter found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/misc.ts"]
+    },
+    {
+      "id": "design-component-vanillaClient",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient found at expected path with getVanillaClient() singleton and resetVanillaClient(). Widely used: 303 occurrences across 92 files",
+      "evidence": ["electron-sdd-manager/src/shared/trpc/vanillaClient.ts"]
+    },
+    {
+      "id": "design-component-context-dd006",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tRPC Context with DD-006 Service DI found at expected path. ContextServices interface provides all service injections including getCurrentProjectPath, setProjectPath, fileService, configStore, bugService, getSpecManagerService, layoutConfigService, engineConfigService, toolPathResolverService, settingsFileManager, eventBus, and 60+ domain-specific service methods",
+      "evidence": ["electron-sdd-manager/src/main/trpc/context.ts"]
+    },
+    {
+      "id": "design-component-appRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AppRouter found at expected path. Correctly imports and registers all 15 domain routers (system, config, project, file, bug, spec, agent, autoExecution, git, events, mcp, schedule, cloudflare, install, misc). Exports AppRouter type, RouterInputs, RouterOutputs",
+      "evidence": ["electron-sdd-manager/src/main/trpc/router.ts"]
+    },
+    {
+      "id": "design-component-eventBus",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EventBus service found at expected path (DD-003). Defines 37 EVENT_NAMES constants, createEventBus() factory, and EventBus type alias for EventEmitter",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBus.ts",
+        "electron-sdd-manager/src/main/trpc/services/globalEventBus.ts"
+      ]
+    },
+    {
+      "id": "design-component-useSystemInfo",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSystemInfo hook found at expected path in shared/hooks/. Replaces window.electronAPI.getAppVersion()/getPlatform() with trpc.system.*.useQuery()",
+      "evidence": [
+        "electron-sdd-manager/src/shared/hooks/useSystemInfo.ts",
+        "electron-sdd-manager/src/shared/hooks/useSystemInfo.test.ts"
+      ]
+    },
+    {
+      "id": "design-component-useConfigTrpc",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useConfigTrpc hook found at expected path in shared/hooks/. Provides useRecentProjects, useLayoutConfig, useRemoteUiAutoStart hooks as specified in design",
+      "evidence": [
+        "electron-sdd-manager/src/shared/hooks/useConfigTrpc.ts",
+        "electron-sdd-manager/src/shared/hooks/useConfigTrpc.test.ts"
+      ]
+    },
+    {
+      "id": "design-component-handler",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "setupTRPCHandler found at expected path. Integrates createIPCHandler with createContext and auto-injects global EventBus (Task 9.2)",
+      "evidence": ["electron-sdd-manager/src/main/trpc/handler.ts"]
+    },
+    {
+      "id": "design-component-trpc-init",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tRPC initialization found at expected path. Uses initTRPC.context<Context>().create() and exports router/publicProcedure",
+      "evidence": ["electron-sdd-manager/src/main/trpc/trpc.ts"]
+    },
+    {
+      "id": "design-component-test-helpers",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test helpers found at expected path in helpers/ directory, providing createTestContext and createMockServices",
+      "evidence": ["electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts"]
+    },
+    {
+      "id": "design-interface-configRouter",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "configRouter procedures match design interface. All 22 procedures present: getRecentProjects, addRecentProject, getHangThreshold, setHangThreshold, loadLayoutConfig, saveLayoutConfig, resetLayoutConfig, loadSkipPermissions, saveSkipPermissions, loadProjectDefaults, saveProjectDefaults, loadProfile, loadEngineConfig, saveEngineConfig, getAvailableLlmEngines, getToolStatuses, setToolPath, resolveTool, getVcsScheme, setVcsScheme, loadRemoteUiAutoStart, saveRemoteUiAutoStart. Minor signature refinements documented separately",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/config.ts"]
+    },
+    {
+      "id": "design-interface-configRouter-vcsScheme-deviation",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Minor",
+      "details": "getVcsScheme and setVcsScheme have additional projectPath input parameter compared to design. Design: getVcsScheme: Query<void, string>, setVcsScheme: Mutation<{ scheme: string }, void>. Implementation: getVcsScheme requires { projectPath: string }, setVcsScheme requires { projectPath: string; scheme: string }. This is a reasonable refinement -- project-specific VCS scheme needs projectPath context",
+      "evidence": [
+        "Design: getVcsScheme: Query<void, string>",
+        "Actual: getVcsScheme: Query<{ projectPath: string }, 'git' | 'jj'>",
+        "Design: setVcsScheme: Mutation<{ scheme: string }, void>",
+        "Actual: setVcsScheme: Mutation<{ projectPath: string; scheme: string }, { success: boolean; error?: string }>"
+      ]
+    },
+    {
+      "id": "design-interface-configRouter-resolveTool-deviation",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Minor",
+      "details": "resolveTool return type refined from design. Design: Query<{ tool: string }, string>. Implementation returns { resolved: boolean; path?: string; source?: string; error?: string }. More informative return type is an improvement",
+      "evidence": [
+        "Design: resolveTool: Query<{ tool: string }, string>",
+        "Actual: resolveTool returns { resolved: boolean; path?: string; source?: string; error?: string }"
+      ]
+    },
+    {
+      "id": "design-interface-projectRouter",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectRouter procedures match design interface. All 9 procedures present: selectProject, showOpenDialog, validateKiroDirectory, getInitialProjectPath, setProjectPath, getWindowProject, setWindowProject, createNewWindow, getIsE2ETest",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/project.ts"]
+    },
+    {
+      "id": "design-interface-eventsRouter",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "eventsRouter Subscriptions match design interface. All 37 subscriptions present: 6 Agent events, 3 Spec/Bug events, 5 Auto Execution events, 6 Bug Auto Execution events, 3 Server/Tunnel events, 2 File events, 1 Schedule Task event, 1 MCP event, 1 Metrics event, 1 SSH event, 8 Menu events. One minor payload refinement on onMenuOpenProject documented separately",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/events.ts"]
+    },
+    {
+      "id": "design-interface-eventsRouter-menuOpenProject-deviation",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Minor",
+      "details": "onMenuOpenProject has payload { projectPath: string } instead of design's Subscription<void, void>. This provides more useful data to subscribers",
+      "evidence": [
+        "Design: onMenuOpenProject: Subscription<void, void>",
+        "Actual: onMenuOpenProject payload is { projectPath: string }"
+      ]
+    },
+    {
+      "id": "design-interface-vanillaClient",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient matches design: createTRPCProxyClient<AppRouter> singleton with getVanillaClient() and resetVanillaClient(). Uses dynamic require for ipcLink() to avoid Remote UI bundling. Correct pattern per DD-005",
+      "evidence": ["electron-sdd-manager/src/shared/trpc/vanillaClient.ts"]
+    },
+    {
+      "id": "design-interface-context-dd006",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Context matches DD-006 design: ContextServices interface with getCurrentProjectPath/setProjectPath getters/setters, service instances (fileService, configStore, bugService, etc.), and createContext(overrides?) function with defaults merge pattern for DI/testing",
+      "evidence": ["electron-sdd-manager/src/main/trpc/context.ts"]
+    },
+    {
+      "id": "design-dd004-zod-ssot",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-004 (Zod as SSOT) verified: All 15 domain routers import and use Zod for schema definitions. Schemas are defined inline within router files as specified in design",
+      "evidence": [
+        "All 15 routers import { z } from 'zod'",
+        "Schemas defined inline in routers/*.ts files"
+      ]
+    },
+    {
+      "id": "design-dd006-ctx-services",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-006 (Context DI) verified: All 15 routers access services via ctx.services.* pattern. Total 241 ctx.services.* usages across all router files",
+      "evidence": [
+        "241 ctx.services.* occurrences across 15 router files"
+      ]
+    },
+    {
+      "id": "design-dd003-subscriptions",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003 (tRPC Subscriptions) verified: eventsRouter uses observable() from @trpc/server/observable. EventBus pattern with createEventSubscription() helper correctly converts EventEmitter events to tRPC Subscriptions with proper cleanup on unsubscribe",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts",
+        "electron-sdd-manager/src/main/trpc/services/eventBus.ts"
+      ]
+    },
+    {
+      "id": "design-tests-router-coverage",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Router test files exist for all domain routers in __tests__/ directory: system-router, config-router, project-router, file-router, spec-router, bug-router, agent-router, autoExecution-router, git-router, events-router, cloudflare-router, install-router, mcp-router, schedule-router, misc-router. Plus integration tests (main-integration, context, handler-context, router, trpc-init, test-helpers, ipc-cleanup, window-electronapi-cleanup, electron-dts-cleanup)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/ (25 test files)"
+      ]
+    },
+    {
+      "id": "design-window-electronAPI-removal",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "window.electronAPI production calls fully removed from renderer/ and shared/ code. All 44 remaining references are in JSDoc comments documenting the migration (e.g., 'Replaces window.electronAPI.getAppVersion()', 'Task 9.2: window.electronAPI.onAgentRecordChanged -> tRPC Subscription'). No actual window.electronAPI.* method calls in production code",
+      "evidence": [
+        "31 occurrences in renderer/ (all in comments/jsdoc)",
+        "13 occurrences in shared/ (all in comments/jsdoc)"
+      ]
+    },
+    {
+      "id": "steering-tech-trpc-section",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md updated with 'tRPC IPC設計パターン' section per Req 12.1. Documents: router composition (15 domain routers), Context DI (ctx.services.*), Zod validation, Subscriptions (37 events via EventBus), vanillaClient usage, and new API addition procedure",
+      "evidence": [".kiro/steering/tech.md line 94-105"]
+    },
+    {
+      "id": "steering-structure-trpc-pattern",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "structure.md updated per Req 12.2. Documents tRPC directory pattern (main/trpc/ with routers/, helpers/, services/, __tests__/), vanillaClient pattern in shared/trpc/, EventBus service location, and correct state management flow (Renderer -> tRPC mutation -> Main -> Subscription -> Renderer)",
+      "evidence": [".kiro/steering/structure.md lines 21-24, 37, 316-353"]
+    },
+    {
+      "id": "steering-structure-directory-compliance",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Files placed in correct directories per structure.md: routers in src/main/trpc/routers/, helpers in src/main/trpc/helpers/, services in src/main/trpc/services/, tests in src/main/trpc/__tests__/, hooks in src/shared/hooks/, vanillaClient in src/shared/trpc/",
+      "evidence": [
+        "15 router files in electron-sdd-manager/src/main/trpc/routers/",
+        "8 helper files in electron-sdd-manager/src/main/trpc/helpers/",
+        "3 service files in electron-sdd-manager/src/main/trpc/services/",
+        "25 test files in electron-sdd-manager/src/main/trpc/__tests__/"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals: tRPC migration improves type safety and maintainability of IPC communication for all 8 core capabilities listed in product.md (Spec lifecycle, AI agent, document review, bug fix, remote access, schedule, MCP, Git). No out-of-scope functionality added",
+      "evidence": [".kiro/steering/product.md"]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Correct frameworks/libraries used per tech.md: @trpc/server, @trpc/react-query, electron-trpc, Zod for validation, Zustand for state management. Testing with Vitest. TypeScript strict mode maintained",
+      "evidence": [".kiro/steering/tech.md"]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management rules followed per structure.md: Domain state in shared/stores/ (SSOT), UI state in renderer/stores/. getVanillaClient() used in stores for imperative calls, trpc.*.useQuery/useMutation used in components/hooks. 36 tRPC hook usages detected in components/hooks",
+      "evidence": [
+        "303 getVanillaClient() usages across 92 files (stores, hooks, components)",
+        "36 trpc.*.useQuery/useMutation/useSubscription usages in components/hooks"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 43,
+    "passed": 43,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 3,
+    "info": 40
+  }
+}

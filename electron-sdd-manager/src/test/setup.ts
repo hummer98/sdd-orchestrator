@@ -2,48 +2,7 @@ import { vi } from 'vitest';
 
 // === Common mocks (both node and jsdom environments) ===
 
-// Mock main IPC handlers to prevent index.ts execution errors
-vi.mock('../main/ipc/handlers', () => ({
-  registerIpcHandlers: vi.fn(),
-  setProjectPath: vi.fn(),
-  setInitialProjectPath: vi.fn(),
-  getCurrentProjectPath: vi.fn(() => null),
-}));
-
-// Mock main remote access handlers
-vi.mock('../main/ipc/remoteAccessHandlers', () => ({
-  registerRemoteAccessHandlers: vi.fn(),
-  setupStatusNotifications: vi.fn(),
-  getRemoteAccessServer: vi.fn(),
-  setupStateProvider: vi.fn(),
-  setupWorkflowController: vi.fn(),
-  setupAgentLogsProvider: vi.fn(),
-  setupSpecDetailProvider: vi.fn(),
-  setupBugDetailProvider: vi.fn(),
-  setupFileService: vi.fn(),
-}));
-
-// Mock main SSH handlers
-vi.mock('../main/ipc/sshHandlers', () => ({
-  registerSSHHandlers: vi.fn(),
-  setupSSHStatusNotifications: vi.fn(),
-}));
-
-// Mock main worktree handlers
-vi.mock('../main/ipc/worktreeHandlers', () => ({
-  registerWorktreeHandlers: vi.fn(),
-  handleWorktreeRebaseFromMain: vi.fn(),
-}));
-
-// Mock main bug worktree handlers
-vi.mock('../main/ipc/bugWorktreeHandlers', () => ({
-  registerBugWorktreeHandlers: vi.fn(),
-}));
-
-// Mock main convert worktree handlers
-vi.mock('../main/ipc/convertWorktreeHandlers', () => ({
-  registerConvertWorktreeHandlers: vi.fn(),
-}));
+// Legacy IPC handlers removed: all migrated to tRPC routers (trpc-full-migration)
 
 // Mock electron module
 vi.mock('electron', () => ({
@@ -144,71 +103,34 @@ if (typeof window !== 'undefined') {
     writable: true,
   });
 
-  // Mock window.electronAPI for renderer tests
-  const mockElectronAPI = {
-    showOpenDialog: vi.fn(),
-    validateKiroDirectory: vi.fn(),
-    readSpecs: vi.fn(),
-    readSpecJson: vi.fn(),
-    readArtifact: vi.fn(),
-    createSpec: vi.fn(),
-    writeFile: vi.fn(),
-    updateApproval: vi.fn(),
-    executeCommand: vi.fn(),
-    cancelExecution: vi.fn(),
-    onCommandOutput: vi.fn(() => vi.fn()),
-    getRecentProjects: vi.fn(),
-    addRecentProject: vi.fn(),
-    getAppVersion: vi.fn(),
-    getPlatform: vi.fn(() => 'darwin'),
-    // Project/Spec Management APIs
-    setProjectPath: vi.fn().mockResolvedValue(undefined),
-    watchSpecs: vi.fn().mockResolvedValue(undefined),
-    unwatchSpecs: vi.fn().mockResolvedValue(undefined),
-    startSpecsWatcher: vi.fn().mockResolvedValue(undefined),
-    stopSpecsWatcher: vi.fn().mockResolvedValue(undefined),
-    onSpecsChanged: vi.fn(() => vi.fn()),
-    executeSpecManagerPhase: vi.fn(),
-    // execute-method-unification: Unified execute API
-    execute: vi.fn().mockResolvedValue(undefined),
-    executeValidation: vi.fn().mockResolvedValue(undefined),
-    // Agent Management APIs (Task 29)
-    startAgent: vi.fn(),
-    stopAgent: vi.fn(),
-    resumeAgent: vi.fn(),
-    getAgents: vi.fn(),
-    getAllAgents: vi.fn(),
-    getAgentLogs: vi.fn().mockResolvedValue([]),
-    sendAgentInput: vi.fn(),
-    onAgentOutput: vi.fn(() => vi.fn()),
-    onAgentStatusChange: vi.fn(() => vi.fn()),
-    onAgentRecordChanged: vi.fn(() => vi.fn()),
-    getHangThreshold: vi.fn(),
-    setHangThreshold: vi.fn(),
-    // Phase/Review Sync APIs
-    syncSpecPhase: vi.fn(),
-    syncDocumentReview: vi.fn().mockResolvedValue(false),
-    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
-    // projectAgentWatcher now monitors all categories with a single watcher
-    // Missing APIs found during test
-    getRunningAgentCounts: vi.fn().mockResolvedValue({ projectCount: 0, specCount: 0, bugCount: 0 }),
-    onBugsChanged: vi.fn(() => vi.fn()),
-    startBugsWatcher: vi.fn().mockResolvedValue(undefined),
-    stopBugsWatcher: vi.fn().mockResolvedValue(undefined),
-    readBugs: vi.fn().mockResolvedValue([]),
-    readBugJson: vi.fn().mockResolvedValue({}),
-    // parallel-task-impl: Task 10.1 - Parse tasks.md for parallel execution
-    parseTasksForParallel: vi.fn().mockResolvedValue(null),
-    // Cloudflare settings
-    getCloudflareSettings: vi.fn().mockResolvedValue({ enabled: false, token: '', tunnelName: '' }),
-    saveCloudflareSettings: vi.fn().mockResolvedValue(undefined),
-  };
-
-  Object.defineProperty(window, 'electronAPI', {
-    value: mockElectronAPI,
-    writable: true,
-  });
+  // trpc-full-migration Task 11.4: window.electronAPI mock removed
+  // All IPC communication now uses tRPC. Tests should mock tRPC vanillaClient instead.
 }
+
+// Global mock for vanillaClient (tRPC proxy client)
+// Renderer/shared tests that indirectly call getVanillaClient() need this mock
+// to prevent "Could not find electronTRPC global" errors in test environment.
+vi.mock('../shared/trpc/vanillaClient', () => {
+  const createMockProxy = (): any => {
+    return new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'query') return vi.fn().mockResolvedValue(undefined);
+          if (prop === 'mutate') return vi.fn().mockResolvedValue(undefined);
+          if (prop === 'subscribe')
+            return vi.fn().mockReturnValue({ unsubscribe: vi.fn() });
+          if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined;
+          return createMockProxy();
+        },
+      },
+    );
+  };
+  return {
+    getVanillaClient: vi.fn(() => createMockProxy()),
+    resetVanillaClient: vi.fn(),
+  };
+});
 
 // Reset mocks between tests
 beforeEach(() => {

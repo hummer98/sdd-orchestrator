@@ -5,6 +5,49 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Task 9.2: Mock tRPC vanilla client for tRPC Subscription-based event listeners
+// trpc-full-migration: All file/spec operations now use tRPC vanilla client instead of window.electronAPI
+type SubscribeOptions = { onData?: (data: unknown) => void };
+let onSpecsChangedSubscribeCallback: ((data: unknown) => void) | null = null;
+
+const mockReadSpecJson = vi.fn();
+const mockReadArtifact = vi.fn();
+const mockReadSpecs = vi.fn();
+const mockListMarkdownFilesInSpec = vi.fn().mockResolvedValue([]);
+const mockSyncDocumentReview = vi.fn().mockResolvedValue(false);
+const mockSyncSpecPhase = vi.fn().mockResolvedValue(undefined);
+const mockExecute = vi.fn();
+const mockStopSpecsWatcher = vi.fn();
+
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    file: {
+      readSpecJson: { query: mockReadSpecJson },
+      readArtifact: { query: mockReadArtifact },
+      readSpecs: { query: mockReadSpecs },
+      listMarkdownFilesInSpec: { query: mockListMarkdownFilesInSpec },
+    },
+    spec: {
+      syncDocumentReview: { mutate: mockSyncDocumentReview },
+      syncSpecPhase: { mutate: mockSyncSpecPhase },
+      execute: { mutate: mockExecute },
+      stopSpecsWatcher: { mutate: mockStopSpecsWatcher },
+    },
+    events: {
+      onSpecsChanged: {
+        subscribe: (_input: unknown, opts?: SubscribeOptions) => {
+          onSpecsChangedSubscribeCallback = opts?.onData ?? null;
+          return { unsubscribe: vi.fn() };
+        },
+      },
+      onAgentRecordChanged: {
+        subscribe: () => ({ unsubscribe: vi.fn() }),
+      },
+    },
+  }),
+}));
+
 import { useSpecStore } from './specStore';
 import { useSpecListStore } from './spec/specListStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
@@ -159,7 +202,10 @@ describe('useSpecStore', () => {
         approvals: mockSpecJsons['feature-a'].approvals,
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // trpc-full-migration: Use tRPC vanilla client mocks instead of window.electronAPI
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockResolvedValue('# Content');
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -192,7 +238,10 @@ describe('useSpecStore', () => {
         approvals: mockSpecJsons['feature-a'].approvals,
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockResolvedValue('# Content');
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -219,7 +268,7 @@ describe('useSpecStore', () => {
         },
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+      mockReadSpecJson.mockResolvedValue(updatedSpecJson);
 
       // Call refreshSpecDetail
       await useSpecStore.getState().refreshSpecDetail();
@@ -258,12 +307,15 @@ describe('useSpecStore', () => {
         approvals: mockSpecJsons['feature-a'].approvals,
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockResolvedValue('# Content');
+      mockSyncDocumentReview.mockResolvedValue(false);
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
       // Mock error on refresh
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      window.electronAPI.readSpecJson = vi.fn().mockRejectedValue(new Error('Read error'));
+      mockReadSpecJson.mockRejectedValue(new Error('Read error'));
 
       // Call refreshSpecDetail - should not throw
       await useSpecStore.getState().refreshSpecDetail();
@@ -294,7 +346,10 @@ describe('useSpecStore', () => {
         approvals: mockSpecJsons['feature-a'].approvals,
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockResolvedValue('# Content');
+      mockSyncDocumentReview.mockResolvedValue(false);
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
       // Verify initial state
@@ -311,7 +366,7 @@ describe('useSpecStore', () => {
           validationOptions: { gap: true, design: false, impl: false },
         },
       };
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+      mockReadSpecJson.mockResolvedValue(updatedSpecJson);
 
       // This is what happens when FileWatcher detects a change
       await useSpecStore.getState().refreshSpecDetail();
@@ -350,14 +405,15 @@ describe('useSpecStore', () => {
 
       const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: GO';
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-      window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockImplementation(({ filename }: { name: string; filename: string }) => {
         if (filename.endsWith('inspection-1.md')) {
           return Promise.resolve(mockInspectionContent);
         }
         return Promise.reject(new Error('Not found'));
       });
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -379,8 +435,10 @@ describe('useSpecStore', () => {
         // No inspection field
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockRejectedValue(new Error('Not found'));
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -407,8 +465,10 @@ describe('useSpecStore', () => {
         },
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockRejectedValue(new Error('File not found'));
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -436,8 +496,10 @@ describe('useSpecStore', () => {
         },
       };
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockRejectedValue(new Error('Not found'));
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -468,14 +530,15 @@ describe('useSpecStore', () => {
 
       const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: NOGO';
 
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-      window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+      // trpc-full-migration: Use tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockImplementation(({ filename }: { name: string; filename: string }) => {
         if (filename.endsWith('inspection-1.md')) {
           return Promise.resolve(mockInspectionContent);
         }
         return Promise.reject(new Error('Not found'));
       });
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
 
@@ -647,10 +710,11 @@ describe('useSpecStore', () => {
     };
 
     beforeEach(async () => {
-      // Setup initial state with selected spec
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
+      // trpc-full-migration: Setup initial state using tRPC vanilla client mocks
+      mockReadSpecJson.mockResolvedValue(mockSpecJson);
+      mockReadArtifact.mockResolvedValue('# Requirements');
+      mockReadSpecs.mockResolvedValue(mockSpecs);
+      mockSyncDocumentReview.mockResolvedValue(false);
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
     });
 
@@ -660,11 +724,14 @@ describe('useSpecStore', () => {
           ...mockSpecJson,
           phase: 'tasks-generated',
         };
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+        mockReadSpecJson.mockResolvedValue(updatedSpecJson);
 
         // Store current artifact content
         const originalArtifacts = useSpecStore.getState().specDetail?.artifacts;
         expect(originalArtifacts).toBeTruthy();
+
+        // Track readArtifact calls before updateSpecJson
+        const callsBefore = mockReadArtifact.mock.calls.length;
 
         await useSpecStore.getState().updateSpecJson();
 
@@ -673,19 +740,18 @@ describe('useSpecStore', () => {
         expect(state.specDetail?.specJson.phase).toBe('tasks-generated');
         // artifacts should be preserved (same reference or content)
         expect(state.specDetail?.artifacts.requirements).toBeTruthy();
-        // readArtifact should NOT have been called during updateSpecJson
-        const readArtifactCallsAfter = (window.electronAPI.readArtifact as ReturnType<typeof vi.fn>).mock.calls.length;
-        // Only the initial selectSpec should have called readArtifact
-        expect(readArtifactCallsAfter).toBeLessThanOrEqual(4); // max 4 artifacts in selectSpec
+        // readArtifact should NOT have been called during updateSpecJson (no inspection)
+        const callsAfter = mockReadArtifact.mock.calls.length;
+        expect(callsAfter).toBe(callsBefore);
       });
 
       it('should do nothing when no spec is selected', async () => {
         useSpecStore.getState().clearSelectedSpec();
-        window.electronAPI.readSpecJson = vi.fn();
+        mockReadSpecJson.mockClear();
 
         await useSpecStore.getState().updateSpecJson();
 
-        expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
+        expect(mockReadSpecJson).not.toHaveBeenCalled();
       });
 
       it('should also update spec metadata in the list when project is set', async () => {
@@ -697,14 +763,15 @@ describe('useSpecStore', () => {
           ...mockSpecJson,
           phase: 'tasks-generated',
         };
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+        mockReadSpecJson.mockResolvedValue(updatedSpecJson);
         // Reset readSpecs mock to track new calls
-        (window.electronAPI.readSpecs as ReturnType<typeof vi.fn>).mockClear();
+        mockReadSpecs.mockClear();
+        mockReadSpecs.mockResolvedValue(mockSpecs);
 
         await useSpecStore.getState().updateSpecJson();
 
         // readSpecs should have been called to update metadata
-        expect(window.electronAPI.readSpecs).toHaveBeenCalled();
+        expect(mockReadSpecs).toHaveBeenCalled();
       });
 
       // Bug fix: inspection-tab-not-displayed
@@ -719,9 +786,9 @@ describe('useSpecStore', () => {
             ],
           },
         };
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
-        // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
-        window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+        mockReadSpecJson.mockResolvedValue(specJsonWithInspection);
+        // trpc-full-migration: readArtifact query takes { name, filename, entityType } object
+        mockReadArtifact.mockImplementation(({ filename }: { name: string; filename: string }) => {
           if (filename === 'inspection-1.md') {
             return Promise.resolve(mockInspectionContent);
           }
@@ -751,8 +818,8 @@ describe('useSpecStore', () => {
             ],
           },
         };
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
-        window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+        mockReadSpecJson.mockResolvedValue(specJsonWithInspection);
+        mockReadArtifact.mockRejectedValue(new Error('File not found'));
 
         await useSpecStore.getState().updateSpecJson();
 
@@ -769,7 +836,7 @@ describe('useSpecStore', () => {
           ...mockSpecJson,
           // No inspection field
         };
-        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithoutInspection);
+        mockReadSpecJson.mockResolvedValue(specJsonWithoutInspection);
 
         // Store original artifacts
         const originalArtifacts = useSpecStore.getState().specDetail?.artifacts;
@@ -786,9 +853,11 @@ describe('useSpecStore', () => {
     describe('updateArtifact', () => {
       it('should update only requirements artifact without reloading spec.json', async () => {
         const newRequirementsContent = '# Updated Requirements\n\nNew content here.';
-        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(newRequirementsContent);
+        mockReadArtifact.mockResolvedValue(newRequirementsContent);
 
         const originalSpecJson = useSpecStore.getState().specDetail?.specJson;
+        // Track readSpecJson calls before updateArtifact
+        const readSpecJsonCallsBefore = mockReadSpecJson.mock.calls.length;
 
         await useSpecStore.getState().updateArtifact('requirements');
 
@@ -797,13 +866,13 @@ describe('useSpecStore', () => {
         expect(state.specDetail?.artifacts.requirements?.content).toBe(newRequirementsContent);
         // specJson should be preserved
         expect(state.specDetail?.specJson).toEqual(originalSpecJson);
-        // readSpecJson should NOT have been called
-        expect(window.electronAPI.readSpecJson).toHaveBeenCalledTimes(1); // Only initial selectSpec
+        // readSpecJson should NOT have been called during updateArtifact
+        expect(mockReadSpecJson.mock.calls.length).toBe(readSpecJsonCallsBefore);
       });
 
       it('should update only design artifact', async () => {
         const newDesignContent = '# Updated Design\n\nArchitecture changes.';
-        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(newDesignContent);
+        mockReadArtifact.mockResolvedValue(newDesignContent);
 
         await useSpecStore.getState().updateArtifact('design');
 
@@ -818,7 +887,7 @@ describe('useSpecStore', () => {
 - [ ] Task 3 pending
 - [ ] Task 4 pending
 - [ ] Task 5 pending`;
-        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(tasksWithProgress);
+        mockReadArtifact.mockResolvedValue(tasksWithProgress);
 
         await useSpecStore.getState().updateArtifact('tasks');
 
@@ -831,7 +900,7 @@ describe('useSpecStore', () => {
       });
 
       it('should handle artifact file not found gracefully', async () => {
-        window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+        mockReadArtifact.mockRejectedValue(new Error('File not found'));
 
         await useSpecStore.getState().updateArtifact('research');
 
@@ -841,14 +910,12 @@ describe('useSpecStore', () => {
 
       it('should do nothing when no spec is selected', async () => {
         useSpecStore.getState().clearSelectedSpec();
-        window.electronAPI.readArtifact = vi.fn();
+        mockReadArtifact.mockClear();
 
         await useSpecStore.getState().updateArtifact('requirements');
 
         // readArtifact should not be called after clearSelectedSpec
-        const callsAfterClear = (window.electronAPI.readArtifact as ReturnType<typeof vi.fn>).mock.calls;
-        // All calls should be before clearSelectedSpec
-        expect(callsAfterClear.every((call: unknown[]) => !call[0]?.includes?.('requirements.md') || callsAfterClear.indexOf(call) < 4)).toBe(true);
+        expect(mockReadArtifact).not.toHaveBeenCalled();
       });
     });
 
@@ -858,7 +925,7 @@ describe('useSpecStore', () => {
           { ...mockSpecs[0], phase: 'tasks-generated' },
           ...mockSpecs.slice(1),
         ];
-        window.electronAPI.readSpecs = vi.fn().mockResolvedValue(updatedSpecs);
+        mockReadSpecs.mockResolvedValue(updatedSpecs);
 
         // Mock projectStore
         vi.doMock('./projectStore', async () => ({
@@ -869,7 +936,7 @@ describe('useSpecStore', () => {
 
         await useSpecStore.getState().updateSpecMetadata('feature-a');
 
-        expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
+        expect(mockReadSpecs).toHaveBeenCalledWith({ projectPath: '/project' });
       });
     });
   });
@@ -881,36 +948,24 @@ describe('useSpecStore', () => {
   // separately tested in specWatcherService.test.ts
   // Here we just verify that startWatching registers the callback
   // ============================================================
+  // Task 9.2: onSpecsChanged now uses tRPC Subscription
   describe('onSpecsChanged File Routing', () => {
-    let onSpecsChangedCallback: ((event: { specId: string; path: string }) => void) | null = null;
-
     beforeEach(async () => {
-      // Capture the callback registered with onSpecsChanged
-      window.electronAPI.onSpecsChanged = vi.fn().mockImplementation((callback) => {
-        onSpecsChangedCallback = callback;
-        return vi.fn(); // cleanup function
-      });
+      // Reset callback
+      onSpecsChangedSubscribeCallback = null;
 
-      // Setup mock APIs
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
-        feature_name: 'feature-a',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        language: 'ja',
-        phase: 'design-generated',
-        approvals: mockSpecJsons['feature-a'].approvals,
-      });
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Content');
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
+      // trpc-full-migration: Setup tRPC mocks for selectSpec
+      mockReadSpecJson.mockResolvedValue(mockSpecJsons['feature-a']);
+      mockReadArtifact.mockResolvedValue('# Content');
+      mockSyncDocumentReview.mockResolvedValue(false);
 
       // Select a spec and start watching
       await useSpecStore.getState().selectSpec(mockSpecs[0]);
       await useSpecStore.getState().startWatching();
     });
 
-    it('should register onSpecsChanged callback during startWatching', () => {
-      expect(window.electronAPI.onSpecsChanged).toHaveBeenCalled();
-      expect(onSpecsChangedCallback).toBeTruthy();
+    it('should subscribe to onSpecsChanged via tRPC during startWatching', () => {
+      expect(onSpecsChangedSubscribeCallback).toBeTruthy();
     });
 
     // NOTE: Detailed file routing tests moved to specWatcherService.test.ts
@@ -920,7 +975,7 @@ describe('useSpecStore', () => {
     it('should handle spec.json changes via specWatcherService', async () => {
       // The callback should be registered and invokable without error
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
         });
@@ -929,7 +984,7 @@ describe('useSpecStore', () => {
 
     it('should handle artifact changes via specWatcherService', async () => {
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/requirements.md',
         });
@@ -938,7 +993,7 @@ describe('useSpecStore', () => {
 
     it('should handle document-review changes via specWatcherService', async () => {
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/document-review-requirements.md',
         });
@@ -947,7 +1002,7 @@ describe('useSpecStore', () => {
 
     it('should handle inspection changes via specWatcherService', async () => {
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/inspection-1.md',
         });
@@ -956,7 +1011,7 @@ describe('useSpecStore', () => {
 
     it('should handle non-selected spec changes via specWatcherService', async () => {
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: 'feature-b',
           path: '/project/.kiro/specs/feature-b/spec.json',
         });
@@ -966,7 +1021,7 @@ describe('useSpecStore', () => {
     it('should ignore events without specId', async () => {
       // This simulates an invalid event - should not throw
       expect(() => {
-        onSpecsChangedCallback?.({
+        onSpecsChangedSubscribeCallback?.({
           specId: '',
           path: '/project/.kiro/specs/unknown/spec.json',
         });

@@ -6,7 +6,9 @@
 import { useState, useEffect } from 'react';
 import { X, Terminal, Check, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { CliInstallResult, CliInstallInstructions } from '../types/electron.d';
+import type { CliInstallResult, CliInstallInstructions } from '../../shared/types/install';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for install operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 interface CliInstallDialogProps {
   isOpen: boolean;
@@ -26,8 +28,9 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
     setCopied(false);
 
     try {
-      const res = await window.electronAPI.installCliCommand(location);
-      setResult(res);
+      // trpc-full-migration Task 10.6: Use tRPC for installCliCommand
+      const res = await getVanillaClient().install.installCliCommand.mutate({ location });
+      setResult(res as unknown as InstallResult);
     } catch (error) {
       console.error('CLI install error:', error);
     } finally {

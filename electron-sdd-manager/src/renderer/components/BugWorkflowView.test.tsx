@@ -3,10 +3,27 @@
  * Task 3: bugs-pane-integration - BugWorkflowViewコンポーネント
  * Requirements: 3.1, 3.2, 3.3, 4.1-4.7, 6.2, 6.4
  * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
+ * trpc-full-migration Task 7.2: Use tRPC vanilla client mocks
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+// trpc-full-migration Task 6.2 + 7.2: Mock tRPC vanilla client for agent and autoExecution operations
+const mockVanillaClient = {
+  agent: {
+    start: { mutate: vi.fn().mockResolvedValue({ agentId: 'test-agent-id' }) },
+  },
+  autoExecution: {
+    bugStart: { mutate: vi.fn().mockResolvedValue({ ok: true, value: {} }) },
+    bugStop: { mutate: vi.fn().mockResolvedValue({ ok: true }) },
+    bugRetryFrom: { mutate: vi.fn().mockResolvedValue({ ok: true, value: {} }) },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { BugWorkflowView } from './BugWorkflowView';
 // zustand-agent-selector-hooks: Removed useAgentStore import - component now uses useAgentsBySpec hook
 import { useWorkflowStore } from '../stores/workflowStore';
@@ -72,24 +89,8 @@ vi.mock('../../shared/stores/bugAutoExecutionStore', () => {
   return { useBugAutoExecutionStore: mockFn };
 });
 
-// Mock electronAPI
-const mockElectronAPI = {
-  startAgent: vi.fn().mockResolvedValue({
-    agentId: 'test-agent-id',
-    specId: 'test-bug',
-    phase: 'analyze',
-    pid: 1234,
-    sessionId: 'test-session',
-    status: 'running',
-    startedAt: new Date().toISOString(),
-    lastActivityAt: new Date().toISOString(),
-    command: '/kiro:bug-analyze',
-  }),
-};
-
-vi.stubGlobal('window', {
-  electronAPI: mockElectronAPI,
-});
+// trpc-full-migration Task 11.4: All operations now use tRPC vanilla client (mocked above)
+// updateBugPhase -> bug.phaseUpdate, rebaseFromMain -> git.worktreeRebaseFromMain
 
 const mockBugMetadata: BugMetadata = {
   name: 'test-bug',
@@ -211,25 +212,26 @@ describe('BugWorkflowView', () => {
   });
 
   describe('phase execution', () => {
-    it('should call startAgent with correct command for analyze', () => {
+    it('should call startAgent with correct command for analyze', async () => {
       render(<BugWorkflowView />);
 
       const button = screen.getByTestId('bug-phase-execute-button-analyze');
       fireEvent.click(button);
 
-      // startAgent is called asynchronously, but we can verify it was called
+      // Wait for async handler to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // trpc-full-migration Task 7.2: startAgent now uses tRPC vanilla client
       // Base flags are added by specManagerService, so args only contain the command
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug', // bug:{name} format for AgentListPanel filtering
-        'analyze',
-        'claude',
-        ['/kiro:bug-analyze test-bug'], // Base flags added by service
-        undefined,
-        undefined
-      );
+      expect(mockVanillaClient.agent.start.mutate).toHaveBeenCalledWith({
+        specId: 'bug:test-bug', // bug:{name} format for AgentListPanel filtering
+        phase: 'analyze',
+        engineId: 'claude',
+        args: ['/kiro:bug-analyze test-bug'], // Base flags added by service
+      });
     });
 
-    it('should call startAgent with /commit {bugName} for deploy phase', () => {
+    it('should call startAgent with /commit {bugName} for deploy phase', async () => {
       // Set up a bug that has completed all phases except deploy
       const completedBugDetail: BugDetail = {
         ...mockBugDetail,
@@ -257,15 +259,17 @@ describe('BugWorkflowView', () => {
       const button = screen.getByTestId('bug-phase-execute-button-deploy');
       fireEvent.click(button);
 
+      // Wait for async operations (updateBugPhase + agent.start.mutate)
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // trpc-full-migration Task 7.2: /commit via tRPC agent.start
       // /commit accepts bug name to collect related files from .kiro/bugs/{bug-name}/
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug', // bug:{name} format for AgentListPanel filtering
-        'deploy',
-        'claude',
-        ['/commit test-bug'], // Bug name passed to /commit for file collection
-        undefined,
-        undefined
-      );
+      expect(mockVanillaClient.agent.start.mutate).toHaveBeenCalledWith({
+        specId: 'bug:test-bug', // bug:{name} format for AgentListPanel filtering
+        phase: 'deploy',
+        engineId: 'claude',
+        args: ['/commit test-bug'], // Bug name passed to /commit for file collection
+      });
     });
   });
 
@@ -338,16 +342,14 @@ describe('BugWorkflowView', () => {
 
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // Should call bug-merge for worktree mode
+      // trpc-full-migration Task 7.2: bug-merge via tRPC agent.start
       // bug-merge-cwd-fix: phase should be 'bug-merge' (not 'deploy') for WORKTREE_LIFECYCLE_PHASES
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'bug-merge',
-        'claude',
-        ['/kiro:bug-merge test-bug'],
-        undefined,
-        undefined
-      );
+      expect(mockVanillaClient.agent.start.mutate).toHaveBeenCalledWith({
+        specId: 'bug:test-bug',
+        phase: 'bug-merge',
+        engineId: 'claude',
+        args: ['/kiro:bug-merge test-bug'],
+      });
     });
 
     it('should call /commit when bug has no worktree field', async () => {
@@ -368,15 +370,13 @@ describe('BugWorkflowView', () => {
 
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // Should call /commit for non-worktree mode
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'deploy',
-        'claude',
-        ['/commit test-bug'],
-        undefined,
-        undefined
-      );
+      // trpc-full-migration Task 7.2: /commit via tRPC agent.start for non-worktree
+      expect(mockVanillaClient.agent.start.mutate).toHaveBeenCalledWith({
+        specId: 'bug:test-bug',
+        phase: 'deploy',
+        engineId: 'claude',
+        args: ['/commit test-bug'],
+      });
     });
 
     it('should show "Merge" label when bug has worktree field', async () => {

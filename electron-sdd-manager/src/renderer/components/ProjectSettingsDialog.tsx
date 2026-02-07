@@ -16,6 +16,8 @@ import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
 import { EngineConfigSection } from './EngineConfigSection';
 import { VcsSchemeSelector } from './VcsSchemeSelector';
 import type { VcsScheme } from '../../shared/types/worktree';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean;
@@ -43,9 +45,10 @@ export function ProjectSettingsDialog({
       setError(null);
 
       // Load both project defaults and VCS scheme in parallel
+      // trpc-full-migration Task 3.2: Use tRPC for loadProjectDefaults and getVcsScheme
       Promise.all([
-        window.electronAPI.loadProjectDefaults(currentProject),
-        window.electronAPI.getVcsScheme(currentProject),
+        getVanillaClient().config.loadProjectDefaults.query({ projectPath: currentProject }),
+        getVanillaClient().config.getVcsScheme.query({ projectPath: currentProject }),
       ])
         .then(([defaults, vcsScheme]) => {
           const scheme = defaults?.documentReview?.scheme as ReviewerScheme | undefined;
@@ -90,8 +93,10 @@ export function ProjectSettingsDialog({
     setError(null);
 
     try {
-      await window.electronAPI.saveProjectDefaults(currentProject, {
-        documentReview: { scheme: selectedScheme },
+      // trpc-full-migration Task 3.2: Use tRPC for saveProjectDefaults
+      await getVanillaClient().config.saveProjectDefaults.mutate({
+        projectPath: currentProject,
+        defaults: { documentReview: { scheme: selectedScheme } },
       });
 
       // Update specDetailStore with new project default scheme

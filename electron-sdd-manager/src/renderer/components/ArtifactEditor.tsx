@@ -20,6 +20,8 @@ import { useSearchKeyboard } from '../hooks/useSearchKeyboard';
 import { useHumanActivity } from '../hooks/useHumanActivity';
 import { throttle } from '@shared/utils';
 import { MermaidCodeRenderer } from '@shared/components/markdown';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for getArtifactPath
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /** Tab configuration for artifact editor */
 export interface TabInfo {
@@ -198,8 +200,10 @@ export function ArtifactEditor({
 
     try {
       const filename = `${activeTab}.md`;
-      const fullPath = await window.electronAPI.getArtifactPath(baseName, filename, entityType);
-      await window.electronAPI.copyToClipboard(fullPath);
+      // trpc-full-migration Task 4.3: Use tRPC for getArtifactPath
+      const fullPath = await getVanillaClient().file.getArtifactPath.query({ name: baseName, filename, entityType });
+      // trpc-full-migration Task 10.6: Use tRPC for copyToClipboard
+      await getVanillaClient().misc.copyToClipboard.mutate({ text: fullPath });
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {

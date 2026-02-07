@@ -26,6 +26,8 @@ import { clsx } from 'clsx';
 import type { Phase, ArtifactInfo } from '../types';
 import { hasWorktreePath, type WorktreeConfig } from '../types/worktree';
 import { MigrationDialog } from '@shared/components/migration';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for install.migration operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 const PHASE_LABELS = {
   requirements: '要件定義',
@@ -55,7 +57,8 @@ export function SpecDetail() {
 
     const checkMigration = async () => {
       try {
-        const migrationInfo = await window.electronAPI.checkMigrationNeeded(projectPath, selectedSpec.name);
+        // trpc-full-migration Task 10.6: Use tRPC for checkMigrationNeeded
+        const migrationInfo = await getVanillaClient().install.checkMigrationNeeded.query({ projectPath, specId: selectedSpec.name });
         if (migrationInfo) {
           setMigrationDialogState({
             isOpen: true,
@@ -80,7 +83,8 @@ export function SpecDetail() {
     setMigrationDialogState({ ...migrationDialogState, isProcessing: true, error: undefined });
 
     try {
-      const result = await window.electronAPI.acceptMigration(projectPath, specId);
+      // trpc-full-migration Task 10.6: Use tRPC for acceptMigration
+      const result = await getVanillaClient().install.acceptMigration.mutate({ projectPath, specId });
       if (result.ok) {
         // Close dialog on success
         setMigrationDialogState(null);
@@ -100,7 +104,8 @@ export function SpecDetail() {
     if (!projectPath) return;
 
     try {
-      await window.electronAPI.declineMigration(projectPath, specId);
+      // trpc-full-migration Task 10.6: Use tRPC for declineMigration
+      await getVanillaClient().install.declineMigration.mutate({ projectPath, specId });
       setMigrationDialogState(null);
     } catch (error) {
       console.error('Failed to decline migration:', error);

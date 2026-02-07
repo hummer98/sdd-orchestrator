@@ -5,6 +5,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// trpc-full-migration Task 5.3: Mock tRPC vanilla client for executeBugCreate
+const mockExecuteBugCreate = vi.fn();
+const mockVanillaClient = {
+  bug: {
+    executeBugCreate: { mutate: mockExecuteBugCreate },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { CreateBugDialog } from './CreateBugDialog';
 import { useProjectStore, useAgentStore, notify } from '../stores';
 
@@ -19,9 +31,6 @@ vi.mock('../stores', () => ({
   },
 }));
 
-// Mock electronAPI
-const mockExecuteBugCreate = vi.fn();
-
 describe('CreateBugDialog', () => {
   const mockSelectForProjectAgents = vi.fn();
   const mockSelectAgent = vi.fn();
@@ -30,14 +39,6 @@ describe('CreateBugDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock window.electronAPI
-    Object.defineProperty(window, 'electronAPI', {
-      value: {
-        executeBugCreate: mockExecuteBugCreate,
-      },
-      writable: true,
-    });
 
     (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       currentProject: '/test/project',
@@ -169,11 +170,11 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project', // projectPath
-          'Bug description here', // description
-          false // worktreeMode
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'Bug description here',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -376,11 +377,11 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project',
-          'Bug description here',
-          false
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'Bug description here',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -399,11 +400,11 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project',
-          'Bug description here',
-          true
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'Bug description here',
+          worktreeMode: true,
+        });
       });
     });
   });
@@ -460,11 +461,11 @@ describe('CreateBugDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project',
-          'バグの説明',
-          false
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'バグの説明',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -479,11 +480,11 @@ describe('CreateBugDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project',
-          'バグの説明',
-          false
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'バグの説明',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -551,11 +552,11 @@ describe('CreateBugDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
       await waitFor(() => {
-        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
-          '/test/project',
-          'バグの説明',
-          true // worktreeMode enabled
-        );
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'バグの説明',
+          worktreeMode: true, // worktreeMode enabled
+        });
       });
     });
   });

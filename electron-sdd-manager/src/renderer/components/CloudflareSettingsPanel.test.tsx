@@ -3,20 +3,31 @@
  * TDD: Testing Cloudflare Tunnel Token settings UI
  * Requirements: 2.1, 2.4
  * Task 8.1: SettingsPanelにCloudflare Tunnel Token入力セクションを追加
+ *
+ * trpc-full-migration Task 11.4: Migrated from window.electronAPI to tRPC vanilla client
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
 
-// Mock electronAPI
-const mockSetCloudfareTunnelToken = vi.fn();
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for cloudflare operations
 const mockGetCloudflareSettings = vi.fn();
+const mockSetTunnelToken = vi.fn();
+
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    cloudflare: {
+      getSettings: { query: mockGetCloudflareSettings },
+      setTunnelToken: { mutate: mockSetTunnelToken },
+    },
+  }),
+}));
 
 vi.mock('../../preload', () => ({}));
 
+import { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
+
 describe('CloudflareSettingsPanel', () => {
-  // Setup window.electronAPI mock
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -26,11 +37,6 @@ describe('CloudflareSettingsPanel', () => {
       publishToCloudflare: false,
       cloudflaredPath: null,
     });
-
-    (window as any).electronAPI = {
-      getCloudflareSettings: mockGetCloudflareSettings,
-      setCloudfareTunnelToken: mockSetCloudfareTunnelToken,
-    };
   });
   // ============================================================
   // Task 8.1.1: Token input field with mask display
@@ -88,8 +94,8 @@ describe('CloudflareSettingsPanel', () => {
       expect(saveButton).toBeInTheDocument();
     });
 
-    it('should call setCloudfareTunnelToken when save button clicked', async () => {
-      mockSetCloudfareTunnelToken.mockResolvedValue(undefined);
+    it('should call setTunnelToken via tRPC when save button clicked', async () => {
+      mockSetTunnelToken.mockResolvedValue(undefined);
       render(<CloudflareSettingsPanel />);
 
       const tokenInput = screen.getByLabelText(/Tunnel Token/i);
@@ -99,12 +105,12 @@ describe('CloudflareSettingsPanel', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSetCloudfareTunnelToken).toHaveBeenCalledWith('my-test-token');
+        expect(mockSetTunnelToken).toHaveBeenCalledWith({ token: 'my-test-token' });
       });
     });
 
     it('should show success feedback after saving', async () => {
-      mockSetCloudfareTunnelToken.mockResolvedValue(undefined);
+      mockSetTunnelToken.mockResolvedValue(undefined);
       render(<CloudflareSettingsPanel />);
 
       const tokenInput = screen.getByLabelText(/Tunnel Token/i);
@@ -120,7 +126,7 @@ describe('CloudflareSettingsPanel', () => {
 
     it('should disable save button while saving', async () => {
       let resolvePromise: () => void;
-      mockSetCloudfareTunnelToken.mockImplementation(
+      mockSetTunnelToken.mockImplementation(
         () => new Promise<void>((resolve) => {
           resolvePromise = resolve;
         })

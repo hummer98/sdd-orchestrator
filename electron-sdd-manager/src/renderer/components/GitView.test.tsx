@@ -52,16 +52,22 @@ vi.mock('@shared/api/ApiClientProvider', () => ({
   useApi: () => mockApiClient,
 }));
 
-// Mock electron API for git:changes-detected event
-const mockOnGitChangesDetected = vi.fn(() => () => {});
-const mockElectronAPI = {
-  onGitChangesDetected: mockOnGitChangesDetected,
-};
+// trpc-full-migration Task 11.4: Mock tRPC vanilla client for git change subscriptions
+const mockOnGitChangesDetected = vi.fn().mockReturnValue({ unsubscribe: vi.fn() });
 
-// Set up window.electronAPI
-Object.defineProperty(window, 'electronAPI', {
-  value: mockElectronAPI,
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    events: {
+      onGitChangesDetected: { subscribe: mockOnGitChangesDetected },
+    },
+  }),
+}));
+
+// Set electronTRPC on window to simulate Electron environment
+Object.defineProperty(window, 'electronTRPC', {
+  value: {},
   writable: true,
+  configurable: true,
 });
 
 describe('GitView Component', () => {

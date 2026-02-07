@@ -2,6 +2,7 @@
  * useConvertToWorktree Hook
  * Worktree変換の状態管理とロジック
  * Requirements: 4.1, 4.2, 4.3 (convert-spec-to-worktree)
+ * trpc-full-migration Task 8.2: tRPC vanilla client migration
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -9,6 +10,11 @@ import { notify } from '../stores';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
+import type { Result, ApiError } from '../../shared/api/types';
+
+/** Result type for worktreeCheckMain */
+type WorktreeCheckMainResult = Result<{ isMain: boolean; branch?: string }, ApiError>;
 
 /**
  * Convert error type for renderer-side error handling
@@ -85,7 +91,7 @@ export function useConvertToWorktree(): UseConvertToWorktreeResult {
     }
 
     try {
-      const result = await window.electronAPI.worktreeCheckMain(currentProject);
+      const result = await getVanillaClient().git.worktreeCheckMain.query({ projectPath: currentProject }) as WorktreeCheckMainResult;
       if (result.ok) {
         setIsOnMain(result.value.isMain);
       } else {
@@ -116,16 +122,16 @@ export function useConvertToWorktree(): UseConvertToWorktreeResult {
     setIsConverting(true);
 
     try {
-      // 事前チェック - spec-path-ssot-refactor: Use specName instead of specPath
-      const checkResult = await window.electronAPI.convertCheck(currentProject, specName);
+      // 事前チェック - tRPC git.convertCheck.query
+      const checkResult = await getVanillaClient().git.convertCheck.query({ projectPath: currentProject, specPath: specName });
       if (!checkResult.ok) {
         const errorMessage = getConvertErrorMessage(checkResult.error as ConvertErrorResult);
         notify.error(errorMessage);
         return;
       }
 
-      // 変換実行 - spec-path-ssot-refactor: Use specName instead of specPath
-      const result = await window.electronAPI.convertToWorktree(currentProject, specName, featureName);
+      // 変換実行 - tRPC git.convertToWorktree.mutate
+      const result = await getVanillaClient().git.convertToWorktree.mutate({ projectPath: currentProject, specPath: specName, featureName });
       if (!result.ok) {
         const errorMessage = getConvertErrorMessage(result.error as ConvertErrorResult);
         notify.error(`Worktree変換に失敗しました: ${errorMessage}`);

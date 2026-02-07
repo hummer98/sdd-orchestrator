@@ -34,7 +34,7 @@ describe('setupTRPCHandler', () => {
     expect(typeof setupTRPCHandler).toBe('function');
   });
 
-  it('should call createIPCHandler with router and window', async () => {
+  it('should call createIPCHandler with router, window, and createContext', async () => {
     const { setupTRPCHandler } = await import('../handler');
 
     // Create a mock BrowserWindow
@@ -46,6 +46,7 @@ describe('setupTRPCHandler', () => {
     expect(mockCreateIPCHandler).toHaveBeenCalledWith({
       router: expect.anything(), // appRouter
       windows: [mockWindow],
+      createContext: expect.any(Function),
     });
   });
 

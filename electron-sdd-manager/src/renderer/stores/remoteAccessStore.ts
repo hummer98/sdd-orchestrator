@@ -11,6 +11,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for misc/cloudflare operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * LocalStorage key for persisted state
@@ -176,7 +178,8 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          const result = await window.electronAPI.startRemoteServer(preferredPort);
+          // trpc-full-migration Task 10.6: Use tRPC for startRemoteServer
+          const result = await getVanillaClient().misc.startRemoteServer.mutate({ preferredPort });
           console.log('[remoteAccessStore] startServer result:', result);
           console.log('[remoteAccessStore] qrCodeDataUrl received:', result.ok ? result.value.qrCodeDataUrl?.substring(0, 50) + '...' : 'N/A');
 
@@ -223,7 +226,8 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          await window.electronAPI.stopRemoteServer();
+          // trpc-full-migration Task 10.6: Use tRPC for stopRemoteServer
+          await getVanillaClient().misc.stopRemoteServer.mutate();
 
           set({
             isRunning: false,
@@ -268,9 +272,10 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
       initialize: async () => {
         // Fetch current server status
         try {
-          const status = await window.electronAPI.getRemoteServerStatus();
+          // trpc-full-migration Task 10.6: Use tRPC for getRemoteServerStatus
+          const status = await getVanillaClient().misc.getRemoteServerStatus.query();
           set({
-            isRunning: status.isRunning,
+            isRunning: status.running,
             port: status.port,
             url: status.url,
             clientCount: status.clientCount,
@@ -281,7 +286,8 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
 
         // Load Cloudflare settings (Task 9.1)
         try {
-          const settings = await window.electronAPI.getCloudflareSettings();
+          // trpc-full-migration Task 10.6: Use tRPC for getCloudflareSettings
+          const settings = await getVanillaClient().cloudflare.getSettings.query();
           set({
             hasTunnelToken: settings.hasTunnelToken,
           });
@@ -290,27 +296,39 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
         }
 
         // Subscribe to status changes
+        // Task 9.2: window.electronAPI.onRemoteServerStatusChanged -> tRPC Subscription
         // Note: ServerStatus does not include qrCodeDataUrl, so we preserve existing value
         // Skip updates while loading to avoid race condition with startServer result
-        statusUnsubscribe = window.electronAPI.onRemoteServerStatusChanged((status) => {
-          const { qrCodeDataUrl, localIp, isLoading } = get();
+        // Dynamic import to avoid bundling electron-trpc in Remote UI
+        try {
+          const { getVanillaClient: getClient } = await import('../../shared/trpc/vanillaClient');
+          const sub = getClient().events.onRemoteServerStatusChanged.subscribe(undefined, {
+            onData: (status: Record<string, unknown>) => {
+              const typedStatus = status as { isRunning: boolean; port: number | null; url: string | null; clientCount: number };
+              const { qrCodeDataUrl, localIp, isLoading } = get();
 
-          // Skip update if we're in the middle of startServer - it will set the correct state
-          if (isLoading) {
-            return;
-          }
+              // Skip update if we're in the middle of startServer - it will set the correct state
+              if (isLoading) {
+                return;
+              }
 
-          set({
-            isRunning: status.isRunning,
-            port: status.port,
-            url: status.url,
-            clientCount: status.clientCount,
-            // Preserve qrCodeDataUrl and localIp (only available from startServer result)
-            // Clear them when server stops
-            qrCodeDataUrl: status.isRunning ? qrCodeDataUrl : null,
-            localIp: status.isRunning ? localIp : null,
+              set({
+                isRunning: typedStatus.isRunning,
+                port: typedStatus.port,
+                url: typedStatus.url,
+                clientCount: typedStatus.clientCount,
+                // Preserve qrCodeDataUrl and localIp (only available from startServer result)
+                // Clear them when server stops
+                qrCodeDataUrl: typedStatus.isRunning ? qrCodeDataUrl : null,
+                localIp: typedStatus.isRunning ? localIp : null,
+              });
+            },
           });
-        });
+          statusUnsubscribe = () => sub.unsubscribe();
+        } catch (error) {
+          console.warn('[remoteAccessStore] Failed to subscribe via tRPC', error);
+          // trpc-full-migration Task 10.6: Removed IPC fallback (tRPC is the only communication path)
+        }
       },
 
       /**
@@ -359,11 +377,12 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
        */
       refreshAccessToken: async () => {
         try {
-          const result = await window.electronAPI.refreshAccessToken();
-          if (result) {
+          // trpc-full-migration Task 10.6: Use tRPC for refreshAccessToken
+          const result = await getVanillaClient().misc.refreshAccessToken.mutate();
+          if (result && result.ok) {
             set({
-              accessToken: result.accessToken,
-              tunnelQrCodeDataUrl: result.tunnelQrCodeDataUrl ?? null,
+              accessToken: result.value.accessToken,
+              tunnelQrCodeDataUrl: result.value.tunnelQrCodeDataUrl ?? null,
             });
           }
         } catch (error) {
@@ -377,7 +396,8 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
        */
       loadCloudflareSettings: async () => {
         try {
-          const settings = await window.electronAPI.getCloudflareSettings();
+          // trpc-full-migration Task 10.6: Use tRPC for getCloudflareSettings
+          const settings = await getVanillaClient().cloudflare.getSettings.query();
           set({
             hasTunnelToken: settings.hasTunnelToken,
           });

@@ -2,11 +2,20 @@
  * useConvertBugToWorktree Hook
  * Manages worktree conversion state and operations for bugs
  * bugs-workflow-footer: Task 5.1
+ * trpc-full-migration Task 8.2: tRPC vanilla client migration
  * Requirements: 7.1-7.7, 8.1-8.4
  */
 
 import { useState, useCallback } from 'react';
 import { notify, useProjectStore } from '../stores';
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
+import type { Result, ApiError } from '../../shared/api/types';
+
+/** Result type for worktreeCheckMain */
+type WorktreeCheckMainResult = Result<{ isMain: boolean; branch?: string }, ApiError>;
+
+/** Result type for convertBugToWorktree */
+type ConvertBugResult = Result<{ path: string; branch: string; created_at: string }, ApiError>;
 
 /**
  * Hook return type
@@ -46,7 +55,7 @@ export function useConvertBugToWorktree(): UseConvertBugToWorktreeReturn {
     }
 
     try {
-      const result = await window.electronAPI.worktreeCheckMain(currentProject);
+      const result = await getVanillaClient().git.worktreeCheckMain.query({ projectPath: currentProject }) as WorktreeCheckMainResult;
       if (result.ok) {
         // Requirements 8.4: Set isOnMain based on branch check
         setIsOnMain(result.value.isMain);
@@ -68,8 +77,8 @@ export function useConvertBugToWorktree(): UseConvertBugToWorktreeReturn {
     setIsConverting(true);
 
     try {
-      // Requirements 7.4: Call convertBugToWorktree IPC
-      const result = await window.electronAPI.convertBugToWorktree(bugName);
+      // Requirements 7.4: Call tRPC bug.convertToWorktree.mutate
+      const result = await getVanillaClient().bug.convertToWorktree.mutate({ bugName }) as ConvertBugResult;
 
       if (result.ok) {
         // Requirements 7.5: Show success notification

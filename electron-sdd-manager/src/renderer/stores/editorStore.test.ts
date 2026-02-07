@@ -5,6 +5,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
+const mockVanillaClient = {
+  file: {
+    readArtifact: { query: vi.fn() },
+    writeArtifact: { mutate: vi.fn() },
+    getArtifactPath: { query: vi.fn() },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { useEditorStore, type ArtifactType } from './editorStore';
 
 describe('useEditorStore', () => {
@@ -75,7 +88,7 @@ describe('useEditorStore', () => {
   describe('loadArtifact', () => {
     it('should load artifact content', async () => {
       const mockContent = '# Test Content';
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(mockContent);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(mockContent);
 
       // spec-path-ssot-refactor: first param is specName, second is artifactType
       await useEditorStore.getState().loadArtifact('spec-name', 'requirements');
@@ -87,7 +100,7 @@ describe('useEditorStore', () => {
     });
 
     it('should set activeTab when loading artifact', async () => {
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('content');
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('content');
 
       await useEditorStore.getState().loadArtifact('spec-name', 'design');
 
@@ -96,7 +109,7 @@ describe('useEditorStore', () => {
     });
 
     it('should handle load errors', async () => {
-      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+      mockVanillaClient.file.readArtifact.query.mockRejectedValue(new Error('File not found'));
 
       await useEditorStore.getState().loadArtifact('spec-name', 'requirements');
 
@@ -108,32 +121,32 @@ describe('useEditorStore', () => {
     // artifact-all-markdown-files: Test for .md suffix handling
     it('should not double .md suffix for artifact names ending with .md', async () => {
       const mockContent = '# E2E Report Content';
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(mockContent);
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue(mockContent);
 
       // Additional markdown files have .md in their key (e.g., "e2e-report-1.md")
       await useEditorStore.getState().loadArtifact('my-spec', 'e2e-report-1.md' as ArtifactType);
 
       // Should call readArtifact with "e2e-report-1.md", not "e2e-report-1.md.md"
-      expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
-        'my-spec', 'e2e-report-1.md', 'spec'
+      expect(mockVanillaClient.file.readArtifact.query).toHaveBeenCalledWith(
+        { name: 'my-spec', filename: 'e2e-report-1.md', entityType: 'spec' }
       );
       expect(useEditorStore.getState().content).toBe(mockContent);
     });
 
     it('should add .md suffix for standard artifact types', async () => {
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('content');
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('content');
 
       await useEditorStore.getState().loadArtifact('my-spec', 'requirements');
 
       // Standard artifacts need .md appended
-      expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
-        'my-spec', 'requirements.md', 'spec'
+      expect(mockVanillaClient.file.readArtifact.query).toHaveBeenCalledWith(
+        { name: 'my-spec', filename: 'requirements.md', entityType: 'spec' }
       );
     });
 
     it('should clear content immediately when switching to a different file (Bug fix: spec-item-flash-wrong-content)', async () => {
       // Setup: load initial artifact
-      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Initial Content');
+      mockVanillaClient.file.readArtifact.query.mockResolvedValue('# Initial Content');
       await useEditorStore.getState().loadArtifact('spec-a', 'requirements');
 
       expect(useEditorStore.getState().content).toBe('# Initial Content');
@@ -145,7 +158,7 @@ describe('useEditorStore', () => {
       const newContentPromise = new Promise<string>((resolve) => {
         resolveNewContent = resolve;
       });
-      window.electronAPI.readArtifact = vi.fn().mockReturnValue(newContentPromise);
+      mockVanillaClient.file.readArtifact.query.mockReturnValue(newContentPromise);
 
       // Start loading new artifact (don't await yet)
       const loadPromise = useEditorStore.getState().loadArtifact('spec-b', 'design');
@@ -166,7 +179,7 @@ describe('useEditorStore', () => {
   describe('save', () => {
     // Bug fix: worktree-artifact-save - save now uses writeArtifact with path resolution
     it('should save content and clear dirty flag', async () => {
-      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.file.writeArtifact.mutate.mockResolvedValue(undefined);
 
       useEditorStore.setState({
         content: 'new content',
@@ -184,13 +197,13 @@ describe('useEditorStore', () => {
       expect(state.isDirty).toBe(false);
       expect(state.originalContent).toBe('new content');
       // Bug fix: worktree-artifact-save - now uses writeArtifact instead of writeFile
-      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
-        'my-spec', 'requirements.md', 'new content', 'spec'
+      expect(mockVanillaClient.file.writeArtifact.mutate).toHaveBeenCalledWith(
+        { name: 'my-spec', filename: 'requirements.md', content: 'new content', entityType: 'spec' }
       );
     });
 
     it('should set isSaving during save', async () => {
-      window.electronAPI.writeArtifact = vi.fn().mockImplementation(
+      mockVanillaClient.file.writeArtifact.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
@@ -213,7 +226,7 @@ describe('useEditorStore', () => {
 
     // Bug fix: worktree-artifact-save - test bug artifact saving
     it('should save bug artifact with correct entityType', async () => {
-      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.file.writeArtifact.mutate.mockResolvedValue(undefined);
 
       useEditorStore.setState({
         content: 'bug fix content',
@@ -226,14 +239,14 @@ describe('useEditorStore', () => {
 
       await useEditorStore.getState().save();
 
-      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
-        'my-bug', 'analysis.md', 'bug fix content', 'bug'
+      expect(mockVanillaClient.file.writeArtifact.mutate).toHaveBeenCalledWith(
+        { name: 'my-bug', filename: 'analysis.md', content: 'bug fix content', entityType: 'bug' }
       );
     });
 
     // artifact-all-markdown-files: Test for .md suffix handling in save
     it('should not double .md suffix when saving artifact with .md in name', async () => {
-      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
+      mockVanillaClient.file.writeArtifact.mutate.mockResolvedValue(undefined);
 
       useEditorStore.setState({
         content: 'updated e2e report',
@@ -247,8 +260,8 @@ describe('useEditorStore', () => {
       await useEditorStore.getState().save();
 
       // Should write to "e2e-report-1.md", not "e2e-report-1.md.md"
-      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
-        'my-spec', 'e2e-report-1.md', 'updated e2e report', 'spec'
+      expect(mockVanillaClient.file.writeArtifact.mutate).toHaveBeenCalledWith(
+        { name: 'my-spec', filename: 'e2e-report-1.md', content: 'updated e2e report', entityType: 'spec' }
       );
     });
   });

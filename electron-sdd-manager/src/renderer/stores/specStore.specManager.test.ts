@@ -8,6 +8,23 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// trpc-full-migration Task 5.3: Mock tRPC vanilla client for spec.execute
+const mockVanillaClient = {
+  spec: {
+    execute: { mutate: vi.fn() },
+  },
+  file: {
+    readSpecJson: { query: vi.fn() },
+    readArtifact: { query: vi.fn() },
+    readSpecs: { query: vi.fn() },
+    listMarkdownFilesInSpec: { query: vi.fn().mockResolvedValue([]) },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { useSpecStore } from './specStore';
 import { useAgentStore } from './agentStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
@@ -165,8 +182,9 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
     });
 
     describe('executeSpecManagerGeneration action', () => {
-      it('should call execute IPC with unified API', async () => {
-        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
+      it('should call execute via tRPC with unified API', async () => {
+        // trpc-full-migration Task 5.3: execute via tRPC
+        mockVanillaClient.spec.execute.mutate.mockResolvedValue(undefined);
 
         await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -176,7 +194,7 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
           'manual'
         );
 
-        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+        expect(mockVanillaClient.spec.execute.mutate).toHaveBeenCalledWith({
           type: 'requirements',
           specId: 'test-spec',
           featureName: 'test-feature',
@@ -184,7 +202,8 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
       });
 
       it('should handle impl phase with taskId', async () => {
-        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
+        // trpc-full-migration Task 5.3: execute via tRPC
+        mockVanillaClient.spec.execute.mutate.mockResolvedValue(undefined);
 
         await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -194,7 +213,7 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
           'manual'
         );
 
-        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+        expect(mockVanillaClient.spec.execute.mutate).toHaveBeenCalledWith({
           type: 'impl',
           specId: 'test-spec',
           featureName: 'test-feature',

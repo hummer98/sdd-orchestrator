@@ -8,12 +8,23 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock electronAPI
-const mockLogRenderer = vi.fn();
-vi.stubGlobal('window', {
-  electronAPI: {
-    logRenderer: mockLogRenderer,
-  },
+// Mock tRPC vanillaClient (trpc-full-migration: electronAPI → tRPC)
+const mockMutate = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../shared/trpc/vanillaClient', () => {
+  const createMockProxy = (): any => {
+    return new Proxy({}, {
+      get: (_target: any, prop: string) => {
+        if (prop === 'mutate') return mockMutate;
+        if (prop === 'query') return vi.fn().mockResolvedValue(undefined);
+        if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined;
+        return createMockProxy();
+      },
+    });
+  };
+  return {
+    getVanillaClient: vi.fn(() => createMockProxy()),
+    resetVanillaClient: vi.fn(),
+  };
 });
 
 // Mock contextProvider
@@ -27,7 +38,7 @@ import { getAutoContext } from './contextProvider';
 
 describe('rendererLogger', () => {
   beforeEach(() => {
-    mockLogRenderer.mockClear();
+    mockMutate.mockClear();
     vi.mocked(getAutoContext).mockReturnValue({});
   });
 
@@ -37,20 +48,22 @@ describe('rendererLogger', () => {
       it('should call logRenderer with info level', () => {
         rendererLogger.log('Test message');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'info',
-          expect.stringContaining('Test message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'info',
+            message: expect.stringContaining('Test message'),
+          })
         );
       });
 
       it('should accept multiple arguments', () => {
         rendererLogger.log('Message', 'arg1', 123);
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'info',
-          expect.stringContaining('Message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'info',
+            message: expect.stringContaining('Message'),
+          })
         );
       });
     });
@@ -59,10 +72,11 @@ describe('rendererLogger', () => {
       it('should call logRenderer with info level', () => {
         rendererLogger.info('Info message');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'info',
-          expect.stringContaining('Info message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'info',
+            message: expect.stringContaining('Info message'),
+          })
         );
       });
     });
@@ -71,10 +85,11 @@ describe('rendererLogger', () => {
       it('should call logRenderer with warn level', () => {
         rendererLogger.warn('Warning message');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'warn',
-          expect.stringContaining('Warning message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'warn',
+            message: expect.stringContaining('Warning message'),
+          })
         );
       });
     });
@@ -83,10 +98,11 @@ describe('rendererLogger', () => {
       it('should call logRenderer with error level', () => {
         rendererLogger.error('Error message');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'error',
-          expect.stringContaining('Error message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'error',
+            message: expect.stringContaining('Error message'),
+          })
         );
       });
     });
@@ -95,10 +111,11 @@ describe('rendererLogger', () => {
       it('should call logRenderer with debug level', () => {
         rendererLogger.debug('Debug message');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'debug',
-          expect.stringContaining('Debug message'),
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: 'debug',
+            message: expect.stringContaining('Debug message'),
+          })
         );
       });
     });
@@ -109,11 +126,11 @@ describe('rendererLogger', () => {
     it('should include source in context', () => {
       rendererLogger.log('Test');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.any(String),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          source: expect.stringMatching(/^renderer/),
+          context: expect.objectContaining({
+            source: expect.stringMatching(/^renderer/),
+          }),
         })
       );
     });
@@ -128,12 +145,14 @@ describe('rendererLogger', () => {
 
       rendererLogger.logWithContext('info', 'Test', { customKey: 'value' });
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        'Test',
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'test-feature',
-          customKey: 'value',
+          level: 'info',
+          message: 'Test',
+          context: expect.objectContaining({
+            specId: 'test-feature',
+            customKey: 'value',
+          }),
         })
       );
     });
@@ -145,11 +164,11 @@ describe('rendererLogger', () => {
 
       rendererLogger.log('Test');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.any(String),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'feature-auth',
+          context: expect.objectContaining({
+            specId: 'feature-auth',
+          }),
         })
       );
     });
@@ -161,11 +180,11 @@ describe('rendererLogger', () => {
 
       rendererLogger.log('Test');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.any(String),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          bugName: 'bug-123',
+          context: expect.objectContaining({
+            bugName: 'bug-123',
+          }),
         })
       );
     });
@@ -186,36 +205,18 @@ describe('rendererLogger', () => {
     });
   });
 
-  // Requirement 7.3: IPC unavailable fallback
-  describe('IPC unavailable fallback', () => {
-    it('should not throw when electronAPI is undefined', () => {
-      const originalWindow = global.window;
-      vi.stubGlobal('window', {});
+  // Requirement 7.3: tRPC client unavailable fallback
+  describe('tRPC client unavailable fallback', () => {
+    it('should not throw when tRPC mutate rejects', () => {
+      mockMutate.mockRejectedValueOnce(new Error('tRPC unavailable'));
 
       expect(() => rendererLogger.log('Test')).not.toThrow();
-
-      vi.stubGlobal('window', originalWindow);
     });
 
-    it('should not throw when logRenderer is undefined', () => {
-      const originalWindow = global.window;
-      vi.stubGlobal('window', {
-        electronAPI: {},
-      });
+    it('should not throw when tRPC mutate throws synchronously', () => {
+      mockMutate.mockImplementationOnce(() => { throw new Error('sync error'); });
 
       expect(() => rendererLogger.log('Test')).not.toThrow();
-
-      vi.stubGlobal('window', originalWindow);
-    });
-
-    it('should not throw when window is undefined', () => {
-      const originalWindow = global.window;
-      // @ts-expect-error Testing undefined window
-      global.window = undefined;
-
-      expect(() => rendererLogger.log('Test')).not.toThrow();
-
-      global.window = originalWindow;
     });
   });
 
@@ -224,11 +225,13 @@ describe('rendererLogger', () => {
     it('should send log with explicit level', () => {
       rendererLogger.logWithContext('warn', 'Warning', { key: 'value' });
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'warn',
-        'Warning',
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          key: 'value',
+          level: 'warn',
+          message: 'Warning',
+          context: expect.objectContaining({
+            key: 'value',
+          }),
         })
       );
     });
@@ -237,14 +240,15 @@ describe('rendererLogger', () => {
       const levels = ['log', 'info', 'warn', 'error', 'debug'] as const;
 
       levels.forEach((level) => {
-        mockLogRenderer.mockClear();
+        mockMutate.mockClear();
         rendererLogger.logWithContext(level, 'Message');
 
         const expectedLevel = level === 'log' ? 'info' : level;
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          expectedLevel,
-          'Message',
-          expect.any(Object)
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            level: expectedLevel,
+            message: 'Message',
+          })
         );
       });
     });
@@ -255,20 +259,20 @@ describe('rendererLogger', () => {
     it('should stringify object arguments', () => {
       rendererLogger.log('Data:', { key: 'value' });
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('{"key":"value"}'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('{"key":"value"}'),
+        })
       );
     });
 
     it('should handle array arguments', () => {
       rendererLogger.log('Array:', [1, 2, 3]);
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('[1,2,3]'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('[1,2,3]'),
+        })
       );
     });
 

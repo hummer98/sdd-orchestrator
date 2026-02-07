@@ -6,8 +6,9 @@
 import { Menu, MenuItem, app, BrowserWindow, dialog } from 'electron';
 import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
-import { IPC_CHANNELS } from './ipc/channels';
 import { createWindow } from './index';
+import { getGlobalEventBus } from './trpc/services/globalEventBus';
+import { EVENT_NAMES } from './trpc/services/eventBus';
 
 // Current project path for menu state management
 let currentProjectPathForMenu: string | null = null;
@@ -45,10 +46,10 @@ function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
         // Wait for window to be ready before sending event
         if (window.webContents.isLoading()) {
           window.webContents.once('did-finish-load', () => {
-            window!.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_OPEN_PROJECT, { projectPath });
           });
         } else {
-          window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
+          getGlobalEventBus().emit(EVENT_NAMES.MENU_OPEN_PROJECT, { projectPath });
         }
       }
     },
@@ -127,13 +128,12 @@ export function createMenu(): void {
               });
 
               if (!result.canceled && result.filePaths.length > 0) {
-                // Wait for window to be ready before sending event
                 if (window.webContents.isLoading()) {
                   window.webContents.once('did-finish-load', () => {
-                    window!.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
+                    getGlobalEventBus().emit(EVENT_NAMES.MENU_OPEN_PROJECT, { projectPath: result.filePaths[0] });
                   });
                 } else {
-                  window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
+                  getGlobalEventBus().emit(EVENT_NAMES.MENU_OPEN_PROJECT, { projectPath: result.filePaths[0] });
                 }
               }
             }
@@ -197,10 +197,7 @@ export function createMenu(): void {
           label: 'レイアウトをリセット',
           enabled: currentProjectPathForMenu !== null,
           click: () => {
-            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-            if (window) {
-              window.webContents.send(IPC_CHANNELS.MENU_RESET_LAYOUT);
-            }
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_RESET_LAYOUT, {});
           },
         },
       ],
@@ -231,10 +228,7 @@ export function createMenu(): void {
           label: isRemoteServerRunning ? 'リモートアクセスサーバーを停止' : 'リモートアクセスサーバーを起動',
           enabled: currentProjectPathForMenu !== null || isRemoteServerRunning, // Allow stopping even without project
           click: () => {
-            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-            if (window) {
-              window.webContents.send(IPC_CHANNELS.MENU_TOGGLE_REMOTE_SERVER);
-            }
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_TOGGLE_REMOTE_SERVER, {});
           },
         },
         { type: 'separator' as const },
@@ -242,20 +236,14 @@ export function createMenu(): void {
           label: 'コマンドセットをインストール...',
           enabled: currentProjectPathForMenu !== null,
           click: () => {
-            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-            if (!window) return;
-
-            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_COMMANDSET);
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_COMMANDSET, {});
           },
         },
         { type: 'separator' as const },
         {
           label: 'sdd CLIコマンドをインストール...',
-          click: async () => {
-            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-            if (!window) return;
-
-            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND);
+          click: () => {
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_CLI, {});
           },
         },
         { type: 'separator' as const },
@@ -266,10 +254,7 @@ export function createMenu(): void {
               label: 'Debugエージェントをインストール (実験的)',
               enabled: currentProjectPathForMenu !== null,
               click: () => {
-                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-                if (window) {
-                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_DEBUG);
-                }
+                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_DEBUG, {});
               },
             },
             // gemini-document-review Task 3.3: Gemini document-review install menu item
@@ -278,10 +263,7 @@ export function createMenu(): void {
               label: 'Gemini document-review をインストール (実験的)',
               enabled: currentProjectPathForMenu !== null,
               click: () => {
-                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-                if (window) {
-                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW);
-                }
+                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_GEMINI, {});
               },
             },
             // Note: Commit command is now auto-installed on project selection

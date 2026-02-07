@@ -2,19 +2,24 @@
  * Agent Store Adapter
  *
  * agent-store-unification: Electron IPC Adapter Layer
+ * trpc-full-migration Task 6.2: Agent operations migrated to tRPC vanilla client
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
  *
- * This adapter encapsulates all Electron IPC operations for Agent management.
- * It bridges the shared/agentStore (SSOT) with window.electronAPI.
+ * This adapter encapsulates all Agent management operations.
+ * It bridges the shared/agentStore (SSOT) with tRPC vanilla client.
  *
  * Responsibilities:
- * - IPC call wrapping for Agent operations
- * - IPC event listener setup and cleanup
+ * - tRPC call wrapping for Agent operations (queries and mutations)
+ * - IPC event listener setup and cleanup (subscriptions remain via electronAPI until Task 9)
  * - skipPermissions management
- * - Updating shared/agentStore with IPC results
+ * - Updating shared/agentStore with tRPC results
  */
 
 import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus } from '@shared/stores/agentStore';
+// trpc-full-migration Task 6.2: Use tRPC vanilla client for agent operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import type { Unsubscribable } from '@trpc/server/observable';
 
 // =============================================================================
 // Type Adapters
@@ -73,10 +78,12 @@ interface RendererAgentInfo {
  * Agent operations that wrap Electron IPC calls
  * and update shared/agentStore with results.
  */
+// trpc-full-migration Task 6.2: Agent operations now use tRPC vanilla client
 export const agentOperations = {
   /**
    * Start a new agent
    * unified-engine-command-resolution: command parameter removed, engineId used instead
+   * trpc-full-migration Task 6.2: Uses tRPC agent.start mutation
    * @returns agentId on success, null on failure
    */
   async startAgent(
@@ -88,14 +95,14 @@ export const agentOperations = {
     engineId?: import('@shared/registry').LLMEngineId
   ): Promise<string | null> {
     try {
-      const newAgent = await window.electronAPI.startAgent(
+      const newAgent = await getVanillaClient().agent.start.mutate({
         specId,
         phase,
         args,
         group,
         sessionId,
-        engineId
-      );
+        engineId: engineId ?? 'claude',
+      });
 
       const agentInfo = toSharedAgentInfo(newAgent as RendererAgentInfo);
       useSharedAgentStore.getState().addAgent(specId, agentInfo);
@@ -112,10 +119,11 @@ export const agentOperations = {
 
   /**
    * Stop a running agent
+   * trpc-full-migration Task 6.2: Uses tRPC agent.stop mutation
    */
   async stopAgent(agentId: string): Promise<void> {
     try {
-      await window.electronAPI.stopAgent(agentId);
+      await getVanillaClient().agent.stop.mutate({ agentId });
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to stop agent:', error);
     }
@@ -123,13 +131,14 @@ export const agentOperations = {
 
   /**
    * Resume an interrupted agent
+   * trpc-full-migration Task 6.2: Uses tRPC agent.resume mutation
    * Bug fix: agent-log-user-input-duplicate
    * User input log is now added only via Main process (onAgentLog IPC)
    * to avoid duplicate entries from both Renderer and Main.
    */
   async resumeAgent(agentId: string, prompt?: string): Promise<void> {
     try {
-      await window.electronAPI.resumeAgent(agentId, prompt);
+      await getVanillaClient().agent.resume.mutate({ agentId, prompt });
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to resume agent:', error);
     }
@@ -137,6 +146,7 @@ export const agentOperations = {
 
   /**
    * Remove an agent from file system and store
+   * trpc-full-migration Task 6.2: Uses tRPC agent.delete mutation
    */
   async removeAgent(agentId: string): Promise<void> {
     const state = useSharedAgentStore.getState();
@@ -144,7 +154,10 @@ export const agentOperations = {
 
     if (agent) {
       try {
-        await window.electronAPI.deleteAgent(agent.specId, agentId);
+        await getVanillaClient().agent.delete.mutate({
+          specId: agent.specId,
+          agentId,
+        });
         console.log('[agentStoreAdapter] Agent record deleted', { specId: agent.specId, agentId });
       } catch (error) {
         console.error('[agentStoreAdapter] Failed to delete agent record:', error);
@@ -158,10 +171,11 @@ export const agentOperations = {
 
   /**
    * Send input to an agent
+   * trpc-full-migration Task 6.2: Uses tRPC agent.sendInput mutation
    */
   async sendInput(agentId: string, input: string): Promise<void> {
     try {
-      await window.electronAPI.sendAgentInput(agentId, input);
+      await getVanillaClient().agent.sendInput.mutate({ agentId, input });
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to send input:', error);
     }
@@ -178,26 +192,34 @@ export const agentOperations = {
 // =============================================================================
 
 /**
- * Setup IPC event listeners for agent events
+ * Setup event listeners for agent events
+ * trpc-full-migration Task 9.2: Migrated from window.electronAPI.on* to tRPC Subscription
  * @returns Cleanup function to remove all listeners
  */
 export function setupAgentEventListeners(): () => void {
-  console.log('[agentStoreAdapter] Setting up event listeners');
+  console.log('[agentStoreAdapter] Setting up event listeners via tRPC Subscription');
+
+  const subscriptions: Unsubscribable[] = [];
 
   // Note: onAgentOutput listener was removed (Bug fix: agent-log-json-display-issue)
   // Raw output is no longer needed here - parsed logs come via onAgentLog channel
 
   // Agent status change event listener
-  const cleanupStatus = window.electronAPI.onAgentStatusChange(
-    (agentId: string, status: AgentStatus) => {
-      console.log('[agentStoreAdapter] Agent status changed', { agentId, status });
-      useSharedAgentStore.getState().updateAgentStatus(agentId, status);
-    }
-  );
+  // Task 9.2: window.electronAPI.onAgentStatusChange -> tRPC Subscription
+  const statusSub = getVanillaClient().events.onAgentStatusChange.subscribe(undefined, {
+    onData: (data: { agentId: string; status: string }) => {
+      console.log('[agentStoreAdapter] Agent status changed', { agentId: data.agentId, status: data.status });
+      useSharedAgentStore.getState().updateAgentStatus(data.agentId, data.status as AgentStatus);
+    },
+  });
+  subscriptions.push(statusSub);
 
   // Agent record changed event listener (file watcher)
-  const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
-    (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => {
+  // Task 9.2: window.electronAPI.onAgentRecordChanged -> tRPC Subscription
+  const recordChangedSub = getVanillaClient().events.onAgentRecordChanged.subscribe(undefined, {
+    onData: (data: { type: string; data?: { agentId?: string; specId?: string } }) => {
+      const type = data.type as 'add' | 'change' | 'unlink';
+      const eventInfo = data.data ?? {};
       console.log('[agentStoreAdapter] Agent record changed', { type, eventInfo });
 
       const { agentId, specId } = eventInfo;
@@ -216,8 +238,9 @@ export function setupAgentEventListeners(): () => void {
         // store-specific behaviors like auto-selection
         console.log('[agentStoreAdapter] Agent record add/change event - delegating to facade');
       }
-    }
-  );
+    },
+  });
+  subscriptions.push(recordChangedSub);
 
   // agent-log-store-unification Task 4.3: onAgentLog listener removed
   // Requirements: 2.4 - ログ購読は共通hookに移行（useAgentLogSubscription）
@@ -226,8 +249,7 @@ export function setupAgentEventListeners(): () => void {
   // Return cleanup function
   return () => {
     console.log('[agentStoreAdapter] Cleaning up event listeners');
-    cleanupStatus();
-    cleanupRecordChanged();
+    subscriptions.forEach((sub) => sub.unsubscribe());
   };
 }
 
@@ -243,10 +265,11 @@ export function setupAgentEventListeners(): () => void {
 export const skipPermissionsOperations = {
   /**
    * Save skip permissions setting for a project
+   * trpc-full-migration Task 3.2: Use tRPC mutation
    */
   async setSkipPermissions(enabled: boolean, projectPath: string): Promise<void> {
     try {
-      await window.electronAPI.saveSkipPermissions(projectPath, enabled);
+      await getVanillaClient().config.saveSkipPermissions.mutate({ projectPath, skipPermissions: enabled });
       console.log('[agentStoreAdapter] Saved skipPermissions:', enabled);
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to save skipPermissions:', error);
@@ -255,11 +278,12 @@ export const skipPermissionsOperations = {
 
   /**
    * Load skip permissions setting for a project
+   * trpc-full-migration Task 3.2: Use tRPC query
    * @returns skipPermissions value, false on error
    */
   async loadSkipPermissions(projectPath: string): Promise<boolean> {
     try {
-      const skipPermissions = await window.electronAPI.loadSkipPermissions(projectPath);
+      const skipPermissions = await getVanillaClient().config.loadSkipPermissions.query({ projectPath });
       console.log('[agentStoreAdapter] Loaded skipPermissions:', skipPermissions);
       return skipPermissions;
     } catch (error) {

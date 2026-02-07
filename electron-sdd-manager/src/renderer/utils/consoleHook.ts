@@ -10,6 +10,8 @@
 import { shouldFilter } from './noiseFilter';
 import { getAutoContext } from './contextProvider';
 import { extractFileName } from './rendererLogger';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for logRenderer
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Environment type for hook activation
@@ -151,8 +153,13 @@ function sendToMain(
   message: string,
   context: Record<string, unknown>
 ): void {
-  if (typeof window !== 'undefined' && window.electronAPI?.logRenderer) {
-    window.electronAPI.logRenderer(level, message, context);
+  // trpc-full-migration Task 10.6: Use tRPC for logRenderer (fire-and-forget)
+  try {
+    getVanillaClient().misc.logRenderer.mutate({ level, message, context }).catch(() => {
+      // Silent fallback - no error thrown
+    });
+  } catch {
+    // Silent fallback when tRPC client is not available
   }
 }
 

@@ -131,7 +131,7 @@ export const AvoidanceBehaviorSchema = z.enum(['wait', 'skip']);
 
 /** Avoidance rule validation */
 export const AvoidanceRuleSchema = z.object({
-  targets: z.array(AvoidanceTargetSchema),
+  targets: z.array(AvoidanceTargetSchema).readonly(),
   behavior: AvoidanceBehaviorSchema,
 });
 
@@ -155,7 +155,7 @@ export const IntervalScheduleSchema = z.object({
 /** Weekly schedule condition validation */
 export const WeeklyScheduleSchema = z.object({
   type: z.literal('weekly'),
-  weekdays: z.array(z.number().int().min(0).max(6)).min(1),
+  weekdays: z.array(z.number().int().min(0).max(6)).min(1).readonly(),
   hourOfDay: z.number().int().min(0).max(23),
   waitForIdle: z.boolean(),
 });
@@ -187,7 +187,7 @@ export const ScheduleTaskInputSchema = z.object({
   name: z.string().min(1).max(100),
   enabled: z.boolean(),
   schedule: ScheduleConditionSchema,
-  prompts: z.array(PromptSchema).min(1),
+  prompts: z.array(PromptSchema).min(1).readonly(),
   avoidance: AvoidanceRuleSchema,
   workflow: ScheduleWorkflowConfigSchema,
   behavior: AgentBehaviorSchema,

@@ -17,13 +17,23 @@ const originalConsole = {
   debug: console.debug,
 };
 
-// Mock electronAPI
-const mockLogRenderer = vi.fn();
-vi.stubGlobal('window', {
-  electronAPI: {
-    logRenderer: mockLogRenderer,
-    isE2ETest: vi.fn().mockResolvedValue(false),
-  },
+// Mock tRPC vanillaClient (trpc-full-migration: electronAPI → tRPC)
+const mockMutate = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../shared/trpc/vanillaClient', () => {
+  const createMockProxy = (): any => {
+    return new Proxy({}, {
+      get: (_target: any, prop: string) => {
+        if (prop === 'mutate') return mockMutate;
+        if (prop === 'query') return vi.fn().mockResolvedValue(undefined);
+        if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined;
+        return createMockProxy();
+      },
+    });
+  };
+  return {
+    getVanillaClient: vi.fn(() => createMockProxy()),
+    resetVanillaClient: vi.fn(),
+  };
 });
 
 // Mock the noiseFilter
@@ -54,7 +64,7 @@ import { getAutoContext } from './contextProvider';
 describe('ConsoleHook', () => {
   beforeEach(() => {
     // Reset mocks
-    mockLogRenderer.mockClear();
+    mockMutate.mockClear();
     vi.mocked(shouldFilter).mockClear();
     vi.mocked(getAutoContext).mockReturnValue({});
 
@@ -92,7 +102,7 @@ describe('ConsoleHook', () => {
 
         console.log('Test message');
 
-        expect(mockLogRenderer).toHaveBeenCalled();
+        expect(mockMutate).toHaveBeenCalled();
       });
 
       it('should hook console.info', () => {
@@ -100,7 +110,7 @@ describe('ConsoleHook', () => {
 
         console.info('Info message');
 
-        expect(mockLogRenderer).toHaveBeenCalled();
+        expect(mockMutate).toHaveBeenCalled();
       });
 
       it('should hook console.warn', () => {
@@ -108,7 +118,7 @@ describe('ConsoleHook', () => {
 
         console.warn('Warning message');
 
-        expect(mockLogRenderer).toHaveBeenCalled();
+        expect(mockMutate).toHaveBeenCalled();
       });
 
       it('should hook console.error', () => {
@@ -116,7 +126,7 @@ describe('ConsoleHook', () => {
 
         console.error('Error message');
 
-        expect(mockLogRenderer).toHaveBeenCalled();
+        expect(mockMutate).toHaveBeenCalled();
       });
 
       it('should hook console.debug', () => {
@@ -124,26 +134,26 @@ describe('ConsoleHook', () => {
 
         console.debug('Debug message');
 
-        expect(mockLogRenderer).toHaveBeenCalled();
+        expect(mockMutate).toHaveBeenCalled();
       });
 
       it('should send correct level for each console method', () => {
         initializeConsoleHook();
 
         console.log('Log');
-        expect(mockLogRenderer).toHaveBeenLastCalledWith('info', expect.any(String), expect.any(Object));
+        expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({ level: 'info' }));
 
         console.info('Info');
-        expect(mockLogRenderer).toHaveBeenLastCalledWith('info', expect.any(String), expect.any(Object));
+        expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({ level: 'info' }));
 
         console.warn('Warn');
-        expect(mockLogRenderer).toHaveBeenLastCalledWith('warn', expect.any(String), expect.any(Object));
+        expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({ level: 'warn' }));
 
         console.error('Error');
-        expect(mockLogRenderer).toHaveBeenLastCalledWith('error', expect.any(String), expect.any(Object));
+        expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({ level: 'error' }));
 
         console.debug('Debug');
-        expect(mockLogRenderer).toHaveBeenLastCalledWith('debug', expect.any(String), expect.any(Object));
+        expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({ level: 'debug' }));
       });
     });
 
@@ -154,11 +164,12 @@ describe('ConsoleHook', () => {
 
         console.error('Error with stack');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          'error',
-          expect.any(String),
+        expect(mockMutate).toHaveBeenCalledWith(
           expect.objectContaining({
-            stack: expect.any(String),
+            level: 'error',
+            context: expect.objectContaining({
+              stack: expect.any(String),
+            }),
           })
         );
       });
@@ -168,8 +179,8 @@ describe('ConsoleHook', () => {
 
         console.log('Log without stack');
 
-        const lastCall = mockLogRenderer.mock.calls[mockLogRenderer.mock.calls.length - 1];
-        expect(lastCall[2].stack).toBeUndefined();
+        const lastCall = mockMutate.mock.calls[mockMutate.mock.calls.length - 1];
+        expect(lastCall[0].context.stack).toBeUndefined();
       });
     });
 
@@ -180,11 +191,11 @@ describe('ConsoleHook', () => {
 
         console.log('Test');
 
-        expect(mockLogRenderer).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.any(String),
+        expect(mockMutate).toHaveBeenCalledWith(
           expect.objectContaining({
-            source: expect.stringMatching(/^renderer/),
+            context: expect.objectContaining({
+              source: expect.stringMatching(/^renderer/),
+            }),
           })
         );
       });
@@ -288,7 +299,7 @@ describe('ConsoleHook', () => {
 
         // Original should be called but logRenderer should not
         expect(originalLog).toHaveBeenCalledWith('Test');
-        expect(mockLogRenderer).not.toHaveBeenCalled();
+        expect(mockMutate).not.toHaveBeenCalled();
       });
     });
   });
@@ -300,7 +311,7 @@ describe('ConsoleHook', () => {
 
       console.log('[HMR] Hot module update');
 
-      expect(mockLogRenderer).not.toHaveBeenCalled();
+      expect(mockMutate).not.toHaveBeenCalled();
     });
 
     it('should still call original console for filtered messages', () => {
@@ -319,7 +330,7 @@ describe('ConsoleHook', () => {
 
       console.log('Normal application message');
 
-      expect(mockLogRenderer).toHaveBeenCalled();
+      expect(mockMutate).toHaveBeenCalled();
     });
   });
 
@@ -334,12 +345,12 @@ describe('ConsoleHook', () => {
       initializeConsoleHook();
       console.log('Test');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'test-spec',
-          bugName: 'test-bug',
+          context: expect.objectContaining({
+            specId: 'test-spec',
+            bugName: 'test-bug',
+          }),
         })
       );
     });
@@ -354,7 +365,7 @@ describe('ConsoleHook', () => {
       console.log('Test');
 
       // Should only log once, not twice
-      expect(mockLogRenderer).toHaveBeenCalledTimes(1);
+      expect(mockMutate).toHaveBeenCalledTimes(1);
     });
 
     it('should handle empty messages', () => {
@@ -368,7 +379,7 @@ describe('ConsoleHook', () => {
       initializeConsoleHook();
 
       expect(() => console.log({ key: 'value' })).not.toThrow();
-      expect(mockLogRenderer).toHaveBeenCalled();
+      expect(mockMutate).toHaveBeenCalled();
     });
 
     it('should handle multiple arguments', () => {
@@ -376,7 +387,7 @@ describe('ConsoleHook', () => {
 
       console.log('Message', 123, true, null, undefined, { key: 'value' });
 
-      expect(mockLogRenderer).toHaveBeenCalled();
+      expect(mockMutate).toHaveBeenCalled();
     });
   });
 
@@ -396,10 +407,10 @@ describe('ConsoleHook', () => {
     it('should stop sending logs to main after uninitialization', () => {
       initializeConsoleHook();
       console.log('Before uninit');
-      expect(mockLogRenderer).toHaveBeenCalledTimes(1);
+      expect(mockMutate).toHaveBeenCalledTimes(1);
 
       uninitializeConsoleHook();
-      mockLogRenderer.mockClear();
+      mockMutate.mockClear();
 
       // After uninitialize, the hooked console should still work but won't send to main
       // (because isHookActive will be false)

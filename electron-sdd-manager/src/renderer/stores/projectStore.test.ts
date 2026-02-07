@@ -6,6 +6,63 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// trpc-full-migration Task 3.2: Mock tRPC vanilla client for config operations
+// trpc-full-migration Task 4.3: Added project mock for selectProject
+const mockVanillaClient = {
+  config: {
+    getRecentProjects: { query: vi.fn().mockResolvedValue([]) },
+    loadProfile: { query: vi.fn().mockResolvedValue(null) },
+    loadRemoteUiAutoStart: { query: vi.fn().mockResolvedValue(false) },
+    loadSkipPermissions: { query: vi.fn().mockResolvedValue(false) },
+    loadProjectDefaults: { query: vi.fn().mockResolvedValue(null) },
+    addRecentProject: { mutate: vi.fn() },
+  },
+  project: {
+    selectProject: { mutate: vi.fn() },
+    showOpenDialog: { mutate: vi.fn() },
+  },
+  // trpc-full-migration Task 5.3: Mock spec procedures for steering/release/verification
+  spec: {
+    checkSteeringFiles: { query: vi.fn().mockResolvedValue({ verificationMdExists: false }) },
+    checkReleaseMd: { query: vi.fn().mockResolvedValue({ releaseMdExists: false }) },
+    generateVerificationMd: { mutate: vi.fn() },
+    generateReleaseMd: { mutate: vi.fn() },
+  },
+  // trpc-full-migration Task 6.2: Mock agent procedures
+  agent: {
+    getAllAgents: { query: vi.fn().mockResolvedValue({}) },
+    getRunningAgentCounts: { query: vi.fn().mockResolvedValue({}) },
+    getLogs: { query: vi.fn().mockResolvedValue([]) },
+  },
+  // trpc-full-migration Task 10.6: Mock install procedures
+  install: {
+    checkSpecManagerFiles: { query: vi.fn().mockResolvedValue({ commands: { allPresent: true, missing: [], present: [] }, settings: { allPresent: true, missing: [], present: [] }, allPresent: true }) },
+    installSpecManagerCommands: { mutate: vi.fn() },
+    installSpecManagerSettings: { mutate: vi.fn() },
+    installSpecManagerAll: { mutate: vi.fn() },
+    forceReinstallSpecManagerAll: { mutate: vi.fn() },
+    checkJjAvailability: { query: vi.fn().mockResolvedValue({ name: 'jj', available: false }) },
+    installJj: { mutate: vi.fn().mockResolvedValue({ success: true }) },
+    ignoreJjInstall: { mutate: vi.fn().mockResolvedValue({ success: true }) },
+  },
+  // trpc-full-migration Task 10.6: Mock misc procedures
+  misc: {
+    checkRequiredPermissions: { query: vi.fn().mockResolvedValue({ allPresent: true, missing: [], present: [] }) },
+    addShellPermissions: { mutate: vi.fn() },
+    addMissingPermissions: { mutate: vi.fn() },
+  },
+  // trpc-full-migration Task 11.4: Mock events namespace for tRPC Subscriptions
+  // (specWatcherService.startWatching and bugStore.startWatching use these)
+  events: {
+    onSpecsChanged: { subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) },
+    onBugsChanged: { subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { useProjectStore } from './projectStore';
 import { useSpecStore } from './specStore';
 // bugs-view-unification Task 6.1: Use shared bugStore
@@ -72,7 +129,7 @@ describe('useProjectStore', () => {
       // spec-metadata-ssot-refactor: specJsonMap is returned from Main process
       const mockSpecJsonMap = { 'test-spec': mockSpecJson };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -80,13 +137,13 @@ describe('useProjectStore', () => {
         bugs: mockBugs,
         specJsonMap: mockSpecJsonMap,  // spec-metadata-ssot-refactor
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
@@ -107,7 +164,7 @@ describe('useProjectStore', () => {
     });
 
     it('should set isLoading during selection', async () => {
-      window.electronAPI.selectProject = vi.fn().mockImplementation(
+      mockVanillaClient.project.selectProject.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({
           success: true,
           projectPath: '/test/project',
@@ -117,13 +174,13 @@ describe('useProjectStore', () => {
           specJsonMap: {},  // spec-metadata-ssot-refactor
         }), 100))
       );
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
@@ -141,7 +198,7 @@ describe('useProjectStore', () => {
     });
 
     it('should set error on selection failure', async () => {
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: false,
         projectPath: '/invalid/path',
         kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
@@ -165,7 +222,7 @@ describe('useProjectStore', () => {
       });
 
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/new-project',
         kiroValidation: mockValidation,
@@ -173,13 +230,13 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
@@ -201,7 +258,7 @@ describe('useProjectStore', () => {
       const { useAgentStore } = await import('./agentStore');
 
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -209,29 +266,25 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      // Additional mocks required by selectProject
-      window.electronAPI.getRunningAgentCounts = vi.fn().mockResolvedValue({});
-      window.electronAPI.onSpecsChanged = vi.fn().mockReturnValue(() => {});
-      window.electronAPI.onBugsChanged = vi.fn().mockReturnValue(() => {});
-      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(null);
-      window.electronAPI.checkSteeringFiles = vi.fn().mockResolvedValue({
-        allPresent: true,
-        missing: [],
-        present: [],
+      // trpc-full-migration Task 11.4: Event listeners now use tRPC Subscription (Task 9.2)
+      mockVanillaClient.config.loadProfile.query.mockResolvedValue(null);
+      // trpc-full-migration Task 5.3: checkSteeringFiles via tRPC
+      mockVanillaClient.spec.checkSteeringFiles.query.mockResolvedValue({
+        verificationMdExists: true,
       });
       // Mock loadSkipPermissions to return true for this project
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(true);
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue(true);
 
       // Ensure initial state is false
       useAgentStore.setState({ skipPermissions: false });
@@ -239,7 +292,7 @@ describe('useProjectStore', () => {
       await useProjectStore.getState().selectProject('/test/project');
 
       // Verify loadSkipPermissions was called with the project path
-      expect(window.electronAPI.loadSkipPermissions).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.config.loadSkipPermissions.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
 
       // Verify skipPermissions was set in agentStore
       expect(useAgentStore.getState().skipPermissions).toBe(true);
@@ -249,7 +302,7 @@ describe('useProjectStore', () => {
   describe('loadRecentProjects', () => {
     it('should load recent projects from config', async () => {
       const mockProjects = ['/project1', '/project2'];
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue(mockProjects);
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue(mockProjects);
 
       await useProjectStore.getState().loadRecentProjects();
 
@@ -283,7 +336,7 @@ describe('useProjectStore', () => {
         present: ['Bash(git:*)', 'Bash(npm:*)'],
       };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -291,19 +344,19 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},  // spec-metadata-ssot-refactor
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue(mockPermissionsCheck);
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue(mockPermissionsCheck);
 
       await useProjectStore.getState().selectProject('/test/project');
 
       const state = useProjectStore.getState();
       expect(state.permissionsCheck).toEqual(mockPermissionsCheck);
-      expect(window.electronAPI.checkRequiredPermissions).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.misc.checkRequiredPermissions.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
     });
 
     it('should set allPresent to true when all permissions exist', async () => {
@@ -314,7 +367,7 @@ describe('useProjectStore', () => {
         present: ['Bash(task:*)', 'Bash(git:*)', 'Bash(npm:*)'],
       };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -322,13 +375,13 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},  // spec-metadata-ssot-refactor
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue(mockPermissionsCheck);
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue(mockPermissionsCheck);
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -340,7 +393,7 @@ describe('useProjectStore', () => {
     it('should handle permissions check failure gracefully', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -348,13 +401,13 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},  // spec-metadata-ssot-refactor
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockRejectedValue(new Error('Check failed'));
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockRejectedValue(new Error('Check failed'));
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -381,7 +434,7 @@ describe('useProjectStore', () => {
       const mockProfile = { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' };
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -389,30 +442,30 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(mockProfile);
+      mockVanillaClient.config.loadProfile.query.mockResolvedValue(mockProfile);
 
       await useProjectStore.getState().selectProject('/test/project');
 
       const state = useProjectStore.getState();
       expect(state.installedProfile).toEqual(mockProfile);
-      expect(window.electronAPI.loadProfile).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.config.loadProfile.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
     });
 
     it('should set installedProfile to null when no profile is installed', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -420,18 +473,18 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(null);
+      mockVanillaClient.config.loadProfile.query.mockResolvedValue(null);
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -449,7 +502,7 @@ describe('useProjectStore', () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
       const newProfile = { name: 'cc-sdd-agent', installedAt: '2024-06-01' };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/new-project',
         kiroValidation: mockValidation,
@@ -457,18 +510,18 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(newProfile);
+      mockVanillaClient.config.loadProfile.query.mockResolvedValue(newProfile);
 
       await useProjectStore.getState().selectProject('/new-project');
 
@@ -479,7 +532,7 @@ describe('useProjectStore', () => {
     it('should handle profile loading error gracefully', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -487,18 +540,18 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadProfile = vi.fn().mockRejectedValue(new Error('Load failed'));
+      mockVanillaClient.config.loadProfile.query.mockRejectedValue(new Error('Load failed'));
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -540,16 +593,18 @@ describe('useProjectStore', () => {
 
     it('should check release files and update state', async () => {
       const mockReleaseCheck = { releaseMdExists: true };
-      window.electronAPI.checkReleaseMd = vi.fn().mockResolvedValue(mockReleaseCheck);
+      // trpc-full-migration Task 5.3: checkReleaseMd via tRPC
+      mockVanillaClient.spec.checkReleaseMd.query.mockResolvedValue(mockReleaseCheck);
 
       await useProjectStore.getState().checkReleaseFiles('/test/project');
 
-      expect(window.electronAPI.checkReleaseMd).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.spec.checkReleaseMd.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
       expect(useProjectStore.getState().releaseCheck).toEqual(mockReleaseCheck);
     });
 
     it('should set releaseCheck to null on error', async () => {
-      window.electronAPI.checkReleaseMd = vi.fn().mockRejectedValue(new Error('Check failed'));
+      // trpc-full-migration Task 5.3: checkReleaseMd via tRPC
+      mockVanillaClient.spec.checkReleaseMd.query.mockRejectedValue(new Error('Check failed'));
 
       await useProjectStore.getState().checkReleaseFiles('/test/project');
 
@@ -568,14 +623,15 @@ describe('useProjectStore', () => {
       // Setup project state
       useProjectStore.setState({ currentProject: '/test/project' });
 
-      window.electronAPI.generateReleaseMd = vi.fn().mockResolvedValue(mockAgentInfo);
+      // trpc-full-migration Task 5.3: generateReleaseMd via tRPC
+      mockVanillaClient.spec.generateReleaseMd.mutate.mockResolvedValue(mockAgentInfo);
       const addAgentSpy = vi.spyOn(useAgentStore.getState(), 'addAgent');
       const selectForProjectAgentsSpy = vi.spyOn(useAgentStore.getState(), 'selectForProjectAgents');
       const selectAgentSpy = vi.spyOn(useAgentStore.getState(), 'selectAgent');
 
       await useProjectStore.getState().generateReleaseMd();
 
-      expect(window.electronAPI.generateReleaseMd).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.spec.generateReleaseMd.mutate).toHaveBeenCalledWith({ projectPath: '/test/project' });
       expect(addAgentSpy).toHaveBeenCalledWith('', mockAgentInfo);
       expect(selectForProjectAgentsSpy).toHaveBeenCalled();
       expect(selectAgentSpy).toHaveBeenCalledWith('agent-123');
@@ -584,16 +640,17 @@ describe('useProjectStore', () => {
 
     it('should not generate release.md when no project selected', async () => {
       useProjectStore.setState({ currentProject: null });
-      window.electronAPI.generateReleaseMd = vi.fn();
 
       await useProjectStore.getState().generateReleaseMd();
 
-      expect(window.electronAPI.generateReleaseMd).not.toHaveBeenCalled();
+      // trpc-full-migration Task 5.3: generateReleaseMd via tRPC
+      expect(mockVanillaClient.spec.generateReleaseMd.mutate).not.toHaveBeenCalled();
     });
 
     it('should handle generateReleaseMd error gracefully', async () => {
       useProjectStore.setState({ currentProject: '/test/project' });
-      window.electronAPI.generateReleaseMd = vi.fn().mockRejectedValue(new Error('Generate failed'));
+      // trpc-full-migration Task 5.3: generateReleaseMd via tRPC
+      mockVanillaClient.spec.generateReleaseMd.mutate.mockRejectedValue(new Error('Generate failed'));
 
       await useProjectStore.getState().generateReleaseMd();
 
@@ -633,7 +690,7 @@ describe('useProjectStore', () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
       const mockJjCheck = { name: 'jj', available: false, installGuidance: 'brew install jj' };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -641,33 +698,33 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue(mockJjCheck);
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.install.checkJjAvailability.query.mockResolvedValue(mockJjCheck);
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue({
         jjInstallIgnored: false,
       });
 
       await useProjectStore.getState().selectProject('/test/project');
 
       const state = useProjectStore.getState();
-      expect(window.electronAPI.checkJjAvailability).toHaveBeenCalled();
+      expect(mockVanillaClient.install.checkJjAvailability.query).toHaveBeenCalled();
       expect(state.jjCheck).toEqual(mockJjCheck);
     });
 
     it('should skip jj check when jjInstallIgnored is true', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -675,26 +732,27 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.checkJjAvailability = vi.fn();
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.install.checkJjAvailability.query.mockResolvedValue({ name: 'jj', available: false });
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue({
         jjInstallIgnored: true,
       });
 
       await useProjectStore.getState().selectProject('/test/project');
 
       const state = useProjectStore.getState();
-      expect(window.electronAPI.checkJjAvailability).not.toHaveBeenCalled();
+      // checkJjAvailability should not be called when jjInstallIgnored is true
+      expect(mockVanillaClient.install.checkJjAvailability.query).not.toHaveBeenCalled();
       expect(state.jjCheck).toBeNull();
       expect(state.jjInstallIgnored).toBe(true);
     });
@@ -708,13 +766,13 @@ describe('useProjectStore', () => {
         jjCheck: mockJjCheckBefore,
       });
 
-      window.electronAPI.installJj = vi.fn().mockResolvedValue({ success: true });
-      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue(mockJjCheckAfter);
+      mockVanillaClient.install.installJj.mutate.mockResolvedValue({ success: true });
+      mockVanillaClient.install.checkJjAvailability.query.mockResolvedValue(mockJjCheckAfter);
 
       await useProjectStore.getState().installJj();
 
-      expect(window.electronAPI.installJj).toHaveBeenCalled();
-      expect(window.electronAPI.checkJjAvailability).toHaveBeenCalled();
+      expect(mockVanillaClient.install.installJj.mutate).toHaveBeenCalled();
+      expect(mockVanillaClient.install.checkJjAvailability.query).toHaveBeenCalled();
 
       const state = useProjectStore.getState();
       expect(state.jjCheck).toEqual(mockJjCheckAfter);
@@ -726,11 +784,11 @@ describe('useProjectStore', () => {
       useProjectStore.setState({ currentProject: '/test/project' });
 
       let loadingDuringInstall = false;
-      window.electronAPI.installJj = vi.fn().mockImplementation(async () => {
+      mockVanillaClient.install.installJj.mutate.mockImplementation(async () => {
         loadingDuringInstall = useProjectStore.getState().jjInstallLoading;
         return { success: true };
       });
-      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue({
+      mockVanillaClient.install.checkJjAvailability.query.mockResolvedValue({
         name: 'jj',
         available: true,
         version: '0.10.0'
@@ -745,7 +803,7 @@ describe('useProjectStore', () => {
     it('should handle jj installation error', async () => {
       useProjectStore.setState({ currentProject: '/test/project' });
 
-      window.electronAPI.installJj = vi.fn().mockResolvedValue({
+      mockVanillaClient.install.installJj.mutate.mockResolvedValue({
         success: false,
         error: 'Homebrew not found'
       });
@@ -763,11 +821,11 @@ describe('useProjectStore', () => {
         jjInstallIgnored: false,
       });
 
-      window.electronAPI.ignoreJjInstall = vi.fn().mockResolvedValue({ success: true });
+      mockVanillaClient.install.ignoreJjInstall.mutate.mockResolvedValue({ success: true });
 
       await useProjectStore.getState().ignoreJjInstall();
 
-      expect(window.electronAPI.ignoreJjInstall).toHaveBeenCalledWith('/test/project', true);
+      expect(mockVanillaClient.install.ignoreJjInstall.mutate).toHaveBeenCalledWith({ projectPath: '/test/project', ignored: true });
 
       const state = useProjectStore.getState();
       expect(state.jjInstallIgnored).toBe(true);
@@ -775,20 +833,18 @@ describe('useProjectStore', () => {
 
     it('should not install jj when no project selected', async () => {
       useProjectStore.setState({ currentProject: null });
-      window.electronAPI.installJj = vi.fn();
 
       await useProjectStore.getState().installJj();
 
-      expect(window.electronAPI.installJj).not.toHaveBeenCalled();
+      expect(mockVanillaClient.install.installJj.mutate).not.toHaveBeenCalled();
     });
 
     it('should not ignore jj install when no project selected', async () => {
       useProjectStore.setState({ currentProject: null });
-      window.electronAPI.ignoreJjInstall = vi.fn();
 
       await useProjectStore.getState().ignoreJjInstall();
 
-      expect(window.electronAPI.ignoreJjInstall).not.toHaveBeenCalled();
+      expect(mockVanillaClient.install.ignoreJjInstall.mutate).not.toHaveBeenCalled();
     });
 
     it('should clear jj state when clearing project', () => {
@@ -825,7 +881,7 @@ describe('useProjectStore', () => {
 
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -833,26 +889,26 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
-      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(true);
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue(false);
+      mockVanillaClient.config.loadRemoteUiAutoStart.query.mockResolvedValue(true);
 
       // Mock remoteAccessStore.startServer
       const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
 
       await useProjectStore.getState().selectProject('/test/project');
 
-      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.config.loadRemoteUiAutoStart.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
       expect(startServerSpy).toHaveBeenCalled();
     });
 
@@ -864,7 +920,7 @@ describe('useProjectStore', () => {
 
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -872,25 +928,25 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
-      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(false);
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue(false);
+      mockVanillaClient.config.loadRemoteUiAutoStart.query.mockResolvedValue(false);
 
       const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
 
       await useProjectStore.getState().selectProject('/test/project');
 
-      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.config.loadRemoteUiAutoStart.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
       expect(startServerSpy).not.toHaveBeenCalled();
     });
 
@@ -902,7 +958,7 @@ describe('useProjectStore', () => {
 
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -910,25 +966,25 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: {},
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],
       });
-      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
-      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(true);
+      mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue(false);
+      mockVanillaClient.config.loadRemoteUiAutoStart.query.mockResolvedValue(true);
 
       const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
 
       await useProjectStore.getState().selectProject('/test/project');
 
-      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(mockVanillaClient.config.loadRemoteUiAutoStart.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
       expect(startServerSpy).not.toHaveBeenCalled();
     });
   });
@@ -1041,7 +1097,7 @@ describe('useProjectStore', () => {
         },
       };
 
-      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+      mockVanillaClient.project.selectProject.mutate.mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
@@ -1049,13 +1105,13 @@ describe('useProjectStore', () => {
         bugs: [],
         specJsonMap: mockSpecJsonMap,
       });
-      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
-      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+      mockVanillaClient.config.getRecentProjects.query.mockResolvedValue([]);
+      mockVanillaClient.install.checkSpecManagerFiles.query.mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
         settings: { allPresent: true, missing: [], present: [] },
         allPresent: true,
       });
-      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+      mockVanillaClient.misc.checkRequiredPermissions.query.mockResolvedValue({
         allPresent: true,
         missing: [],
         present: [],

@@ -8,12 +8,15 @@
 import { create } from 'zustand';
 import type { KiroValidation, SelectProjectResult } from '../types';
 import { useSpecStore } from './specStore';
-// bugs-view-unification Task 6.1: Use shared bugStore with IpcApiClient
+// bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
-import { IpcApiClient } from '../../shared/api/IpcApiClient';
-import { useAgentStore } from './agentStore';
+// trpc-full-migration Task 11.4: tRPC vanilla client replaces IpcApiClient
+import type { BugsChangeEvent } from '../../shared/api/types';
+import { useAgentStore, type AgentInfo } from './agentStore';
 // jj-merge-support Task 12.5: Import ToolCheck type
 import type { ToolCheck } from '../../shared/types';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /** spec-managerファイルチェック結果 */
 export interface FileCheckResult {
@@ -206,8 +209,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     });
 
     try {
-      // Use new unified selectProject IPC
-      const result = await window.electronAPI.selectProject(path);
+      // trpc-full-migration Task 4.3: Use tRPC for selectProject
+      const result = await getVanillaClient().project.selectProject.mutate({ projectPath: path }) as unknown as SelectProjectResult;
 
       // startup-project-selection-fix Task 3.2: Use unified applySelectProjectResult
       // Requirements: 2.3, 3.3 - Same update logic for UI selection and startup broadcast
@@ -238,9 +241,23 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler
       // Here we only register the event listeners on Renderer side
       await useSpecStore.getState().startWatching();
-      // bugs-view-unification Task 6.1: Use shared bugStore with IpcApiClient
-      const ipcApiClient = new IpcApiClient();
-      useSharedBugStore.getState().startWatching(ipcApiClient);
+      // bugs-view-unification Task 6.1: Use shared bugStore
+      // trpc-full-migration Task 11.4: tRPC vanilla client replaces IpcApiClient
+      const bugWatcherApiClient = {
+        onBugsChanged: (listener: (event: BugsChangeEvent) => void): (() => void) => {
+          const sub = getVanillaClient().events.onBugsChanged.subscribe(undefined, {
+            onData: (data: unknown) => {
+              listener(data as BugsChangeEvent);
+            },
+          });
+          return () => sub.unsubscribe();
+        },
+        stopBugsWatcher: async () => {
+          // Watcher lifecycle managed by Main process; noop on Renderer
+          return { ok: true as const, value: undefined };
+        },
+      };
+      useSharedBugStore.getState().startWatching(bugWatcherApiClient as any);
 
       // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();
@@ -250,7 +267,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
       // Check required permissions after project selection
       try {
-        const permissionsCheck = await window.electronAPI.checkRequiredPermissions(path);
+        // trpc-full-migration Task 10.6: Use tRPC for checkRequiredPermissions
+        const permissionsCheck = await getVanillaClient().misc.checkRequiredPermissions.query({ projectPath: path });
         set({ permissionsCheck });
       } catch (error) {
         console.error('[projectStore] Failed to check required permissions:', error);
@@ -260,8 +278,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
       // header-profile-badge feature: Load installed profile
       // Requirements: 3.1, 4.1
+      // trpc-full-migration Task 3.2: Use tRPC for loadProfile
       try {
-        const profile = await window.electronAPI.loadProfile(path);
+        const profile = await getVanillaClient().config.loadProfile.query({ projectPath: path });
         set({ installedProfile: profile as ProfileConfig | null });
       } catch (error) {
         console.error('[projectStore] Failed to load profile:', error);
@@ -299,8 +318,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Task 3.1: Check setting and start server if enabled
       // Requirements: 2.1, 2.2, 2.3
       // ============================================================
+      // trpc-full-migration Task 3.2: Use tRPC for loadRemoteUiAutoStart
       try {
-        const remoteUiAutoStart = await window.electronAPI.loadRemoteUiAutoStart(path);
+        const remoteUiAutoStart = await getVanillaClient().config.loadRemoteUiAutoStart.query({ projectPath: path });
         if (remoteUiAutoStart) {
           // Import remoteAccessStore dynamically to avoid circular dependency
           const { useRemoteAccessStore } = await import('./remoteAccessStore');
@@ -327,9 +347,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // jj-merge-support feature: Check jj availability
       // Requirements: 3.1, 9.1, 9.4
       // Load jjInstallIgnored setting from the project settings
+      // trpc-full-migration Task 3.2: Use tRPC for loadSkipPermissions
       let jjInstallIgnored = false;
       try {
-        const skipPermissions = await window.electronAPI.loadSkipPermissions(path);
+        const skipPermissions = await getVanillaClient().config.loadSkipPermissions.query({ projectPath: path });
         // skipPermissions can be a boolean (old format) or an object with jjInstallIgnored (new format)
         if (typeof skipPermissions === 'object' && skipPermissions !== null) {
           jjInstallIgnored = (skipPermissions as unknown as { jjInstallIgnored?: boolean }).jjInstallIgnored || false;
@@ -341,7 +362,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Only check jj if not explicitly ignored
       if (!jjInstallIgnored) {
         try {
-          const jjCheck = await window.electronAPI.checkJjAvailability();
+          // trpc-full-migration Task 10.6: Use tRPC for checkJjAvailability
+          const jjCheck = await getVanillaClient().install.checkJjAvailability.query();
           set({ jjCheck, jjInstallIgnored });
         } catch (error) {
           console.error('[projectStore] Failed to check jj availability:', error);
@@ -358,8 +380,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Requirements: 4.2 - spec.json未設定時のプロジェクトデフォルト適用
       // Load projectDefaultScheme from sdd-orchestrator.json and cache in specDetailStore
       // ============================================================
+      // trpc-full-migration Task 3.2: Use tRPC for loadProjectDefaults
       try {
-        const projectDefaults = await window.electronAPI.loadProjectDefaults(path);
+        const projectDefaults = await getVanillaClient().config.loadProjectDefaults.query({ projectPath: path });
         const defaultScheme = projectDefaults?.documentReview?.scheme;
         // Import dynamically to avoid circular dependency
         const { useSpecDetailStore } = await import('./spec/specDetailStore');
@@ -440,9 +463,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }
   },
 
+  // trpc-full-migration Task 3.2: Use tRPC for getRecentProjects
   loadRecentProjects: async () => {
     try {
-      const projects = await window.electronAPI.getRecentProjects();
+      const projects = await getVanillaClient().config.getRecentProjects.query();
       set({ recentProjects: projects });
     } catch (error) {
       console.error('Failed to load recent projects:', error);
@@ -494,7 +518,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
    */
   checkSpecManagerFiles: async (projectPath: string) => {
     try {
-      const result = await window.electronAPI.checkSpecManagerFiles(projectPath);
+      // trpc-full-migration Task 10.6: Use tRPC for checkSpecManagerFiles
+      const result = await getVanillaClient().install.checkSpecManagerFiles.query({ projectPath });
       set({ specManagerCheck: result });
     } catch (error) {
       console.error('[projectStore] Failed to check spec-manager files:', error);
@@ -512,10 +537,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ installLoading: true, installError: null });
 
     try {
-      const result = await window.electronAPI.installSpecManagerCommands(
-        currentProject,
-        specManagerCheck.commands.missing
-      );
+      // trpc-full-migration Task 10.6: Use tRPC for installSpecManagerCommands
+      const result = await getVanillaClient().install.installSpecManagerCommands.mutate({
+        projectPath: currentProject,
+        missingCommands: [...specManagerCheck.commands.missing],
+      });
 
       if (result.ok) {
         set({
@@ -530,7 +556,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         await get().checkSpecManagerFiles(currentProject);
       } else {
         set({
-          installError: result.error,
+          installError: result.error as InstallError,
           installLoading: false,
         });
       }
@@ -557,10 +583,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ installLoading: true, installError: null });
 
     try {
-      const result = await window.electronAPI.installSpecManagerSettings(
-        currentProject,
-        specManagerCheck.settings.missing
-      );
+      // trpc-full-migration Task 10.6: Use tRPC for installSpecManagerSettings
+      const result = await getVanillaClient().install.installSpecManagerSettings.mutate({
+        projectPath: currentProject,
+        missingSettings: [...specManagerCheck.settings.missing],
+      });
 
       if (result.ok) {
         set({
@@ -575,7 +602,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         await get().checkSpecManagerFiles(currentProject);
       } else {
         set({
-          installError: result.error,
+          installError: result.error as InstallError,
           installLoading: false,
         });
       }
@@ -602,7 +629,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ installLoading: true, installError: null });
 
     try {
-      const result = await window.electronAPI.installSpecManagerAll(currentProject);
+      // trpc-full-migration Task 10.6: Use tRPC for installSpecManagerAll
+      const result = await getVanillaClient().install.installSpecManagerAll.mutate({ projectPath: currentProject });
 
       if (result.ok) {
         set({
@@ -614,7 +642,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         await get().checkSpecManagerFiles(currentProject);
       } else {
         set({
-          installError: result.error,
+          installError: result.error as InstallError,
           installLoading: false,
         });
       }
@@ -640,7 +668,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ installLoading: true, installError: null });
 
     try {
-      const result = await window.electronAPI.forceReinstallSpecManagerAll(currentProject);
+      // trpc-full-migration Task 10.6: Use tRPC for forceReinstallSpecManagerAll
+      const result = await getVanillaClient().install.forceReinstallSpecManagerAll.mutate({ projectPath: currentProject });
 
       if (result.ok) {
         set({
@@ -652,7 +681,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         await get().checkSpecManagerFiles(currentProject);
       } else {
         set({
-          installError: result.error,
+          installError: result.error as InstallError,
           installLoading: false,
         });
       }
@@ -687,8 +716,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (!currentProject) return null;
 
     try {
-      const result = await window.electronAPI.addShellPermissions(currentProject);
-      return result;
+      // trpc-full-migration Task 10.6: Use tRPC for addShellPermissions
+      const result = await getVanillaClient().misc.addShellPermissions.mutate({ projectPath: currentProject });
+      if (result.ok) {
+        return result.value as AddPermissionsResult;
+      }
+      return null;
     } catch (error) {
       console.error('[projectStore] Failed to add shell permissions:', error);
       return null;
@@ -707,10 +740,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
     try {
       // Add missing permissions directly (not from standard-commands.txt)
-      await window.electronAPI.addMissingPermissions(currentProject, [...permissionsCheck.missing]);
+      // trpc-full-migration Task 10.6: Use tRPC for addMissingPermissions
+      await getVanillaClient().misc.addMissingPermissions.mutate({ projectPath: currentProject, permissions: [...permissionsCheck.missing] });
 
       // Refresh permissions check
-      const newPermissionsCheck = await window.electronAPI.checkRequiredPermissions(currentProject);
+      // trpc-full-migration Task 10.6: Use tRPC for checkRequiredPermissions
+      const newPermissionsCheck = await getVanillaClient().misc.checkRequiredPermissions.query({ projectPath: currentProject });
       set({ permissionsCheck: newPermissionsCheck, permissionsFixLoading: false });
     } catch (error) {
       console.error('[projectStore] Failed to fix permissions:', error);
@@ -729,7 +764,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
    */
   checkSteeringFiles: async (projectPath: string) => {
     try {
-      const result = await window.electronAPI.checkSteeringFiles(projectPath);
+      // trpc-full-migration Task 5.3: Use tRPC for checkSteeringFiles
+      const result = await getVanillaClient().spec.checkSteeringFiles.query({ projectPath });
       set({ steeringCheck: result });
     } catch (error) {
       console.error('[projectStore] Failed to check steering files:', error);
@@ -750,7 +786,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
     try {
       // Launch steering-verification agent and get AgentInfo
-      const agentInfo = await window.electronAPI.generateVerificationMd(currentProject);
+      // trpc-full-migration Task 5.3: Use tRPC for generateVerificationMd
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.generateVerificationMd.mutate({ projectPath: currentProject }) as unknown as AgentInfo;
 
       // Add agent to Project Agents panel (specId='' means project agent)
       useAgentStore.getState().addAgent('', agentInfo);
@@ -778,7 +816,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
    */
   checkReleaseFiles: async (projectPath: string) => {
     try {
-      const result = await window.electronAPI.checkReleaseMd(projectPath);
+      // trpc-full-migration Task 5.3: Use tRPC for checkReleaseMd
+      const result = await getVanillaClient().spec.checkReleaseMd.query({ projectPath });
       set({ releaseCheck: result });
     } catch (error) {
       console.error('[projectStore] Failed to check release files:', error);
@@ -798,7 +837,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
     try {
       // Launch steering-release agent and get AgentInfo
-      const agentInfo = await window.electronAPI.generateReleaseMd(currentProject);
+      // trpc-full-migration Task 5.3: Use tRPC for generateReleaseMd
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.generateReleaseMd.mutate({ projectPath: currentProject }) as unknown as AgentInfo;
 
       // Add agent to Project Agents panel (specId='' means project agent)
       useAgentStore.getState().addAgent('', agentInfo);
@@ -832,11 +873,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ jjInstallLoading: true, jjInstallError: null });
 
     try {
-      const result = await window.electronAPI.installJj();
+      // trpc-full-migration Task 10.6: Use tRPC for installJj
+      const result = await getVanillaClient().install.installJj.mutate();
 
       if (result.success) {
         // Installation succeeded, re-check jj availability
-        const jjCheck = await window.electronAPI.checkJjAvailability();
+        // trpc-full-migration Task 10.6: Use tRPC for checkJjAvailability
+        const jjCheck = await getVanillaClient().install.checkJjAvailability.query();
         set({ jjCheck, jjInstallLoading: false, jjInstallError: null });
       } else {
         // Installation failed
@@ -862,7 +905,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (!currentProject) return;
 
     try {
-      const result = await window.electronAPI.ignoreJjInstall(currentProject, true);
+      // trpc-full-migration Task 10.6: Use tRPC for ignoreJjInstall
+      const result = await getVanillaClient().install.ignoreJjInstall.mutate({ projectPath: currentProject, ignored: true });
 
       if (result.success) {
         set({ jjInstallIgnored: true });

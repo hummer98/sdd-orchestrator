@@ -1,20 +1,18 @@
 /**
  * MCP Status Broadcast Integration Test
- * Tests Main→Renderer status synchronization for MCP server
+ * Tests Main→Renderer status synchronization for MCP server via EventBus
  *
  * Requirements: 6.9 (status indicator), Design.md "Remote UI Synchronization Flow"
+ * trpc-full-migration Task 11.2: IPC_CHANNELS removed, EventBus is primary path
  *
  * This integration test verifies that:
- * 1. When MCP server starts, status is broadcast to all Renderer windows
- * 2. When MCP server stops, status is broadcast to all Renderer windows
- * 3. Broadcast uses correct IPC channel
+ * 1. When MCP server starts, status is broadcast via EventBus
+ * 2. When MCP server stops, status is broadcast via EventBus
  *
  * @file mcpStatusBroadcast.test.ts
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { BrowserWindow } from 'electron';
-import { IPC_CHANNELS } from '../../ipc/channels';
 import type { McpServerStatus } from './mcpServerService';
 
 // Mock electron
@@ -23,9 +21,6 @@ vi.mock('electron', () => ({
     isPackaged: false,
     getPath: vi.fn(() => '/tmp'),
     getName: vi.fn(() => 'test-app'),
-  },
-  BrowserWindow: {
-    getAllWindows: vi.fn(() => []),
   },
 }));
 
@@ -37,6 +32,14 @@ vi.mock('../logger', () => ({
     error: vi.fn(),
     debug: vi.fn(),
   },
+}));
+
+// Mock EventBus
+const mockEmit = vi.fn();
+vi.mock('../../trpc/services/globalEventBus', () => ({
+  getGlobalEventBus: vi.fn(() => ({
+    emit: mockEmit,
+  })),
 }));
 
 // Capture registered callbacks for McpServerService.onStatusChange
@@ -62,21 +65,9 @@ vi.mock('./mcpServerService', () => ({
 }));
 
 describe('MCP Status Broadcast Integration', () => {
-  let mockWebContents: { send: ReturnType<typeof vi.fn> };
-  let mockWindow: { isDestroyed: ReturnType<typeof vi.fn>; webContents: typeof mockWebContents };
-
   beforeEach(() => {
     vi.clearAllMocks();
     capturedStatusChangeCallbacks = [];
-
-    // Setup mock window with webContents
-    mockWebContents = { send: vi.fn() };
-    mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      webContents: mockWebContents,
-    };
-
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as unknown as BrowserWindow]);
   });
 
   afterEach(() => {
@@ -85,7 +76,7 @@ describe('MCP Status Broadcast Integration', () => {
   });
 
   describe('MCP server start', () => {
-    it('should broadcast status to all windows when MCP server starts', async () => {
+    it('should broadcast status via EventBus when MCP server starts', async () => {
       // Import after mocking
       const { setupMcpStatusBroadcast } = await import('./mcpStatusBroadcast');
       const { McpServerService } = await import('./mcpServerService');
@@ -103,68 +94,13 @@ describe('MCP Status Broadcast Integration', () => {
         callback(mockStatus);
       }
 
-      // Verify broadcast was sent
-      expect(mockWebContents.send).toHaveBeenCalledWith(
-        IPC_CHANNELS.MCP_STATUS_CHANGED,
-        mockStatus
-      );
-    });
-
-    it('should broadcast to multiple windows', async () => {
-      const mockWebContents2 = { send: vi.fn() };
-      const mockWindow2 = {
-        isDestroyed: vi.fn(() => false),
-        webContents: mockWebContents2,
-      };
-
-      vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-        mockWindow as unknown as BrowserWindow,
-        mockWindow2 as unknown as BrowserWindow,
-      ]);
-
-      const { setupMcpStatusBroadcast } = await import('./mcpStatusBroadcast');
-      const { McpServerService } = await import('./mcpServerService');
-
-      const service = new McpServerService();
-      setupMcpStatusBroadcast(service);
-
-      const mockStatus = { isRunning: true, port: 3001, url: 'http://localhost:3001' };
-
-      for (const callback of capturedStatusChangeCallbacks) {
-        callback(mockStatus);
-      }
-
-      expect(mockWebContents.send).toHaveBeenCalledWith(
-        IPC_CHANNELS.MCP_STATUS_CHANGED,
-        mockStatus
-      );
-      expect(mockWebContents2.send).toHaveBeenCalledWith(
-        IPC_CHANNELS.MCP_STATUS_CHANGED,
-        mockStatus
-      );
-    });
-
-    it('should skip destroyed windows', async () => {
-      mockWindow.isDestroyed.mockReturnValue(true);
-
-      const { setupMcpStatusBroadcast } = await import('./mcpStatusBroadcast');
-      const { McpServerService } = await import('./mcpServerService');
-
-      const service = new McpServerService();
-      setupMcpStatusBroadcast(service);
-
-      const mockStatus = { isRunning: true, port: 3001, url: 'http://localhost:3001' };
-
-      for (const callback of capturedStatusChangeCallbacks) {
-        callback(mockStatus);
-      }
-
-      expect(mockWebContents.send).not.toHaveBeenCalled();
+      // Verify EventBus was called
+      expect(mockEmit).toHaveBeenCalledWith('events:mcp-status-changed', mockStatus);
     });
   });
 
   describe('MCP server stop', () => {
-    it('should broadcast stopped status when MCP server stops', async () => {
+    it('should broadcast stopped status via EventBus when MCP server stops', async () => {
       const { setupMcpStatusBroadcast } = await import('./mcpStatusBroadcast');
       const { McpServerService } = await import('./mcpServerService');
 
@@ -177,10 +113,7 @@ describe('MCP Status Broadcast Integration', () => {
         callback(stoppedStatus);
       }
 
-      expect(mockWebContents.send).toHaveBeenCalledWith(
-        IPC_CHANNELS.MCP_STATUS_CHANGED,
-        stoppedStatus
-      );
+      expect(mockEmit).toHaveBeenCalledWith('events:mcp-status-changed', stoppedStatus);
     });
   });
 });

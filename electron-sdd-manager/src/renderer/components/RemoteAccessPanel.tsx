@@ -7,9 +7,10 @@
  * remote-ui-auto-start Task 4.1: Auto-start checkbox
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { clsx } from 'clsx';
 import { useProjectStore } from '../stores/projectStore';
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import {
   Wifi,
   WifiOff,
@@ -78,29 +79,22 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // remote-ui-auto-start Task 4.1: Auto-start setting state
-  // Requirements: 3.1, 3.2, 3.3
+  // Uses getVanillaClient() directly for consistency with project-wide pattern
   const { currentProject } = useProjectStore();
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(false);
 
-  // Load auto-start setting when component mounts or project changes
+  // Load auto-start setting when project changes
   useEffect(() => {
-    const loadAutoStartSetting = async () => {
-      if (!currentProject) {
-        setAutoStartEnabled(false);
-        return;
-      }
-
-      try {
-        const enabled = await window.electronAPI.loadRemoteUiAutoStart(currentProject);
-        setAutoStartEnabled(enabled);
-      } catch (error) {
-        console.error('[RemoteAccessPanel] Failed to load auto-start setting:', error);
-        setAutoStartEnabled(false);
-      }
-    };
-
-    loadAutoStartSetting();
+    if (!currentProject) {
+      setAutoStartEnabled(false);
+      return;
+    }
+    let cancelled = false;
+    getVanillaClient().config.loadRemoteUiAutoStart.query({ projectPath: currentProject })
+      .then((enabled) => { if (!cancelled) setAutoStartEnabled(enabled ?? false); })
+      .catch(() => { if (!cancelled) setAutoStartEnabled(false); });
+    return () => { cancelled = true; };
   }, [currentProject]);
 
   // Handle auto-start toggle
@@ -111,11 +105,10 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
     setAutoStartLoading(true);
 
     try {
-      await window.electronAPI.saveRemoteUiAutoStart(currentProject, newValue);
+      await getVanillaClient().config.saveRemoteUiAutoStart.mutate({ projectPath: currentProject, enabled: newValue });
       setAutoStartEnabled(newValue);
     } catch (error) {
       console.error('[RemoteAccessPanel] Failed to save auto-start setting:', error);
-      // Revert on error
     } finally {
       setAutoStartLoading(false);
     }

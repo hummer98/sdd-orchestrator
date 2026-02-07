@@ -33,7 +33,7 @@ import type { WorktreeConfig } from '@shared/types/worktree';
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
 import type { LLMEngineId } from '@shared/registry';
 
-// agent-error-notification Task 7.1: Import AgentStartError for IpcApiClient
+// agent-error-notification Task 7.1: Import AgentStartError for API layer
 import type { AgentStartError } from '@shared/types/agentStartError';
 
 // =============================================================================
@@ -120,7 +120,7 @@ export interface ApiError {
 /**
  * Workflow phases that can be executed
  * Used for spec phase execution commands
- * Note: Must match the electron.d.ts WorkflowPhase definition
+ * Note: Must match the shared WorkflowPhase definition
  * document-review-phase Task 1.1: 'document-review' を追加
  * Requirements: 1.2
  */
@@ -140,7 +140,7 @@ export type WorkflowPhase =
 
 /**
  * Agent status enumeration
- * agent-store-unification: Unified with renderer/types/electron.d.ts AgentStatus
+ * agent-store-unification: Unified AgentStatus type
  */
 export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'failed';
 
@@ -278,8 +278,9 @@ export interface AutoExecutionStatusEvent {
  *
  * This interface abstracts all communication between UI components and the backend.
  * Implementations:
- * - IpcApiClient: For Electron renderer (uses window.electronAPI)
  * - WebSocketApiClient: For Remote UI (uses WebSocket)
+ *
+ * Note: Electron renderer uses tRPC hooks/vanillaClient directly (trpc-full-migration Task 11.4).
  *
  * All methods are async and return Result<T, ApiError> for consistent error handling.
  */
@@ -292,7 +293,7 @@ export interface ApiClient {
   /**
    * Get the current project path
    * Returns the project root path from the client's context.
-   * - IpcApiClient: Gets from projectStore.currentProject
+   * - Electron: Gets from projectStore.currentProject
    * - WebSocketApiClient: Gets from INIT message projectPath
    * @returns Project path or empty string if not available
    */

@@ -3,9 +3,9 @@
  * renderer-unified-logging feature
  *
  * Tests the complete log flow through mocked components:
- * - Console Hook -> IPC -> (mocked) ProjectLogger
- * - rendererLogger -> IPC -> (mocked) ProjectLogger
- * - notify -> rendererLogger -> IPC
+ * - Console Hook -> tRPC -> (mocked) ProjectLogger
+ * - rendererLogger -> tRPC -> (mocked) ProjectLogger
+ * - notify -> rendererLogger -> tRPC
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -19,13 +19,23 @@ const originalConsole = {
   debug: console.debug,
 };
 
-// Mock electronAPI
-const mockLogRenderer = vi.fn();
-vi.stubGlobal('window', {
-  electronAPI: {
-    logRenderer: mockLogRenderer,
-    isE2ETest: vi.fn().mockResolvedValue(false),
-  },
+// Mock tRPC vanillaClient (trpc-full-migration: electronAPI → tRPC)
+const mockMutate = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../shared/trpc/vanillaClient', () => {
+  const createMockProxy = (): any => {
+    return new Proxy({}, {
+      get: (_target: any, prop: string) => {
+        if (prop === 'mutate') return mockMutate;
+        if (prop === 'query') return vi.fn().mockResolvedValue(undefined);
+        if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined;
+        return createMockProxy();
+      },
+    });
+  };
+  return {
+    getVanillaClient: vi.fn(() => createMockProxy()),
+    resetVanillaClient: vi.fn(),
+  };
 });
 
 // Mock stores for context
@@ -62,7 +72,7 @@ import { useNotificationStore } from '../stores/notificationStore';
 describe('Renderer Logging Integration', () => {
   beforeEach(() => {
     // Reset mocks
-    mockLogRenderer.mockClear();
+    mockMutate.mockClear();
 
     // Reset console
     console.log = originalConsole.log;
@@ -90,20 +100,22 @@ describe('Renderer Logging Integration', () => {
     uninitializeConsoleHook();
   });
 
-  // Integration Test 1: Console Hook -> IPC flow
-  describe('Console Hook -> IPC Flow', () => {
-    it('should send console.log to IPC with context', () => {
+  // Integration Test 1: Console Hook -> tRPC flow
+  describe('Console Hook -> tRPC Flow', () => {
+    it('should send console.log to tRPC with context', () => {
       initializeConsoleHook();
       expect(isHookActive()).toBe(true);
 
       console.log('Integration test message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('Integration test message'),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'test-integration-spec',
-          bugName: 'test-integration-bug',
+          level: 'info',
+          message: expect.stringContaining('Integration test message'),
+          context: expect.objectContaining({
+            specId: 'test-integration-spec',
+            bugName: 'test-integration-bug',
+          }),
         })
       );
     });
@@ -113,62 +125,67 @@ describe('Renderer Logging Integration', () => {
 
       console.error('Integration error message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'error',
-        expect.stringContaining('Integration error message'),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          stack: expect.any(String),
+          level: 'error',
+          message: expect.stringContaining('Integration error message'),
+          context: expect.objectContaining({
+            stack: expect.any(String),
+          }),
         })
       );
     });
 
-    it('should filter HMR messages from IPC', () => {
+    it('should filter HMR messages from tRPC', () => {
       initializeConsoleHook();
 
       console.log('[HMR] Hot update');
 
-      expect(mockLogRenderer).not.toHaveBeenCalled();
+      expect(mockMutate).not.toHaveBeenCalled();
     });
 
-    it('should filter Vite messages from IPC', () => {
+    it('should filter Vite messages from tRPC', () => {
       initializeConsoleHook();
 
       console.log('[vite] connected');
 
-      expect(mockLogRenderer).not.toHaveBeenCalled();
+      expect(mockMutate).not.toHaveBeenCalled();
     });
 
-    it('should filter React DevTools messages from IPC', () => {
+    it('should filter React DevTools messages from tRPC', () => {
       initializeConsoleHook();
 
       console.log('Download the React DevTools');
 
-      expect(mockLogRenderer).not.toHaveBeenCalled();
+      expect(mockMutate).not.toHaveBeenCalled();
     });
   });
 
-  // Integration Test 2: rendererLogger -> IPC flow
-  describe('rendererLogger -> IPC Flow', () => {
-    it('should send rendererLogger.log to IPC with auto context', () => {
+  // Integration Test 2: rendererLogger -> tRPC flow
+  describe('rendererLogger -> tRPC Flow', () => {
+    it('should send rendererLogger.log to tRPC with auto context', () => {
       rendererLogger.log('Logger test message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('Logger test message'),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'test-integration-spec',
-          bugName: 'test-integration-bug',
+          level: 'info',
+          message: expect.stringContaining('Logger test message'),
+          context: expect.objectContaining({
+            specId: 'test-integration-spec',
+            bugName: 'test-integration-bug',
+          }),
         })
       );
     });
 
-    it('should send rendererLogger.error to IPC', () => {
+    it('should send rendererLogger.error to tRPC', () => {
       rendererLogger.error('Logger error message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'error',
-        expect.stringContaining('Logger error message'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: 'error',
+          message: expect.stringContaining('Logger error message'),
+        })
       );
     });
 
@@ -177,21 +194,23 @@ describe('Renderer Logging Integration', () => {
         customField: 'customValue',
       });
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'warn',
-        'Custom context test',
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: 'test-integration-spec',
-          bugName: 'test-integration-bug',
-          customField: 'customValue',
+          level: 'warn',
+          message: 'Custom context test',
+          context: expect.objectContaining({
+            specId: 'test-integration-spec',
+            bugName: 'test-integration-bug',
+            customField: 'customValue',
+          }),
         })
       );
     });
   });
 
-  // Integration Test 3: notify -> rendererLogger -> IPC flow
-  describe('notify -> rendererLogger -> IPC Flow', () => {
-    it('should send notify.error through rendererLogger to IPC', () => {
+  // Integration Test 3: notify -> rendererLogger -> tRPC flow
+  describe('notify -> rendererLogger -> tRPC Flow', () => {
+    it('should send notify.error through rendererLogger to tRPC', () => {
       notify.error('Notification error');
 
       // Verify notification was added
@@ -200,17 +219,18 @@ describe('Renderer Logging Integration', () => {
       expect(state.notifications[0].type).toBe('error');
 
       // Verify log was sent via rendererLogger
-      // Note: source field is added by rendererLogger and includes "renderer:" prefix
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'error',
-        expect.stringContaining('Notification error'),
+      expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
-          source: expect.stringMatching(/^renderer:/),
+          level: 'error',
+          message: expect.stringContaining('Notification error'),
+          context: expect.objectContaining({
+            source: expect.stringMatching(/^renderer:/),
+          }),
         })
       );
     });
 
-    it('should send notify.success through rendererLogger to IPC', () => {
+    it('should send notify.success through rendererLogger to tRPC', () => {
       notify.success('Operation completed');
 
       // Verify notification was added
@@ -219,20 +239,22 @@ describe('Renderer Logging Integration', () => {
       expect(state.notifications[0].type).toBe('success');
 
       // Verify log was sent
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('Operation completed'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: 'info',
+          message: expect.stringContaining('Operation completed'),
+        })
       );
     });
 
-    it('should send notify.warning through rendererLogger to IPC', () => {
+    it('should send notify.warning through rendererLogger to tRPC', () => {
       notify.warning('Warning message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'warn',
-        expect.stringContaining('Warning message'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: 'warn',
+          message: expect.stringContaining('Warning message'),
+        })
       );
     });
   });
@@ -247,8 +269,8 @@ describe('Renderer Logging Integration', () => {
 
       console.log('Production log');
 
-      // Should not be sent to IPC when hook is not active
-      expect(mockLogRenderer).not.toHaveBeenCalled();
+      // Should not be sent to tRPC when hook is not active
+      expect(mockMutate).not.toHaveBeenCalled();
     });
 
     it('should still allow rendererLogger in production', () => {
@@ -257,10 +279,11 @@ describe('Renderer Logging Integration', () => {
       // rendererLogger should still work regardless of console hook
       rendererLogger.log('Production logger message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'info',
-        expect.stringContaining('Production logger message'),
-        expect.any(Object)
+      expect(mockMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: 'info',
+          message: expect.stringContaining('Production logger message'),
+        })
       );
     });
   });
@@ -280,22 +303,22 @@ describe('Renderer Logging Integration', () => {
       notify.info('Notify info');
 
       // All three should be logged
-      expect(mockLogRenderer).toHaveBeenCalledTimes(3);
+      expect(mockMutate).toHaveBeenCalledTimes(3);
 
-      // Check each call
-      const calls = mockLogRenderer.mock.calls;
+      // Check each call - now using { level, message, context } object format
+      const calls = mockMutate.mock.calls;
 
       // Console log
-      expect(calls[0][0]).toBe('info');
-      expect(calls[0][1]).toContain('Console log');
+      expect(calls[0][0].level).toBe('info');
+      expect(calls[0][0].message).toContain('Console log');
 
       // Logger info
-      expect(calls[1][0]).toBe('info');
-      expect(calls[1][1]).toContain('Logger info');
+      expect(calls[1][0].level).toBe('info');
+      expect(calls[1][0].message).toContain('Logger info');
 
       // Notify info
-      expect(calls[2][0]).toBe('info');
-      expect(calls[2][1]).toContain('Notify info');
+      expect(calls[2][0].level).toBe('info');
+      expect(calls[2][0].message).toContain('Notify info');
     });
   });
 });

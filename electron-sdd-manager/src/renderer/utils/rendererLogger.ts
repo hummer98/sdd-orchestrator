@@ -8,6 +8,8 @@
  */
 
 import { getAutoContext } from './contextProvider';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for logRenderer
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Log level types
@@ -120,11 +122,15 @@ function sendToMain(
   message: string,
   context: Record<string, unknown>
 ): void {
-  // Requirement 7.3: Guard for environments where electronAPI may not exist
-  if (typeof window !== 'undefined' && window.electronAPI?.logRenderer) {
-    window.electronAPI.logRenderer(level, message, context);
+  // trpc-full-migration Task 10.6: Use tRPC for logRenderer (fire-and-forget)
+  // Requirement 7.3: Silent fallback when tRPC client unavailable
+  try {
+    getVanillaClient().misc.logRenderer.mutate({ level, message, context }).catch(() => {
+      // Silent fallback - no error thrown
+    });
+  } catch {
+    // Silent fallback when tRPC client is not available
   }
-  // Silent fallback - no error thrown
 }
 
 /**

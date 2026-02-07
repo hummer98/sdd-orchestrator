@@ -10,14 +10,17 @@
  * - Manages external change events
  */
 
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ProjectFileList } from './ProjectFileList';
 import { ProjectFileEditor } from './ProjectFileEditor';
 import { ExternalChangeDialog } from './ExternalChangeDialog';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import { useProjectStore } from '../stores/projectStore';
 import type { ProjectFilesState } from '@shared/api/types';
-import { IpcApiClient } from '@shared/api/IpcApiClient';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import { trpc } from '@shared/trpc/client';
+// trpc-full-migration Task 10.6/11.4: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '@shared/trpc/vanillaClient';
 
 export interface ProjectPaneProps {
   /** Project files state */
@@ -41,30 +44,26 @@ export function ProjectPane({ files, onRefreshFiles: _onRefreshFiles }: ProjectP
     setExternalChangeDetected,
   } = useProjectEditorStore();
 
-  // Create API client for file operations
-  const apiClient = new IpcApiClient() as IpcApiClient & {
-    readProjectFile: (filePath: string) => Promise<{ ok: true; value: string } | { ok: false; error: { type: string; message: string } }>;
-    writeProjectFile: (filePath: string, content: string) => Promise<{ ok: true; value: void } | { ok: false; error: { type: string; message: string } }>;
-  };
-
-  // Add project file operations to API client
-  apiClient.readProjectFile = async (filePath: string) => {
-    try {
-      const content = await window.electronAPI.readProjectFile(filePath);
-      return { ok: true, value: content };
-    } catch (error) {
-      return { ok: false, error: { type: 'READ_ERROR', message: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-  };
-
-  apiClient.writeProjectFile = async (filePath: string, content: string) => {
-    try {
-      await window.electronAPI.writeProjectFile(filePath, content);
-      return { ok: true, value: undefined };
-    } catch (error) {
-      return { ok: false, error: { type: 'WRITE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-  };
+  // trpc-full-migration Task 11.4: Use tRPC vanilla client for file operations
+  // Cast as any since projectEditorStore only uses readProjectFile/writeProjectFile
+  const apiClient = {
+    readProjectFile: async (filePath: string) => {
+      try {
+        const content = await getVanillaClient().file.projectFileRead.query({ filePath });
+        return { ok: true as const, value: content };
+      } catch (error) {
+        return { ok: false as const, error: { type: 'READ_ERROR', message: error instanceof Error ? error.message : 'Unknown error' } };
+      }
+    },
+    writeProjectFile: async (filePath: string, content: string) => {
+      try {
+        await getVanillaClient().file.projectFileWrite.mutate({ filePath, content });
+        return { ok: true as const, value: undefined };
+      } catch (error) {
+        return { ok: false as const, error: { type: 'WRITE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' } };
+      }
+    },
+  } as any;
 
   // Handle file selection
   const handleSelectFile = useCallback(
@@ -90,18 +89,17 @@ export function ProjectPane({ files, onRefreshFiles: _onRefreshFiles }: ProjectP
   }, [apiClient, handleExternalChange]);
 
   // Subscribe to external file change events
-  useEffect(() => {
-    if (!currentFilePath) return;
-
-    const cleanup = window.electronAPI.onProjectFileChanged((changedPath) => {
+  // Task 9.2: window.electronAPI.onProjectFileChanged -> tRPC Subscription
+  trpc.events.onProjectFileChanged.useSubscription(undefined, {
+    enabled: !!currentFilePath,
+    onData: (data: Record<string, unknown>) => {
+      const changedPath = (data as { filePath: string }).filePath;
       // Only notify if the currently open file changed
       if (changedPath === currentFilePath) {
         setExternalChangeDetected(true);
       }
-    });
-
-    return cleanup;
-  }, [currentFilePath, setExternalChangeDetected]);
+    },
+  });
 
   if (!currentProject) {
     return (

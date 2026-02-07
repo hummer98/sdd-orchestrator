@@ -1,13 +1,15 @@
 /**
  * Root Router integration tests
+ * Task 1.1: createCallerをモックContext付きに更新
  * Requirements: 2.2, 2.3, 2.5, 7.1, 7.2, 7.3, 7.4
  * Verifies: AppRouter, appRouter, inferRouterInputs, inferRouterOutputs
  *
- * Uses tRPC caller pattern (DD-004) for direct procedure invocation
- * without Electron process (Requirements: 7.2)
+ * Uses tRPC caller pattern (DD-004) with mock context (DD-006)
+ * for direct procedure invocation without Electron process (Requirements: 7.2)
  */
 import { describe, it, expect } from 'vitest';
 import { createCallerFactory } from '@trpc/server';
+import { createContext } from '../context';
 
 describe('Root Router (router.ts)', () => {
   it('should export appRouter', async () => {
@@ -26,7 +28,7 @@ describe('Root Router (router.ts)', () => {
   it('should include system namespace with healthCheck', async () => {
     const { appRouter } = await import('../router');
     const createCaller = createCallerFactory()(appRouter);
-    const caller = createCaller({});
+    const caller = createCaller(createContext());
 
     // Verify system namespace exists and healthCheck is callable
     const result = await caller.system.healthCheck();
@@ -48,7 +50,7 @@ describe('Integration: healthCheck via Root Router', () => {
   it('should return complete healthCheck response', async () => {
     const { appRouter } = await import('../router');
     const createCaller = createCallerFactory()(appRouter);
-    const caller = createCaller({});
+    const caller = createCaller(createContext());
 
     const result = await caller.system.healthCheck();
 
@@ -62,7 +64,7 @@ describe('Integration: healthCheck via Root Router', () => {
   it('healthCheck status should be literal "ok" type', async () => {
     const { appRouter } = await import('../router');
     const createCaller = createCallerFactory()(appRouter);
-    const caller = createCaller({});
+    const caller = createCaller(createContext());
 
     const result = await caller.system.healthCheck();
 

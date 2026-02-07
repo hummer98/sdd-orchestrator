@@ -16,6 +16,9 @@ import type {
   AutoExecutionRuntimeState,
 } from './types';
 import { DEFAULT_AUTO_EXECUTION_RUNTIME, DEFAULT_AUTO_EXECUTION_STATE } from './types';
+// trpc-full-migration Task 9.2: tRPC Subscription for event listeners
+import { getVanillaClient } from '../../../shared/trpc/vanillaClient';
+import type { Unsubscribable } from '@trpc/server/observable';
 
 // ============================================================
 // Types for IPC Event Data
@@ -64,10 +67,14 @@ export function initAutoExecutionIpcListeners(): void {
     return;
   }
 
+  // Task 9.2: Migrated from window.electronAPI.on* to tRPC Subscription
+  const subscriptions: Unsubscribable[] = [];
+
   // Listen for status changed events from Main Process
-  const unsubscribeStatus = window.electronAPI.onAutoExecutionStatusChanged?.(
-    (data: { specPath: string; state: MainProcessAutoExecutionState }) => {
-      const { specId, status, currentPhase } = data.state;
+  const statusSub = getVanillaClient().events.onAutoExecutionStatusChanged.subscribe(undefined, {
+    onData: (data: Record<string, unknown>) => {
+      const typedData = data as { specPath: string; state: MainProcessAutoExecutionState };
+      const { specId, status, currentPhase } = typedData.state;
 
       // Update store directly - this is the key fix for the state sync bug
       const store = useAutoExecutionStore.getState();
@@ -82,32 +89,37 @@ export function initAutoExecutionIpcListeners(): void {
       });
 
       useAutoExecutionStore.setState({ autoExecutionRuntimeMap: map });
-    }
-  );
+    },
+  });
+  subscriptions.push(statusSub);
 
   // Listen for phase completed events
-  const unsubscribePhase = window.electronAPI.onAutoExecutionPhaseCompleted?.(
-    (data: { specPath: string; phase: string }) => {
+  const phaseSub = getVanillaClient().events.onAutoExecutionPhaseCompleted.subscribe(undefined, {
+    onData: (data: Record<string, unknown>) => {
+      const typedData = data as { specPath: string; phase: string };
       // Phase completion doesn't need to update runtime state
       // The status changed event will handle state updates
-      console.debug('[AutoExecutionStore] Phase completed:', data.phase);
-    }
-  );
+      console.debug('[AutoExecutionStore] Phase completed:', typedData.phase);
+    },
+  });
+  subscriptions.push(phaseSub);
 
   // Listen for error events
-  const unsubscribeError = window.electronAPI.onAutoExecutionError?.(
-    (data: { specPath: string; error: { type: string; message?: string } }) => {
-      console.error('[AutoExecutionStore] Auto-execution error:', data.error);
+  const errorSub = getVanillaClient().events.onAutoExecutionError.subscribe(undefined, {
+    onData: (data: Record<string, unknown>) => {
+      const typedData = data as { specPath: string; error: { type: string; message?: string } };
+      console.error('[AutoExecutionStore] Auto-execution error:', typedData.error);
       // Error state is handled via status changed event with status='error'
-    }
-  );
+    },
+  });
+  subscriptions.push(errorSub);
 
-  // Store cleanup functions
-  if (unsubscribeStatus) ipcCleanupFunctions.push(unsubscribeStatus);
-  if (unsubscribePhase) ipcCleanupFunctions.push(unsubscribePhase);
-  if (unsubscribeError) ipcCleanupFunctions.push(unsubscribeError);
+  // Store cleanup functions (wrap subscriptions as cleanup functions)
+  subscriptions.forEach((sub) => {
+    ipcCleanupFunctions.push(() => sub.unsubscribe());
+  });
 
-  console.debug('[AutoExecutionStore] IPC listeners registered');
+  console.debug('[AutoExecutionStore] tRPC Subscription listeners registered');
 }
 
 /**

@@ -10,6 +10,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// trpc-full-migration Task 5.3: Mock tRPC vanilla client for executeSpecPlan
+const mockVanillaClient = {
+  spec: {
+    executeSpecPlan: { mutate: vi.fn().mockResolvedValue({ agentId: 'agent-456', specId: '', phase: 'spec-plan', status: 'running' }) },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { CreateSpecDialog } from './CreateSpecDialog';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
@@ -43,13 +54,9 @@ describe('CreateSpecDialog', () => {
       commandPrefix: 'kiro',
     });
 
-    // Mock electronAPI
-    window.electronAPI = {
-      ...window.electronAPI,
-      executeSpecInit: vi.fn().mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'spec-init', status: 'running' }),
-      executeSpecPlan: vi.fn().mockResolvedValue({ agentId: 'agent-456', specId: '', phase: 'spec-plan', status: 'running' }),
-      createSpec: vi.fn(),
-    };
+    // trpc-full-migration Task 11.4: executeSpecInit/createSpec now use tRPC (Tasks 5.3/10.6)
+    // trpc-full-migration Task 5.3: Reset tRPC mock for executeSpecPlan
+    mockVanillaClient.spec.executeSpecPlan.mutate.mockResolvedValue({ agentId: 'agent-456', specId: '', phase: 'spec-plan', status: 'running' });
   });
 
   // ============================================================
@@ -97,12 +104,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'これは新しい機能の説明です',
-          'kiro', // default commandPrefix
-          false // default worktreeMode
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'これは新しい機能の説明です',
+          commandPrefix: 'kiro', // default commandPrefix
+          worktreeMode: false, // default worktreeMode
+        });
       });
     });
 
@@ -121,12 +128,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'これは新しい機能の説明です',
-          'spec-manager',
-          false // default worktreeMode
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'これは新しい機能の説明です',
+          commandPrefix: 'spec-manager',
+          worktreeMode: false, // default worktreeMode
+        });
       });
     });
 
@@ -140,16 +147,16 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalled();
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalled();
       });
 
-      expect(window.electronAPI.createSpec).not.toHaveBeenCalled();
+      // trpc-full-migration Task 11.4: createSpec removed (now uses tRPC executeSpecPlan)
     });
 
     // 5.2.4 CreateSpecDialogの修正: ダイアログを閉じてプロジェクトエージェントパネルに遷移
     it('should close dialog immediately after starting agent (not wait for completion)', async () => {
       // Mock a slow response to ensure dialog closes before completion
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123', specId: '', phase: 'spec-plan', status: 'running' }), 500))
       );
 
@@ -237,7 +244,7 @@ describe('CreateSpecDialog', () => {
     // create-spec-dialog-simplify: Updated to use executeSpecPlan instead of executeSpecInit
     it('should show loading state while creating', async () => {
       // Slow down the mock to see loading state
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
       );
 
@@ -270,7 +277,7 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should show error message on failure', async () => {
-      window.electronAPI.executeSpecPlan = vi.fn().mockRejectedValue(new Error('spec-plan failed'));
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockRejectedValue(new Error('spec-plan failed'));
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
@@ -287,7 +294,7 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should disable button while loading', async () => {
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 200))
       );
 
@@ -386,12 +393,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'プランニングしたい機能の説明',
-          'kiro',
-          false // default worktreeMode
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'プランニングしたい機能の説明',
+          commandPrefix: 'kiro',
+          worktreeMode: false, // default worktreeMode
+        });
       });
     });
 
@@ -409,12 +416,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'プランニングしたい機能の説明',
-          'spec-manager',
-          false // default worktreeMode
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'プランニングしたい機能の説明',
+          commandPrefix: 'spec-manager',
+          worktreeMode: false, // default worktreeMode
+        });
       });
     });
 
@@ -450,7 +457,7 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should show error message when spec-plan fails', async () => {
-      window.electronAPI.executeSpecPlan = vi.fn().mockRejectedValue(new Error('spec-plan failed'));
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockRejectedValue(new Error('spec-plan failed'));
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
@@ -466,7 +473,7 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should show loading state when spec-plan is in progress', async () => {
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-456' }), 100))
       );
 
@@ -494,11 +501,10 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalled();
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalled();
       });
 
-      // Should NOT call executeSpecInit
-      expect(window.electronAPI.executeSpecInit).not.toHaveBeenCalled();
+      // trpc-full-migration Task 11.4: executeSpecInit removed (now uses tRPC executeSpecPlan)
     });
   });
 
@@ -575,7 +581,7 @@ describe('CreateSpecDialog', () => {
 
     // create-spec-dialog-simplify: Updated to use "spec-planで作成" button
     it('should disable worktree mode switch when creating', async () => {
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
       );
 
@@ -609,12 +615,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'Worktreeモードで作成する機能',
-          'kiro',
-          true // worktreeMode enabled
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'Worktreeモードで作成する機能',
+          commandPrefix: 'kiro',
+          worktreeMode: true, // worktreeMode enabled
+        });
       });
     });
   });
@@ -664,12 +670,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          '新しい機能の説明',
-          'kiro',
-          false
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: '新しい機能の説明',
+          commandPrefix: 'kiro',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -780,12 +786,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          '新しい機能の説明',
-          'kiro',
-          false
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: '新しい機能の説明',
+          commandPrefix: 'kiro',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -799,12 +805,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          '新しい機能の説明',
-          'kiro',
-          false
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: '新しい機能の説明',
+          commandPrefix: 'kiro',
+          worktreeMode: false,
+        });
       });
     });
 
@@ -817,7 +823,7 @@ describe('CreateSpecDialog', () => {
       // Cmd+Enter
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
-      expect(window.electronAPI.executeSpecPlan).not.toHaveBeenCalled();
+      expect(mockVanillaClient.spec.executeSpecPlan.mutate).not.toHaveBeenCalled();
     });
 
     it('should NOT call executeSpecPlan when Enter is pressed without modifier', () => {
@@ -829,7 +835,7 @@ describe('CreateSpecDialog', () => {
       // Enter only (should not trigger submit)
       fireEvent.keyDown(textarea, { key: 'Enter' });
 
-      expect(window.electronAPI.executeSpecPlan).not.toHaveBeenCalled();
+      expect(mockVanillaClient.spec.executeSpecPlan.mutate).not.toHaveBeenCalled();
     });
 
     // Note: IME (isComposing) testing is covered in useSubmitShortcut.test.ts
@@ -838,7 +844,7 @@ describe('CreateSpecDialog', () => {
 
     it('should NOT call executeSpecPlan when dialog is in creating state', async () => {
       // Mock slow response
-      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+      mockVanillaClient.spec.executeSpecPlan.mutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 500))
       );
 
@@ -855,7 +861,7 @@ describe('CreateSpecDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
       // Should only have been called once (from button click, not from shortcut)
-      expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledTimes(1);
+      expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledTimes(1);
     });
 
     it('should pass worktreeMode when using shortcut with worktree mode enabled', async () => {
@@ -872,12 +878,12 @@ describe('CreateSpecDialog', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
-          '/test/project',
-          'Worktreeモードで作成',
-          'kiro',
-          true // worktreeMode enabled
-        );
+        expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          description: 'Worktreeモードで作成',
+          commandPrefix: 'kiro',
+          worktreeMode: true, // worktreeMode enabled
+        });
       });
     });
   });

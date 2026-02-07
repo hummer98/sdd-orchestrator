@@ -64,9 +64,10 @@ For each principle, verify adherence:
 - Flag excessive complexity as **Minor**
 
 **YAGNI (You Aren't Gonna Need It)**:
-- Look for unused features or code
-- Check for premature generalizations
-- Flag unnecessary code as **Minor**
+- Check for premature abstractions or generalizations (e.g., unused configuration options, over-parameterized functions)
+- Check for speculative features not required by any requirement
+- **Scope**: YAGNI = unnecessary complexity/abstraction. Unused code that was created and exported → Dead Code (Step 4), NOT YAGNI
+- Flag YAGNI violations as **Minor**
 
 ### Step 3: Check Impact Analysis
 
@@ -93,10 +94,17 @@ Extract from design.md the "Integration & Deprecation Strategy" or "Impact Analy
 
 ### Step 4: Check Dead Code
 
-For new components/services in key_components:
-1. Use Grep to verify they are imported somewhere
-2. Use Grep to verify they are called/rendered
-3. Check that exports are consumed by other modules
+Check ALL new code created in this spec (not limited to key_components):
+
+1. Start with key_components from context-summary.json
+2. Also read tasks.md for any additional files/exports created (look for "CREATE", "新規", "追加", "export", "hook")
+3. Also read design.md for any components, hooks, utilities, or types defined
+4. For each new export:
+   a. Use Grep to verify it is imported by at least one **production** file (not just test files)
+   b. Use Grep to verify it is called/rendered in production code
+   c. Test-only usage does NOT count as "consumed" for production dead code detection
+
+**Disambiguation from YAGNI**: If code was created and exported but has no production consumer, it is **Dead Code (Major)**, not YAGNI (Minor). YAGNI applies to unnecessary abstractions/complexity, not to orphaned code.
 
 Flag orphaned new code as **Major** (dead code).
 
@@ -123,7 +131,7 @@ If `.kiro/steering/logging.md` exists, verify:
 | Dead code (orphaned) | Major |
 | Placeholder remaining | Major |
 | DRY violation | Minor to Major |
-| KISS/YAGNI violation | Minor |
+| KISS/YAGNI violation | Minor | (YAGNI = unnecessary abstractions. Unused code → Dead code Major)
 | Logging issues | Minor to Major |
 
 ### Step 7: Generate Result
@@ -193,5 +201,5 @@ Return a brief summary:
 
 - **Check all 4 principles**: DRY, SSOT, KISS, YAGNI
 - **Verify all impact items**: Every deletion/update in design.md
-- **Systematic dead code check**: Every new component in key_components
+- **Systematic dead code check**: ALL new code (key_components + tasks.md + design.md), not just key_components
 - **Conservative on placeholders**: Any TODO-like comment should be flagged

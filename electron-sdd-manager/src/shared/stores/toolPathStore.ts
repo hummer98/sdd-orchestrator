@@ -9,7 +9,9 @@
  */
 
 import { create } from 'zustand';
-import type { ToolStatus } from '../../renderer/types/electron';
+import type { ToolStatus, ToolResolutionResult } from '../types/toolPath';
+// trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
+import { getVanillaClient } from '../trpc/vanillaClient';
 
 // =============================================================================
 // Types
@@ -58,12 +60,13 @@ export const useToolPathStore = create<ToolPathStore>((set, get) => ({
   error: null,
 
   // Actions
+  // trpc-full-migration Task 3.2: Use tRPC for tool path operations
   fetchStatuses: async () => {
     set({ isLoading: true, error: null });
 
     try {
-      const statuses = await window.electronAPI.toolPath.getStatuses();
-      set({ statuses, isLoading: false });
+      const statuses = await getVanillaClient().config.getToolStatuses.query();
+      set({ statuses: statuses as ToolStatus[], isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       set({ error: message, isLoading: false });
@@ -72,7 +75,7 @@ export const useToolPathStore = create<ToolPathStore>((set, get) => ({
 
   setToolPath: async (tool: string, path: string | null) => {
     try {
-      const result = await window.electronAPI.toolPath.setPath(tool, path);
+      const result = await getVanillaClient().config.setToolPath.mutate({ tool, path }) as ToolResolutionResult;
       // Update the status for the specified tool
       set((state) => ({
         statuses: state.statuses.map((s) =>
@@ -88,7 +91,7 @@ export const useToolPathStore = create<ToolPathStore>((set, get) => ({
 
   resolveTool: async (tool: string) => {
     try {
-      const result = await window.electronAPI.toolPath.resolve(tool);
+      const result = await getVanillaClient().config.resolveTool.query({ tool }) as ToolResolutionResult;
       // Update the status for the specified tool
       set((state) => ({
         statuses: state.statuses.map((s) =>

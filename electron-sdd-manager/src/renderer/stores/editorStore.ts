@@ -6,6 +6,8 @@
  */
 
 import { create } from 'zustand';
+// trpc-full-migration Task 4.3: Use tRPC vanilla client for file operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /** Spec artifact types */
 type SpecArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
@@ -119,7 +121,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       const [name] = currentPath.split(':');
       // artifact-all-markdown-files: Handle artifacts that already have .md suffix
       const filename = activeTab.endsWith('.md') ? activeTab : `${activeTab}.md`;
-      await window.electronAPI.writeArtifact(name, filename, content, currentEntityType);
+      // trpc-full-migration Task 4.3: Use tRPC for writeArtifact
+      await getVanillaClient().file.writeArtifact.mutate({ name, filename, content, entityType: currentEntityType });
       set({
         originalContent: content,
         isDirty: false,
@@ -186,7 +189,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       // bug-artifact-content-not-displayed: Pass entityType to use correct path resolver
       // artifact-all-markdown-files: Handle artifacts that already have .md suffix
       const filename = artifact.endsWith('.md') ? artifact : `${artifact}.md`;
-      const content = await window.electronAPI.readArtifact(name, filename, entityType);
+      // trpc-full-migration Task 4.3: Use tRPC for readArtifact
+      const content = await getVanillaClient().file.readArtifact.query({ name, filename, entityType });
       set({
         content,
         originalContent: content,

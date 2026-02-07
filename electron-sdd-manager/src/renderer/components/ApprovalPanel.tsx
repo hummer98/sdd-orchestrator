@@ -10,6 +10,8 @@ import { useSpecStore, notify } from '../stores';
 import { clsx } from 'clsx';
 import type { Phase } from '../types';
 import { RejectDialog } from './RejectDialog';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 const PHASE_LABELS: Record<Phase, string> = {
   requirements: '要件定義',
@@ -35,7 +37,8 @@ export function ApprovalPanel() {
 
     setIsLoading(phase);
     try {
-      await window.electronAPI.updateApproval(selectedSpec.name, phase, true);
+      // trpc-full-migration Task 5.3: Use tRPC for updateApproval
+      await getVanillaClient().spec.updateApproval.mutate({ specName: selectedSpec.name, phase, approved: true });
       // File Watcher will auto-update spec state
       notify.success(`${PHASE_LABELS[phase]}を承認しました`);
     } catch (error) {
@@ -59,7 +62,8 @@ export function ApprovalPanel() {
     try {
       // In a real implementation, you might want to log the rejection reason
       console.log(`Rejected ${rejectDialogPhase}: ${reason}`);
-      await window.electronAPI.updateApproval(selectedSpec.name, rejectDialogPhase, false);
+      // trpc-full-migration Task 5.3: Use tRPC for updateApproval (reject)
+      await getVanillaClient().spec.updateApproval.mutate({ specName: selectedSpec.name, phase: rejectDialogPhase, approved: false });
       // File Watcher will auto-update spec state
       notify.warning(`${PHASE_LABELS[rejectDialogPhase]}を却下しました`);
     } catch (error) {

@@ -7,6 +7,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+// trpc-full-migration Task 5.3: Mock tRPC vanilla client for executeProjectCommand
+const mockExecuteProjectCommand = vi.fn();
+const mockVanillaClient = {
+  spec: {
+    executeProjectCommand: { mutate: mockExecuteProjectCommand },
+  },
+};
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => mockVanillaClient,
+}));
+
 import { ProjectAgentPanel } from './ProjectAgentPanel';
 import { useAgentStore, type AgentInfo, type AgentStatus } from '../stores/agentStore';
 import { useSharedAgentStore } from '@shared/stores/agentStore';
@@ -427,21 +439,17 @@ describe('ProjectAgentPanel', () => {
       const { useProjectStore } = await import('../stores');
       useProjectStore.setState({ currentProject: '/test/project' });
 
-      // Mock electronAPI.executeProjectCommand (new API)
-      vi.stubGlobal('window', {
-        electronAPI: {
-          executeProjectCommand: vi.fn().mockResolvedValue({
-            agentId: 'release-agent-1',
-            specId: '',
-            phase: 'release',  // Now phase is 'release', not 'ask'
-            sessionId: 'release-session-1',
-            status: 'running' as AgentStatus,
-            startedAt: '2024-01-01T00:00:00Z',
-            lastActivityAt: '2024-01-01T00:00:00Z',
-            command: 'claude',
-            args: '/release',
-          }),
-        },
+      // trpc-full-migration Task 5.3: Mock tRPC executeProjectCommand (release)
+      mockExecuteProjectCommand.mockResolvedValue({
+        agentId: 'release-agent-1',
+        specId: '',
+        phase: 'release',  // Now phase is 'release', not 'ask'
+        sessionId: 'release-session-1',
+        status: 'running' as AgentStatus,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        command: 'claude',
+        args: '/release',
       });
     });
 
@@ -451,15 +459,14 @@ describe('ProjectAgentPanel', () => {
       const releaseButton = screen.getByTestId('release-button');
       fireEvent.click(releaseButton);
 
-      // Verify executeProjectCommand was called with correct parameters
-      // executeProjectCommand(projectPath, command, title)
+      // trpc-full-migration Task 5.3: Verify tRPC executeProjectCommand was called
       // release-auto-option Task 2.1: Changed from '/release' to '/release --auto'
       await vi.waitFor(() => {
-        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalledWith(
-          '/test/project',
-          '/release --auto',
-          'release'
-        );
+        expect(mockExecuteProjectCommand).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          command: '/release --auto',
+          title: 'release',
+        });
       });
     });
 
@@ -521,11 +528,7 @@ describe('ProjectAgentPanel', () => {
 
     it('should show error notification when executeProjectCommand fails', async () => {
       // Override mock to throw error
-      vi.stubGlobal('window', {
-        electronAPI: {
-          executeProjectCommand: vi.fn().mockRejectedValue(new Error('Release failed')),
-        },
-      });
+      mockExecuteProjectCommand.mockRejectedValue(new Error('Release failed'));
 
       const { notify } = await import('../stores');
       const errorSpy = vi.spyOn(notify, 'error');
@@ -551,7 +554,7 @@ describe('ProjectAgentPanel', () => {
       fireEvent.click(releaseButton);
 
       // executeProjectCommand should not be called
-      expect(window.electronAPI.executeProjectCommand).not.toHaveBeenCalled();
+      expect(mockExecuteProjectCommand).not.toHaveBeenCalled();
     });
   });
 
@@ -565,21 +568,17 @@ describe('ProjectAgentPanel', () => {
       const { useProjectStore } = await import('../stores');
       useProjectStore.setState({ currentProject: '/test/project' });
 
-      // Mock electronAPI.executeProjectCommand (new API)
-      vi.stubGlobal('window', {
-        electronAPI: {
-          executeProjectCommand: vi.fn().mockResolvedValue({
-            agentId: 'ask-agent-1',
-            specId: '',
-            phase: 'ask', // title parameter becomes phase
-            sessionId: 'ask-session-1',
-            status: 'running' as AgentStatus,
-            startedAt: '2024-01-01T00:00:00Z',
-            lastActivityAt: '2024-01-01T00:00:00Z',
-            command: 'claude',
-            args: '/kiro:project-ask "test prompt"',
-          }),
-        },
+      // trpc-full-migration Task 5.3: Mock tRPC executeProjectCommand (ask)
+      mockExecuteProjectCommand.mockResolvedValue({
+        agentId: 'ask-agent-1',
+        specId: '',
+        phase: 'ask', // title parameter becomes phase
+        sessionId: 'ask-session-1',
+        status: 'running' as AgentStatus,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        command: 'claude',
+        args: '/kiro:project-ask "test prompt"',
       });
     });
 
@@ -609,13 +608,13 @@ describe('ProjectAgentPanel', () => {
       expect(executeButton).toBeTruthy();
       fireEvent.click(executeButton!);
 
-      // Verify executeProjectCommand was called with correct parameters
+      // trpc-full-migration Task 5.3: Verify tRPC executeProjectCommand was called
       await vi.waitFor(() => {
-        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalledWith(
-          '/test/project',
-          '/kiro:project-ask "test prompt"',
-          'ask'
-        );
+        expect(mockExecuteProjectCommand).toHaveBeenCalledWith({
+          projectPath: '/test/project',
+          command: '/kiro:project-ask "test prompt"',
+          title: 'ask',
+        });
       });
     });
 
@@ -658,11 +657,11 @@ describe('ProjectAgentPanel', () => {
 
       // Wait for the agent to be added
       await vi.waitFor(() => {
-        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalled();
+        expect(mockExecuteProjectCommand).toHaveBeenCalled();
       });
 
       // The phase (title) should be 'ask' in the returned AgentInfo
-      const callResult = await (window.electronAPI.executeProjectCommand as ReturnType<typeof vi.fn>).mock.results[0].value;
+      const callResult = await mockExecuteProjectCommand.mock.results[0].value;
       expect(callResult.phase).toBe('ask');
     });
 
@@ -690,11 +689,7 @@ describe('ProjectAgentPanel', () => {
 
     it('should show error notification when executeProjectCommand fails', async () => {
       // Override mock to throw error
-      vi.stubGlobal('window', {
-        electronAPI: {
-          executeProjectCommand: vi.fn().mockRejectedValue(new Error('Ask failed')),
-        },
-      });
+      mockExecuteProjectCommand.mockRejectedValue(new Error('Ask failed'));
 
       const { notify } = await import('../stores');
       const errorSpy = vi.spyOn(notify, 'error');

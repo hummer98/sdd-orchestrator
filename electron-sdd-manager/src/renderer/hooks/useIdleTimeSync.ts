@@ -17,6 +17,8 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { getHumanActivityTracker } from '../services/humanActivityTracker';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for reportIdleTime
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // ============================================================
 // Constants
@@ -87,8 +89,8 @@ export function useIdleTimeSync(options: UseIdleTimeSyncOptions): void {
         return;
       }
 
-      // 既存IPCチャネルを使用してMain Processに報告
-      await window.electronAPI.reportIdleTime(lastActivityTime);
+      // trpc-full-migration Task 10.6: Use tRPC for reportIdleTime
+      await getVanillaClient().schedule.reportIdleTime.mutate({ lastActivityTime });
     } catch (error) {
       // エラーはログに記録して続行（同期失敗は致命的ではない）
       console.error('[useIdleTimeSync] Failed to sync idle time:', error);

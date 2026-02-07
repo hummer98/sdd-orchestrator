@@ -79,18 +79,19 @@ vi.mock('./services/remoteAccessServer', () => ({
   })),
 }));
 
-// Mock remote access handlers
-vi.mock('./ipc/remoteAccessHandlers', () => ({
+// Mock remote access setup (Task 10.7: moved from ipc/remoteAccessHandlers.ts to services/remoteAccessSetup.ts)
+vi.mock('./services/remoteAccessSetup', () => ({
   getRemoteAccessServer: vi.fn(() => ({
     stop: mockRemoteAccessServerStop,
     getStatus: mockRemoteAccessServerGetStatus,
   })),
-  registerRemoteAccessHandlers: vi.fn(),
+  setupStatusNotifications: vi.fn(),
   setupStateProvider: vi.fn(),
   setupWorkflowController: vi.fn(),
   setupAgentLogsProvider: vi.fn(),
   setupSpecDetailProvider: vi.fn(),
   setupBugDetailProvider: vi.fn(),
+  setupFileService: vi.fn(),
 }));
 
 // Mock agent watchdog
@@ -132,44 +133,29 @@ vi.mock('./menu', () => ({
   setMenuRemoteServerStatus: vi.fn(),
 }));
 
-vi.mock('./ipc/sshHandlers', () => ({
-  registerSSHHandlers: vi.fn(),
+// Task 10.7: sshHandlers.ts deleted, setupSSHStatusNotifications moved to services/sshSetup.ts
+vi.mock('./services/sshSetup', () => ({
+  setupSSHStatusNotifications: vi.fn(),
 }));
 
-vi.mock('./ipc/bugHandlers', () => ({
-  registerBugHandlers: vi.fn(),
-}));
+// bugHandlers: tRPC bugルーターに移行・削除済み (Task 5.4)
 
-vi.mock('./ipc/gitHandlers', () => ({
-  registerGitHandlers: vi.fn(),
-}));
+// gitHandlers: tRPC gitルーターに移行・削除済み (Task 8.3)
 
-vi.mock('./ipc/cloudflareHandlers', () => ({
-  registerCloudflareHandlers: vi.fn(),
-}));
+// cloudflareHandlers: tRPC cloudflareルーターに移行・削除済み (Task 10.7)
 
-vi.mock('./ipc/agentHandlers', () => ({
-  registerAgentHandlers: vi.fn(),
-}));
+// agentHandlers: tRPC agentルーターに移行・削除済み (Task 6.3)
 
-vi.mock('./ipc/bugWorktreeHandlers', () => ({
-  registerBugWorktreeHandlers: vi.fn(),
-}));
+// bugWorktreeHandlers: tRPC bugルーターに移行・削除済み (Task 5.4)
 
-vi.mock('./ipc/installHandlers', () => ({
-  registerInstallHandlers: vi.fn(),
-}));
+// convertWorktreeHandlers: tRPC bugルーターに移行・削除済み (Task 5.4)
 
-vi.mock('./ipc/convertWorktreeHandlers', () => ({
-  registerConvertWorktreeHandlers: vi.fn(),
-}));
-
-// startup-project-selection-fix: Mock handlers for cache management
+// trpc-full-migration Task 11.2: handlers/channels moved to trpc/helpers/projectSetup
 const mockGetInitialSelectResult = vi.fn();
 const mockClearInitialSelectResult = vi.fn();
 const mockSetInitialSelectResult = vi.fn();
-vi.mock('./ipc/handlers', () => ({
-  registerIpcHandlers: vi.fn(),
+vi.mock('./trpc/helpers/projectSetup', () => ({
+  initializeEventWiring: vi.fn(),
   setInitialProjectPath: vi.fn(),
   selectProject: vi.fn(),
   getInitialSelectResult: mockGetInitialSelectResult,
@@ -177,10 +163,19 @@ vi.mock('./ipc/handlers', () => ({
   setInitialSelectResult: mockSetInitialSelectResult,
 }));
 
-// startup-project-selection-fix: Mock channels
-vi.mock('./ipc/channels', () => ({
-  IPC_CHANNELS: {
-    PROJECT_SELECTED: 'ipc:project-selected',
+// trpc-full-migration Task 11.2: EventBus mock for broadcastInitialProjectSelection
+const mockEventBusEmit = vi.fn();
+vi.mock('./trpc/services/globalEventBus', () => ({
+  getGlobalEventBus: vi.fn(() => ({
+    emit: mockEventBusEmit,
+    on: vi.fn(),
+    off: vi.fn(),
+  })),
+}));
+
+vi.mock('./trpc/services/eventBus', () => ({
+  EVENT_NAMES: {
+    PROJECT_SELECTED: 'events:project-selected',
   },
 }));
 
@@ -318,7 +313,7 @@ describe('Main Process Lifecycle', () => {
       // Import to trigger module execution
       const { broadcastInitialProjectSelection } = await import('./index');
 
-      // Create mock window with webContents
+      // Create mock window
       const mockWebContents = { send: vi.fn() };
       const mockWindow = {
         isDestroyed: vi.fn().mockReturnValue(false),
@@ -328,9 +323,9 @@ describe('Main Process Lifecycle', () => {
       // Call broadcast function
       await broadcastInitialProjectSelection(mockWindow as any);
 
-      // Verify webContents.send was called with PROJECT_SELECTED channel
-      expect(mockWebContents.send).toHaveBeenCalledWith(
-        'ipc:project-selected',
+      // Verify EventBus was used to broadcast (tRPC Subscription path)
+      expect(mockEventBusEmit).toHaveBeenCalledWith(
+        'events:project-selected',
         mockResult
       );
 

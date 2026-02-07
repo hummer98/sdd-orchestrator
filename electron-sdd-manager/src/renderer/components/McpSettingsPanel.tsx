@@ -7,6 +7,8 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for MCP operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import {
   Server,
   Copy,
@@ -70,7 +72,8 @@ export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
     const loadSettings = async () => {
       try {
         setIsLoading(true);
-        const mcpSettings = await window.electronAPI.mcpServer.getSettings();
+        // trpc-full-migration Task 10.6: Use tRPC for MCP getSettings
+        const mcpSettings = await getVanillaClient().mcp.getSettings.query();
         setSettings(mcpSettings);
         setPort(mcpSettings.port.toString());
         setOriginalPort(mcpSettings.port);
@@ -108,7 +111,8 @@ export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
     setIsSaving(true);
     try {
       const newEnabled = !settings.enabled;
-      await window.electronAPI.mcpServer.setEnabled(newEnabled);
+      // trpc-full-migration Task 10.6: Use tRPC for MCP setEnabled
+      await getVanillaClient().mcp.setEnabled.mutate({ enabled: newEnabled });
       setSettings({ ...settings, enabled: newEnabled });
     } catch (error) {
       console.error('[McpSettingsPanel] Failed to toggle enabled:', error);
@@ -133,7 +137,8 @@ export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
 
     setIsSaving(true);
     try {
-      await window.electronAPI.mcpServer.setPort(portNum);
+      // trpc-full-migration Task 10.6: Use tRPC for MCP setPort
+      await getVanillaClient().mcp.setPort.mutate({ port: portNum });
       setSettings((prev) => prev ? { ...prev, port: portNum } : null);
       setOriginalPort(portNum);
     } catch (error) {

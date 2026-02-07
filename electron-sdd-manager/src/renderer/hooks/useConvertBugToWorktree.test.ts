@@ -1,16 +1,32 @@
 /**
  * useConvertBugToWorktree Hook Tests
- * bugs-workflow-footer: Task 5.1
+ * trpc-full-migration Task 8.2: tRPC vanilla client migration
+ * Originally: bugs-workflow-footer Task 5.1
  * Requirements: 7.1-7.7, 8.1-8.4
+ *
+ * Tests verify that:
+ * - worktreeCheckMain is called via getVanillaClient().git.worktreeCheckMain.query
+ * - convertBugToWorktree is called via getVanillaClient().bug.convertToWorktree.mutate
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useConvertBugToWorktree } from './useConvertBugToWorktree';
 
-// Mock window.electronAPI
-const mockWorktreeCheckMain = vi.fn();
-const mockConvertBugToWorktree = vi.fn();
+// Mock tRPC vanilla client
+const mockWorktreeCheckMainQuery = vi.fn();
+const mockBugConvertToWorktreeMutate = vi.fn();
+
+vi.mock('../../shared/trpc/vanillaClient', () => ({
+  getVanillaClient: () => ({
+    git: {
+      worktreeCheckMain: { query: mockWorktreeCheckMainQuery },
+    },
+    bug: {
+      convertToWorktree: { mutate: mockBugConvertToWorktreeMutate },
+    },
+  }),
+}));
 
 // Mock stores
 vi.mock('../stores', () => ({
@@ -23,17 +39,11 @@ vi.mock('../stores', () => ({
 }));
 
 // Import after mock to get the mocked version
-import { notify, useProjectStore } from '../stores';
+import { notify } from '../stores';
 
 describe('useConvertBugToWorktree', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Setup window.electronAPI mock
-    (window as unknown as { electronAPI: unknown }).electronAPI = {
-      worktreeCheckMain: mockWorktreeCheckMain,
-      convertBugToWorktree: mockConvertBugToWorktree,
-    };
   });
 
   afterEach(() => {
@@ -49,7 +59,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should set isOnMain to true when on main branch', async () => {
       // Requirements: 8.4
-      mockWorktreeCheckMain.mockResolvedValue({ ok: true, value: { isMain: true } });
+      mockWorktreeCheckMainQuery.mockResolvedValue({ ok: true, value: { isMain: true } });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -62,7 +72,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should set isOnMain to false when not on main branch', async () => {
       // Requirements: 8.4
-      mockWorktreeCheckMain.mockResolvedValue({ ok: true, value: { isMain: false } });
+      mockWorktreeCheckMainQuery.mockResolvedValue({ ok: true, value: { isMain: false } });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -83,7 +93,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should set isConverting to true during conversion', async () => {
       // Requirements: 7.2
-      mockConvertBugToWorktree.mockImplementation(
+      mockBugConvertToWorktreeMutate.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ ok: true, value: {} }), 100))
       );
 
@@ -105,7 +115,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should set isConverting to false after conversion', async () => {
       // Requirements: 7.7
-      mockConvertBugToWorktree.mockResolvedValue({ ok: true, value: {} });
+      mockBugConvertToWorktreeMutate.mockResolvedValue({ ok: true, value: {} });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -118,7 +128,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should set isConverting to false even on error', async () => {
       // Requirements: 7.7
-      mockConvertBugToWorktree.mockResolvedValue({
+      mockBugConvertToWorktreeMutate.mockResolvedValue({
         ok: false,
         error: { type: 'NOT_ON_MAIN_BRANCH', message: 'Not on main branch' },
       });
@@ -134,9 +144,9 @@ describe('useConvertBugToWorktree', () => {
   });
 
   describe('handleConvert', () => {
-    it('should call convertBugToWorktree with bugName', async () => {
+    it('should call tRPC bug.convertToWorktree.mutate with bugName', async () => {
       // Requirements: 7.4
-      mockConvertBugToWorktree.mockResolvedValue({ ok: true, value: {} });
+      mockBugConvertToWorktreeMutate.mockResolvedValue({ ok: true, value: {} });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -144,12 +154,12 @@ describe('useConvertBugToWorktree', () => {
         await result.current.handleConvert('my-bug');
       });
 
-      expect(mockConvertBugToWorktree).toHaveBeenCalledWith('my-bug');
+      expect(mockBugConvertToWorktreeMutate).toHaveBeenCalledWith({ bugName: 'my-bug' });
     });
 
     it('should show success notification on success', async () => {
       // Requirements: 7.5
-      mockConvertBugToWorktree.mockResolvedValue({
+      mockBugConvertToWorktreeMutate.mockResolvedValue({
         ok: true,
         value: { path: '.kiro/worktrees/bugs/test', branch: 'bugfix/test', created_at: '2024-01-01' },
       });
@@ -165,7 +175,7 @@ describe('useConvertBugToWorktree', () => {
 
     it('should show error notification on failure', async () => {
       // Requirements: 7.6
-      mockConvertBugToWorktree.mockResolvedValue({
+      mockBugConvertToWorktreeMutate.mockResolvedValue({
         ok: false,
         error: { type: 'NOT_ON_MAIN_BRANCH', message: 'Not on main branch' },
       });
@@ -180,7 +190,7 @@ describe('useConvertBugToWorktree', () => {
     });
 
     it('should return true on success', async () => {
-      mockConvertBugToWorktree.mockResolvedValue({ ok: true, value: {} });
+      mockBugConvertToWorktreeMutate.mockResolvedValue({ ok: true, value: {} });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -193,7 +203,7 @@ describe('useConvertBugToWorktree', () => {
     });
 
     it('should return false on failure', async () => {
-      mockConvertBugToWorktree.mockResolvedValue({
+      mockBugConvertToWorktreeMutate.mockResolvedValue({
         ok: false,
         error: { type: 'BUG_NOT_FOUND', message: 'Bug not found' },
       });
@@ -210,9 +220,9 @@ describe('useConvertBugToWorktree', () => {
   });
 
   describe('refreshMainBranchStatus', () => {
-    it('should call worktreeCheckMain IPC', async () => {
+    it('should call tRPC git.worktreeCheckMain.query with projectPath', async () => {
       // Requirements: 8.1, 8.2
-      mockWorktreeCheckMain.mockResolvedValue({ ok: true, value: { isMain: true } });
+      mockWorktreeCheckMainQuery.mockResolvedValue({ ok: true, value: { isMain: true } });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 
@@ -220,11 +230,13 @@ describe('useConvertBugToWorktree', () => {
         await result.current.refreshMainBranchStatus();
       });
 
-      expect(mockWorktreeCheckMain).toHaveBeenCalled();
+      expect(mockWorktreeCheckMainQuery).toHaveBeenCalledWith({
+        projectPath: '/test/project/path',
+      });
     });
 
-    it('should handle IPC error gracefully', async () => {
-      mockWorktreeCheckMain.mockResolvedValue({ ok: false, error: { type: 'GIT_ERROR' } });
+    it('should handle tRPC error gracefully', async () => {
+      mockWorktreeCheckMainQuery.mockResolvedValue({ ok: false, error: { type: 'GIT_ERROR' } });
 
       const { result } = renderHook(() => useConvertBugToWorktree());
 

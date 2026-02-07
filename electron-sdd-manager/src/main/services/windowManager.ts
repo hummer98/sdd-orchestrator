@@ -566,18 +566,6 @@ export class WindowManager {
     return null;
   }
 
-  /**
-   * Broadcast a message to all windows
-   * Requirements: 5.2
-   */
-  broadcastToAllWindows(channel: string, ...args: unknown[]): void {
-    for (const windowId of this.windowStates.keys()) {
-      const window = this.getWindow(windowId);
-      if (window && !window.isDestroyed()) {
-        window.webContents.send(channel, ...args);
-      }
-    }
-  }
 }
 
 // Singleton instance

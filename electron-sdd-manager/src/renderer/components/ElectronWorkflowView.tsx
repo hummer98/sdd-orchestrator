@@ -16,6 +16,8 @@ import { useElectronWorkflowState } from '../hooks/useElectronWorkflowState';
 import { useSpecStore } from '../stores/specStore';
 import { useMetricsStore } from '../stores/metricsStore';
 import type { EventLogEntry, EventLogError } from '@shared/types';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // =============================================================================
 // Component
@@ -41,11 +43,13 @@ export function ElectronWorkflowView(): React.ReactElement {
     setEventLogError(null);
 
     try {
-      const result = await window.electronAPI.getEventLog(specDetail.metadata.name);
+      // trpc-full-migration Task 5.3: Use tRPC for getEventLog
+      const result = await getVanillaClient().spec.getEventLog.query({ specId: specDetail.metadata.name });
       if (result.ok) {
         setEventLogEntries(result.value);
       } else {
-        setEventLogError(result.error);
+        // trpc-full-migration: Cast error (tRPC infers wider string type for error.type)
+        setEventLogError(result.error as EventLogError);
       }
     } catch (error) {
       setEventLogError({

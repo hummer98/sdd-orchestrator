@@ -5,6 +5,8 @@
  */
 
 import { create } from 'zustand';
+// trpc-full-migration Task 10.6: Use tRPC vanilla client for SSH operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 /**
  * Connection status values
@@ -182,16 +184,27 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ isLoading: true, error: null, status: 'connecting' });
 
     try {
-      const result = await window.electronAPI.sshConnect(uri);
+      // trpc-full-migration Task 10.6: Use tRPC for SSH operations
+      const result = await getVanillaClient().misc.sshConnect.mutate({ uri });
 
       if (result.ok) {
         // Get updated status and connection info
-        const status = await window.electronAPI.getSSHStatus();
-        const connectionInfo = await window.electronAPI.getSSHConnectionInfo();
+        const statusResult = await getVanillaClient().misc.sshGetStatus.query();
+        const connectionInfo = await getVanillaClient().misc.sshGetConnectionInfo.query();
 
+        // Convert serialized connectionInfo to store type (connectedAt: string -> Date)
+        const typedConnectionInfo: ConnectionInfo | null = connectionInfo
+          ? {
+              host: connectionInfo.host,
+              port: connectionInfo.port,
+              user: connectionInfo.user,
+              connectedAt: new Date(connectionInfo.connectedAt),
+              bytesTransferred: connectionInfo.bytesTransferred,
+            }
+          : null;
         set({
-          status: status as ConnectionStatus,
-          connectionInfo,
+          status: statusResult.connected ? 'connected' as ConnectionStatus : 'disconnected' as ConnectionStatus,
+          connectionInfo: typedConnectionInfo,
           projectUri: uri,
           projectType: 'ssh',
           isLoading: false,
@@ -200,7 +213,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       } else {
         set({
           status: 'error',
-          error: result.error.message,
+          error: result.error?.message ?? 'Connection failed',
           isLoading: false,
         });
       }
@@ -215,7 +228,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   disconnectSSH: async () => {
     try {
-      await window.electronAPI.sshDisconnect();
+      // trpc-full-migration Task 10.6: Use tRPC for sshDisconnect
+      await getVanillaClient().misc.sshDisconnect.mutate();
     } catch (error) {
       console.error('Failed to disconnect:', error);
     }
@@ -238,7 +252,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   loadRecentRemoteProjects: async () => {
     try {
-      const projects = await window.electronAPI.getRecentRemoteProjects();
+      // trpc-full-migration Task 10.6: Use tRPC for sshGetRecentRemoteProjects
+      const projects = await getVanillaClient().misc.sshGetRecentRemoteProjects.query();
       set({ recentRemoteProjects: projects });
     } catch (error) {
       console.error('Failed to load recent remote projects:', error);
@@ -247,7 +262,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   removeRecentRemoteProject: async (uri: string) => {
     try {
-      await window.electronAPI.removeRecentRemoteProject(uri);
+      // trpc-full-migration Task 10.6: Use tRPC for sshRemoveRecentRemoteProject
+      await getVanillaClient().misc.sshRemoveRecentRemoteProject.mutate({ uri });
       // Update local state
       set((state) => ({
         recentRemoteProjects: state.recentRemoteProjects.filter((p) => p.uri !== uri),

@@ -24,7 +24,8 @@ import { LogParserService, ResultSubtype } from './logParserService';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
 import type { ProviderType } from './ssh/providerFactory';
-import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
+// trpc-full-migration Task 8.3: worktreeImplHandlers.ts削除に伴いworktreeUtils.tsに移動
+import { getWorktreeCwd } from '../trpc/helpers/worktreeUtils';
 import { BugService } from './bugService';
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
 // debatex-document-review Task 2.1: BuildArgsContext support

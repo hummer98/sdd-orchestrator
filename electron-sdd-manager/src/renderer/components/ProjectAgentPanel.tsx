@@ -13,7 +13,7 @@
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
-import { useAgentStore } from '../stores/agentStore';
+import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectAgents } from '@shared/hooks';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
@@ -23,6 +23,8 @@ import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { ScheduleTaskSettingView } from '@shared/components/schedule';
 import { ProjectAgentFooter } from './ProjectAgentFooter';
 import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
+// trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
+import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 // =============================================================================
 // Type Mapping
@@ -129,7 +131,13 @@ export function ProjectAgentPanel() {
 
     try {
       const command = `/kiro:project-ask "${prompt}"`;
-      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, command, 'ask');
+      // trpc-full-migration Task 5.3: Use tRPC for executeProjectCommand
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.executeProjectCommand.mutate({
+        projectPath: currentProject,
+        command,
+        title: 'ask',
+      }) as unknown as AgentInfo;
       addAgent('', agentInfo);
       selectForProjectAgents();
       selectAgent(agentInfo.agentId);
@@ -169,7 +177,13 @@ export function ProjectAgentPanel() {
     if (!currentProject) return;
 
     try {
-      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, '/release --auto', 'release');
+      // trpc-full-migration Task 5.3: Use tRPC for executeProjectCommand (release)
+      // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
+      const agentInfo = await getVanillaClient().spec.executeProjectCommand.mutate({
+        projectPath: currentProject,
+        command: '/release --auto',
+        title: 'release',
+      }) as unknown as AgentInfo;
       addAgent('', agentInfo);
       selectForProjectAgents();
       selectAgent(agentInfo.agentId);

@@ -3996,8 +3996,8 @@ export class WebSocketHandler {
     }
 
     try {
-      // Import the listProjectFiles function from projectFileHandlers
-      const { listProjectFilesCore } = await import('../ipc/projectFileHandlers');
+      // Import the listProjectFiles function from projectFileUtils
+      const { listProjectFilesCore } = await import('../trpc/helpers/projectFileUtils');
       const files = await listProjectFilesCore(projectPath);
 
       this.send(client.id, {
@@ -4046,7 +4046,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const { readProjectFileCore } = await import('../ipc/projectFileHandlers');
+      const { readProjectFileCore } = await import('../trpc/helpers/projectFileUtils');
       const content = await readProjectFileCore(projectPath, filePath);
 
       this.send(client.id, {
@@ -4106,7 +4106,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const { writeProjectFileCore } = await import('../ipc/projectFileHandlers');
+      const { writeProjectFileCore } = await import('../trpc/helpers/projectFileUtils');
       await writeProjectFileCore(projectPath, filePath, fileContent);
 
       this.send(client.id, {

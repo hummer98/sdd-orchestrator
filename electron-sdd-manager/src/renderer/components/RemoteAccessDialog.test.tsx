@@ -17,6 +17,25 @@ vi.mock('../stores/remoteAccessStore', () => ({
   useRemoteAccessStore: vi.fn(),
 }));
 
+// Mock toolPathStore (ToolSettingsPanel in MCP tab needs statuses array)
+vi.mock('../../shared/stores/toolPathStore', () => ({
+  useToolPathStore: vi.fn(() => ({
+    statuses: [],
+    isLoading: false,
+    error: null,
+    fetchStatuses: vi.fn(),
+    setToolPath: vi.fn(),
+  })),
+}));
+
+// Mock mcpStore (McpSettingsPanel in MCP tab)
+vi.mock('../../shared/stores/mcpStore', () => ({
+  useMcpStore: vi.fn(() => ({
+    isRunning: false,
+    port: null,
+  })),
+}));
+
 describe('RemoteAccessDialog', () => {
   const mockStoreState = {
     isRunning: false,

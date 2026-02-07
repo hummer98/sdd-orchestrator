@@ -1,0 +1,363 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-07T00:00:00Z",
+  "checks": [
+    {
+      "id": "task-0.1",
+      "checkType": "task-completion",
+      "target": "0.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 0.1 marked as complete: productionServices.ts skeleton creation"
+    },
+    {
+      "id": "task-0.2",
+      "checkType": "task-completion",
+      "target": "0.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 0.2 marked as complete: index.ts integration with setupTRPCHandler"
+    },
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: File domain 3 services wired"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete: Project domain 2 services wired"
+    },
+    {
+      "id": "task-1.3",
+      "checkType": "task-completion",
+      "target": "1.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.3 marked as complete: Bug domain 7 services wired"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: Spec domain 1 service wired"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete: Agent domain 5 services wired"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: Git basic 4 services wired"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete: Worktree 9 services wired"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete: Install basic 5 services wired"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete: CLI/migration/jj 7 services wired"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete: Schedule domain 1 service wired"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete: Misc domain front-half 11 services wired"
+    },
+    {
+      "id": "task-5.3",
+      "checkType": "task-completion",
+      "target": "5.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.3 marked as complete: Misc domain back-half 11 services wired"
+    },
+    {
+      "id": "task-5.4",
+      "checkType": "task-completion",
+      "target": "5.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.4 marked as complete: AutoExecution/Cloudflare/MCP/Schedule 6 services wired"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete: Wiring completeness test (key-set match)"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete: createMockServices key-set diff detection test"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 marked as complete: TypeScript compile and build success"
+    },
+    {
+      "id": "task-7.2",
+      "checkType": "task-completion",
+      "target": "7.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.2 marked as complete: Existing test suite all pass"
+    },
+    {
+      "id": "import-productionServices",
+      "checkType": "import",
+      "target": "productionServices.ts (createProductionServices)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createProductionServices is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:33",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:335"
+      ]
+    },
+    {
+      "id": "import-productionServicesTest",
+      "checkType": "import",
+      "target": "productionServices.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.test.ts imports createProductionServices and createMockServices",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:335",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:336"
+      ]
+    },
+    {
+      "id": "import-testHelpers-confirmCommonCommands",
+      "checkType": "import",
+      "target": "test-helpers.ts (confirmCommonCommands mock)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts includes confirmCommonCommands mock definition at line 160"
+    },
+    {
+      "id": "usage-createProductionServices-index",
+      "checkType": "usage",
+      "target": "createProductionServices in index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createProductionServices() is called at index.ts:202 and passed to setupTRPCHandler at index.ts:203",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:202: const productionServices = createProductionServices();",
+        "electron-sdd-manager/src/main/index.ts:203: setupTRPCHandler(mainWindow, productionServices);"
+      ]
+    },
+    {
+      "id": "usage-createProductionServices-test",
+      "checkType": "usage",
+      "target": "createProductionServices in productionServices.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createProductionServices() is called multiple times in test assertions (lines 341, 347, 355, 368, 396, 416, 429)"
+    },
+    {
+      "id": "usage-createMockServices-test",
+      "checkType": "usage",
+      "target": "createMockServices in productionServices.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createMockServices() is called at test lines 369, 397, 417 for key-set comparison"
+    },
+    {
+      "id": "wiring-task-0.2",
+      "checkType": "wiring",
+      "target": "Task 0.2: index.ts -> setupTRPCHandler integration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "index.ts imports createProductionServices (line 33), calls it (line 202), and passes result to setupTRPCHandler (line 203). setupTRPCHandler accepts Partial<ContextServices> as serviceOverrides parameter."
+    },
+    {
+      "id": "wiring-task-1.1",
+      "checkType": "wiring",
+      "target": "Task 1.1: File domain services (listProjectFiles, readProjectFile, writeProjectFile)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 3 File domain services wired in productionServices.ts: listProjectFilesCore (line 172), readProjectFileCore (line 173), writeProjectFileCore (line 174)"
+    },
+    {
+      "id": "wiring-task-1.2",
+      "checkType": "wiring",
+      "target": "Task 1.2: Project domain services (showOpenDialog, createNewWindow)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "showOpenDialog (line 181) uses BrowserWindow.getFocusedWindow() with fallback. createNewWindow (line 190) uses dynamic import."
+    },
+    {
+      "id": "wiring-task-1.3",
+      "checkType": "wiring",
+      "target": "Task 1.3: Bug domain services (7 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 7 Bug domain services wired: bugsWatcherStart (201), bugsWatcherStop (207), bugWorktreeCreate (212), bugWorktreeRemove (218), bugWorktreeAutoExecution (224), bugConvertToWorktree (233), validateWorktreeMainBranch (241)"
+    },
+    {
+      "id": "wiring-task-2.1",
+      "checkType": "wiring",
+      "target": "Task 2.1: Spec domain (confirmCommonCommands)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "confirmCommonCommands wired at line 252 delegating to unifiedCommandsetInstaller.installCommonCommandsWithDecisions"
+    },
+    {
+      "id": "wiring-task-2.2",
+      "checkType": "wiring",
+      "target": "Task 2.2: Agent domain services (5 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 5 Agent domain services wired: agentStop (263), agentGetLogs (273), agentGetRunningCounts (280), agentCheckFolderExists (290), agentDeleteFolder (299)"
+    },
+    {
+      "id": "wiring-task-3.1",
+      "checkType": "wiring",
+      "target": "Task 3.1: Git basic services (4 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 4 Git services wired: gitGetStatus (313), gitGetDiff (316), gitWatchChanges (319), gitUnwatchChanges (322)"
+    },
+    {
+      "id": "wiring-task-3.2",
+      "checkType": "wiring",
+      "target": "Task 3.2: Worktree services (9 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 9 Worktree services wired: worktreeCheckMain (330), worktreeCreate (343), worktreeRemove (347), worktreeResolvePath (351), worktreeImplStart (360), normalModeImplStart (371), worktreeRebaseFromMain (376), convertCheck (380), convertToWorktree (385)"
+    },
+    {
+      "id": "wiring-task-4.1",
+      "checkType": "wiring",
+      "target": "Task 4.1: Install basic services (5 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 5 Install services wired: installProjectChecker (395), installCommandInstallerService (396), installUnifiedCommandsetInstaller (397), installExperimentalToolsInstaller (398), installCommandsetVersionService (399)"
+    },
+    {
+      "id": "wiring-task-4.2",
+      "checkType": "wiring",
+      "target": "Task 4.2: CLI/migration/jj services (7 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 7 services wired: installGetCliInstallStatus (404), installInstallCliCommand (412), installGetManualInstallInstructions (416), installMigrationService (417), installCheckJjAvailability (418), installInstallJj (427), installIgnoreJjInstall (432)"
+    },
+    {
+      "id": "wiring-task-5.1",
+      "checkType": "wiring",
+      "target": "Task 5.1: Schedule domain (reportIdleTime)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "reportIdleTime wired at line 444 using setLastActivityTime from idleTimeTracker"
+    },
+    {
+      "id": "wiring-task-5.2",
+      "checkType": "wiring",
+      "target": "Task 5.2: Misc domain front-half (11 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 11 services wired: openInVscode (451), copyToClipboard (454), logRenderer (457), recordHumanSession (460), getSpecMetrics (465), getProjectMetrics (470), getProjectLogPath (475), openLogInBrowser (480), addShellPermissions (486), addMissingPermissions (489), checkRequiredPermissions (492)"
+    },
+    {
+      "id": "wiring-task-5.3",
+      "checkType": "wiring",
+      "target": "Task 5.3: Misc domain back-half (11 services - Remote/SSH)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 11 services wired: startRemoteServer (507), stopRemoteServer (511), getRemoteServerStatus (515), refreshAccessToken (527), sshConnect (539), sshDisconnect (547), sshGetStatus (550), sshGetConnectionInfo (555), sshGetRecentRemoteProjects (566), sshAddRecentRemoteProject (570), sshRemoveRecentRemoteProject (574)"
+    },
+    {
+      "id": "wiring-task-5.4",
+      "checkType": "wiring",
+      "target": "Task 5.4: AutoExecution/Cloudflare/MCP/Schedule (6 services)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 6 services wired: autoExecutionCoordinator (582), bugAutoExecutionCoordinator (583), cloudflareService (584), mcpServerService (618), scheduleTaskService (619), scheduleTaskCoordinator (620)"
+    },
+    {
+      "id": "wiring-task-6.1",
+      "checkType": "wiring",
+      "target": "Task 6.1: Wiring completeness test (key-set match)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.test.ts contains 3 key-set tests: 72+ property count check, handler.ts exclusion check, and exact key-set match with mockServices"
+    },
+    {
+      "id": "wiring-task-6.2",
+      "checkType": "wiring",
+      "target": "Task 6.2: createMockServices diff detection test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.test.ts contains bidirectional diff detection: missing in production (line 377-392) and extra in production (line 395-413)"
+    },
+    {
+      "id": "placeholder-none",
+      "checkType": "placeholder",
+      "target": "All implementation files",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER/TBD/IMPLEMENT comments found in any of the 4 key implementation files (productionServices.ts, productionServices.test.ts, index.ts, test-helpers.ts)"
+    }
+  ],
+  "stats": {
+    "total": 42,
+    "passed": 42,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 42
+  }
+}

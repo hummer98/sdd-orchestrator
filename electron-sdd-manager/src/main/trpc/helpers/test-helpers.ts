@@ -156,6 +156,9 @@ export function createMockServices(
     bugConvertToWorktree: vi.fn().mockResolvedValue({ ok: true, value: { path: '/test/worktree', branch: 'bugfix/test' } }),
     validateWorktreeMainBranch: vi.fn().mockResolvedValue({ ok: true }),
 
+    // Spec Domain Services (trpc-service-wiring-completion: confirmCommonCommands)
+    confirmCommonCommands: vi.fn().mockResolvedValue({ ok: true, value: { totalInstalled: 0, totalSkipped: 0, totalFailed: 0, installedCommands: [], skippedCommands: [], failedCommands: [] } }),
+
     // Agent Domain Services (Task 6.1: agent router)
     agentStop: vi.fn().mockResolvedValue(undefined),
     agentGetLogs: vi.fn().mockResolvedValue([]),

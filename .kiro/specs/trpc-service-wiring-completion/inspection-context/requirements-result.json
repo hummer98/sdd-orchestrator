@@ -1,0 +1,839 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-07T12:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: listProjectFiles is wired to listProjectFilesCore in productionServices.ts line 172. Test verifies wiring at productionServices.test.ts line 433-436.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:172",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:433"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: readProjectFile is wired to readProjectFileCore in productionServices.ts line 173. Test verifies wiring at productionServices.test.ts line 438-440.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:173",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:438"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: writeProjectFile is wired to writeProjectFileCore in productionServices.ts line 174. Test verifies wiring at productionServices.test.ts line 442-444.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:174",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:442"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: showOpenDialog is wired with electron.dialog.showOpenDialog() implementation in productionServices.ts lines 181-189. Uses BrowserWindow.getFocusedWindow() with fallback. Test at line 449-451.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:181",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:449"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: createNewWindow is wired with dynamic import of createWindow from index.ts in productionServices.ts lines 190-194. Test at line 453-456.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:190",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:453"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: bugsWatcherStart is wired with BugsWatcherService instantiation and start() in productionServices.ts lines 201-206. Test at line 461-462.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:201",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:461"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: bugsWatcherStop is wired with dynamic import of stopBugsWatcher from watcherUtils in productionServices.ts lines 207-210.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:207"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: bugWorktreeCreate is wired via WorktreeService.createBugWorktree() with closure pattern in productionServices.ts lines 212-217. Test at line 464-465.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:212",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:464"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: bugWorktreeRemove is wired via WorktreeService.removeBugWorktree() with closure pattern in productionServices.ts lines 218-223.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:218"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.5: bugWorktreeAutoExecution is wired via BugWorkflowService.startBugFixWithAutoWorktree() in productionServices.ts lines 224-232.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:224"
+      ]
+    },
+    {
+      "id": "req-3.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.6: bugConvertToWorktree is wired via ConvertBugWorktreeService.convertToWorktree() in productionServices.ts lines 233-240.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:233"
+      ]
+    },
+    {
+      "id": "req-3.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.7: validateWorktreeMainBranch is wired via WorktreeService.isOnMainBranch() in productionServices.ts lines 241-246. Test at line 468-469.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:241",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:468"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: confirmCommonCommands is wired via UnifiedCommandsetInstaller.installCommonCommandsWithDecisions() in productionServices.ts lines 252-258. Mock added in test-helpers.ts line 160. Test at line 473-474.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:252",
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts:160",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:473"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: agentStop is wired via AgentLifecycleManager.stopAgent() with fallback to SpecManagerService in productionServices.ts lines 263-272. Test at line 478-479.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:263",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:478"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: agentGetLogs is wired in productionServices.ts lines 273-279. Returns empty array as placeholder. Test at line 481-482.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:273",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:481"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: agentGetRunningCounts is wired via AgentRecordService.getRunningAgentCounts() in productionServices.ts lines 280-289. Test at line 484-485.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:280",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:484"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.4: agentCheckFolderExists is wired with fs.access() check on .claude/agents/kiro path in productionServices.ts lines 290-298.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:290"
+      ]
+    },
+    {
+      "id": "req-5.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.5: agentDeleteFolder is wired with fs.rm(recursive, force) on .claude/agents/kiro path in productionServices.ts lines 299-307.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:299"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: gitGetStatus is wired via GitService.getStatus() in productionServices.ts lines 313-315. Test at line 490-491.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:313",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:490"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: gitGetDiff is wired via GitService.getDiff() in productionServices.ts lines 316-318.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:316"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: gitWatchChanges is wired via GitFileWatcherService.startWatching() in productionServices.ts lines 319-321.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:319"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.4: gitUnwatchChanges is wired via GitFileWatcherService.stopWatching() in productionServices.ts lines 322-324.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:322"
+      ]
+    },
+    {
+      "id": "req-6.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.5: worktreeCheckMain is wired via WorktreeService.isOnMainBranch() with getCurrentBranch() in productionServices.ts lines 330-342. Test at line 496-497.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:330",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:496"
+      ]
+    },
+    {
+      "id": "req-6.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.6: worktreeCreate is wired via WorktreeService.createWorktree() in productionServices.ts lines 343-346.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:343"
+      ]
+    },
+    {
+      "id": "req-6.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.7: worktreeRemove is wired via WorktreeService.removeWorktree() in productionServices.ts lines 347-350.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:347"
+      ]
+    },
+    {
+      "id": "req-6.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.8: worktreeResolvePath is wired via WorktreeService.resolveWorktreePath() in productionServices.ts lines 351-359.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:351"
+      ]
+    },
+    {
+      "id": "req-6.9",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.9: worktreeImplStart is wired with commitSpecChanges + createWorktree + createSymlinksForWorktree in productionServices.ts lines 360-370.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:360"
+      ]
+    },
+    {
+      "id": "req-6.10",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.10: normalModeImplStart is wired via WorktreeService.getCurrentBranch() in productionServices.ts lines 371-375.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:371"
+      ]
+    },
+    {
+      "id": "req-6.11",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.11: worktreeRebaseFromMain is wired via WorktreeService.executeRebaseFromMain() in productionServices.ts lines 376-379.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:376"
+      ]
+    },
+    {
+      "id": "req-6.12",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.12: convertCheck is wired via ConvertWorktreeService.canConvert() in productionServices.ts lines 380-384.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:380"
+      ]
+    },
+    {
+      "id": "req-6.13",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.13: convertToWorktree is wired via ConvertWorktreeService.convertToWorktree() in productionServices.ts lines 385-389. Test at line 500-501.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:385",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:500"
+      ]
+    },
+    {
+      "id": "req-7.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.1: installProjectChecker is wired to ProjectChecker instance in productionServices.ts line 395. Test at line 505-506.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:395",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:505"
+      ]
+    },
+    {
+      "id": "req-7.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.2: installCommandInstallerService is wired to CommandInstallerService instance in productionServices.ts line 396. Test at line 509-510.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:396",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:509"
+      ]
+    },
+    {
+      "id": "req-7.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.3: installUnifiedCommandsetInstaller is wired to UnifiedCommandsetInstaller instance in productionServices.ts line 397.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:397"
+      ]
+    },
+    {
+      "id": "req-7.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.4: installExperimentalToolsInstaller is wired to ExperimentalToolsInstallerService instance in productionServices.ts line 398.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:398"
+      ]
+    },
+    {
+      "id": "req-7.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.5: installCommandsetVersionService is wired to CommandsetVersionService instance in productionServices.ts line 399.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:399"
+      ]
+    },
+    {
+      "id": "req-7.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.6: installGetCliInstallStatus is wired via getCliInstallStatus() in productionServices.ts lines 404-411. Test at line 513-514.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:404",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:513"
+      ]
+    },
+    {
+      "id": "req-7.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.7: installInstallCliCommand is wired via installCliCommand() in productionServices.ts lines 412-415.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:412"
+      ]
+    },
+    {
+      "id": "req-7.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.8: installGetManualInstallInstructions is wired via getManualInstallInstructions() in productionServices.ts line 416.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:416"
+      ]
+    },
+    {
+      "id": "req-7.9",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.9: installMigrationService is wired via getDefaultMigrationService() in productionServices.ts line 417.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:417"
+      ]
+    },
+    {
+      "id": "req-7.10",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.10: installCheckJjAvailability is wired via toolPathResolverService.getStatus('jj') in productionServices.ts lines 418-426.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:418"
+      ]
+    },
+    {
+      "id": "req-7.11",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.11: installInstallJj is wired via toolPathResolverService.resolveTool('jj') in productionServices.ts lines 427-431.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:427"
+      ]
+    },
+    {
+      "id": "req-7.12",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.12: installIgnoreJjInstall is wired via layoutConfigService.saveJjInstallIgnored() in productionServices.ts lines 432-439.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:432"
+      ]
+    },
+    {
+      "id": "req-8.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.1: reportIdleTime is wired via setLastActivityTime() from idleTimeTracker in productionServices.ts lines 444-446. Test at line 518-519.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:444",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:518"
+      ]
+    },
+    {
+      "id": "req-9.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.1: openInVscode is wired via shell.openExternal() in productionServices.ts lines 451-453. Test at line 523-524.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:451",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:523"
+      ]
+    },
+    {
+      "id": "req-9.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.2: copyToClipboard is wired via clipboard.writeText() in productionServices.ts lines 454-456.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:454"
+      ]
+    },
+    {
+      "id": "req-9.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.3: logRenderer is wired via projectLogger forwarding in productionServices.ts lines 457-459.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:457"
+      ]
+    },
+    {
+      "id": "req-9.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.4: recordHumanSession is wired via metricsService.recordHumanSession() in productionServices.ts lines 460-464.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:460"
+      ]
+    },
+    {
+      "id": "req-9.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.5: getSpecMetrics is wired via metricsService.getMetricsForSpec() in productionServices.ts lines 465-469.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:465"
+      ]
+    },
+    {
+      "id": "req-9.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.6: getProjectMetrics is wired via metricsService.getProjectMetrics() in productionServices.ts lines 470-474.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:470"
+      ]
+    },
+    {
+      "id": "req-9.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.7: getProjectLogPath is wired with path.join to .kiro/logs/main.log in productionServices.ts lines 475-479.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:475"
+      ]
+    },
+    {
+      "id": "req-9.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.8: openLogInBrowser is wired via shell.openPath() in productionServices.ts lines 480-485.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:480"
+      ]
+    },
+    {
+      "id": "req-9.9",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.9: addShellPermissions is wired via permissionsService.addShellPermissions() in productionServices.ts lines 486-488.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:486"
+      ]
+    },
+    {
+      "id": "req-9.10",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.10: addMissingPermissions is wired via permissionsService.addPermissionsToProject() in productionServices.ts lines 489-491.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:489"
+      ]
+    },
+    {
+      "id": "req-9.11",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.11: checkRequiredPermissions is wired via permissionsService.checkRequiredPermissions() in productionServices.ts lines 492-502.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:492"
+      ]
+    },
+    {
+      "id": "req-9.12",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.12: startRemoteServer is wired via remoteAccessServer.start() in productionServices.ts lines 507-510.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:507"
+      ]
+    },
+    {
+      "id": "req-9.13",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.13: stopRemoteServer is wired via remoteAccessServer.stop() in productionServices.ts lines 511-514.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:511"
+      ]
+    },
+    {
+      "id": "req-9.14",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.14: getRemoteServerStatus is wired via remoteAccessServer.getStatus() with accessTokenService in productionServices.ts lines 515-526.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:515"
+      ]
+    },
+    {
+      "id": "req-9.15",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.15: refreshAccessToken is wired via remoteAccessServer.refreshAccessToken() in productionServices.ts lines 527-538.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:527"
+      ]
+    },
+    {
+      "id": "req-9.16",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.16: sshConnect is wired via sshConnectionService.connect() with URI parsing in productionServices.ts lines 539-546. Test at line 527-528.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:539",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:527"
+      ]
+    },
+    {
+      "id": "req-9.17",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.17: sshDisconnect is wired via sshConnectionService.disconnect() in productionServices.ts lines 547-549.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:547"
+      ]
+    },
+    {
+      "id": "req-9.18",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.18: sshGetStatus is wired via sshConnectionService.getStatus() in productionServices.ts lines 550-554.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:550"
+      ]
+    },
+    {
+      "id": "req-9.19",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.19: sshGetConnectionInfo is wired via sshConnectionService.getConnectionInfo() in productionServices.ts lines 555-565.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:555"
+      ]
+    },
+    {
+      "id": "req-9.20",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.20: sshGetRecentRemoteProjects is wired via recentRemoteProjectsService.getRecentRemoteProjects() in productionServices.ts lines 566-569.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:566"
+      ]
+    },
+    {
+      "id": "req-9.21",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.21: sshAddRecentRemoteProject is wired via recentRemoteProjectsService.addRecentRemoteProject() in productionServices.ts lines 570-573.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:570"
+      ]
+    },
+    {
+      "id": "req-9.22",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.22: sshRemoveRecentRemoteProject is wired via recentRemoteProjectsService.removeRecentRemoteProject() in productionServices.ts lines 574-577.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:574"
+      ]
+    },
+    {
+      "id": "req-9.23",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.23: autoExecutionCoordinator is wired via getAutoExecutionCoordinator() in productionServices.ts line 582. Test at line 532-533.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:582",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:532"
+      ]
+    },
+    {
+      "id": "req-9.24",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.24: bugAutoExecutionCoordinator is wired via getBugAutoExecutionCoordinator() in productionServices.ts line 583.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:583"
+      ]
+    },
+    {
+      "id": "req-9.25",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.25: cloudflareService is wired as an object with getAllSettings, setTunnelToken, refreshAccessToken, ensureAccessToken, checkBinary, setPublishToCloudflare, setCloudflaredPath, startTunnel, stopTunnel, getTunnelStatus in productionServices.ts lines 584-617. Test at line 536-537.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:584",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:536"
+      ]
+    },
+    {
+      "id": "req-9.26",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.26: mcpServerService is wired via getMcpServerService() in productionServices.ts line 618. Test at line 540-541.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:618",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:540"
+      ]
+    },
+    {
+      "id": "req-9.27",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.27: scheduleTaskService is wired via getDefaultScheduleTaskService() in productionServices.ts line 619. Test at line 544-545.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:619",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:544"
+      ]
+    },
+    {
+      "id": "req-9.28",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 9.28: scheduleTaskCoordinator is wired via getScheduleTaskCoordinator() in productionServices.ts line 620. Test at line 548-549.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:620",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:548"
+      ]
+    },
+    {
+      "id": "req-10.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.1: Test 'should have exactly mockServices keys minus handler.ts injected keys' at line 415-422 verifies key set match between productionServices and ContextServices (via mockServices proxy).",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:415",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:346"
+      ]
+    },
+    {
+      "id": "req-10.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.2: Test 'should cover all ContextServices properties' at line 367-393 detects missing keys in productionServices by comparing against mockServices keys minus handler-injected keys. If a new ContextServices property is added to mockServices but not productionServices, this test fails.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:367",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:384"
+      ]
+    },
+    {
+      "id": "req-10.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.3: Test 'should not have extra keys' at line 395-413 detects keys in productionServices not present in mockServices. Additionally, confirmCommonCommands mock was added to test-helpers.ts line 160.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:395",
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts:160"
+      ]
+    },
+    {
+      "id": "req-10.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.4: Error message at line 389-390 explicitly lists missing service names: 'Missing wiring in productionServices for: ${missingInProduction.join(', ')}'.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:388"
+      ]
+    },
+    {
+      "id": "req-11.1",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 11.1: Regression compatibility with existing 847 tests cannot be verified by static analysis alone. No evidence of test run results in the codebase. The implementation appears structurally compatible (additive changes only, no breaking modifications to existing interfaces), but actual test execution results are not available in the inspected files.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:131",
+        "electron-sdd-manager/src/main/index.ts:202"
+      ]
+    },
+    {
+      "id": "req-11.2",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 11.2: TypeScript compilation success (npm run typecheck) cannot be verified by static analysis. The productionServices.ts imports concrete types from context.ts (ContextServices) and uses 'as any' / 'as ContextServices[...]' casts in several places (lines 395-399, 510, 582-583, 618-620), which suggests type compatibility was addressed but actual typecheck results are not available.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:19",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:395"
+      ]
+    },
+    {
+      "id": "req-11.3",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 11.3: Build success (npm run build) cannot be verified by static analysis. The integration in index.ts (line 33, 202-203) imports and uses createProductionServices() correctly, but actual build output is not available.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:33",
+        "electron-sdd-manager/src/main/index.ts:202"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 75,
+    "passed": 72,
+    "failed": 0,
+    "partial": 3,
+    "critical": 0,
+    "major": 3,
+    "minor": 0,
+    "info": 72
+  }
+}

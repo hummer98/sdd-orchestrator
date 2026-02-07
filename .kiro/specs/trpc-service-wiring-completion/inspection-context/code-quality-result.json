@@ -1,0 +1,237 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-07T10:00:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-worktree-instantiation",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "DRY violation: `new WorktreeService(projectPath)` is instantiated 14 times across productionServices.ts. Each Bug/Worktree domain closure creates its own instance with the same pattern. A helper function like `const getWorktreeService = (pp: string) => new WorktreeService(pp)` could reduce repetition, though each instance is short-lived and scoped to its closure, so practical impact is limited.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:215 - new WorktreeService(projectPath)",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:221 - new WorktreeService(projectPath)",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:228 - new WorktreeService(pp) via factory",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:236 - new WorktreeService(projectPath)",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:242 - new WorktreeService(projectPath)",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:331-386 - 8 more instances in Worktree domain section",
+        "Total: 14 instantiations of the same class with projectPath argument"
+      ]
+    },
+    {
+      "id": "principle-dry-no-project-guard",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "DRY violation: The pattern `const projectPath = getCurrentProjectPath(); if (!projectPath) return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };` is repeated 4 times in Bug domain closures. A helper function could extract this guard clause.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:213-214",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:219-220",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:225-226",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:234-235"
+      ]
+    },
+    {
+      "id": "principle-dry-type-cast-pattern",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Type casts (`as any`, `as unknown as`) are used 20 times total. While numerous, each serves a different bridge between service implementation types and ContextServices interface types. This is an inherent consequence of the DI assembly pattern where concrete implementations must conform to interface contracts.",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-state",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SSOT compliance verified. State management follows SSOT: getCurrentProjectPath and setProjectPath are imported from projectSetup (single source). configStore is obtained from getConfigStore() singleton. No duplicate state management detected across productionServices.ts and handler.ts.",
+      "evidence": [
+        "productionServices.ts references getCurrentProjectPath from ./helpers/projectSetup (SSOT)",
+        "handler.ts injects eventBus, getInitialSelectResult, clearInitialSelectResult separately (no duplication)",
+        "Merge order in handler.ts L38-42: handler values first, then ...serviceOverrides -- productionServices correctly omits handler-injected 3 properties"
+      ]
+    },
+    {
+      "id": "principle-ssot-handler-merge",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts merge order is correctly handled. productionServices.ts does NOT include eventBus, getInitialSelectResult, or clearInitialSelectResult, which are exclusively managed by handler.ts. The spread order `{eventBus, getInitialSelectResult, clearInitialSelectResult, ...serviceOverrides}` correctly allows serviceOverrides to take precedence, but since productionServices omits these 3 keys, there is no conflict.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts:38-42 - mergedOverrides spread order",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts - does not return eventBus, getInitialSelectResult, clearInitialSelectResult"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "KISS compliance verified. The implementation follows the simplest approach: a single createProductionServices() function returning an object literal with all 72+ service wirings. No unnecessary abstractions, factory patterns, or decorator patterns were introduced. This aligns with DD-001 (existing pattern) and avoids DD-001 Alternative A (domain-split factories, rejected as YAGNI).",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "YAGNI compliance verified. No unnecessary abstractions detected. The code does not introduce speculative configuration, unused parameters, or premature generalization. Each service wiring directly addresses a specific requirement.",
+      "evidence": []
+    },
+    {
+      "id": "principle-separation-of-concerns",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Separation of Concerns maintained. productionServices.ts is purely a DI assembly layer -- it wires services but contains no business logic. Each service implementation lives in its respective services/ module. The domain section comments provide clear organization.",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-productionServices",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts was successfully created at the expected path with createProductionServices() function exporting 72+ service properties.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts exists with 623 lines"
+      ]
+    },
+    {
+      "id": "impact-create-productionServicesTest",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.test.ts was successfully created with wiring completeness tests, key-set comparison tests, and individual domain wiring tests.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts exists with 553 lines"
+      ]
+    },
+    {
+      "id": "impact-update-index-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "index.ts was updated to import createProductionServices and pass it to setupTRPCHandler as serviceOverrides.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:33 - import { createProductionServices } from './trpc/productionServices'",
+        "electron-sdd-manager/src/main/index.ts:202 - const productionServices = createProductionServices()",
+        "electron-sdd-manager/src/main/index.ts:203 - setupTRPCHandler(mainWindow, productionServices)"
+      ]
+    },
+    {
+      "id": "impact-update-test-helpers",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts createMockServices() includes confirmCommonCommands mock definition (line 160), fulfilling the prerequisite for wiring completeness tests.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts:160 - confirmCommonCommands: vi.fn().mockResolvedValue({...})"
+      ]
+    },
+    {
+      "id": "impact-no-deletions-required",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Design specifies no files should be deleted. No deletions were expected.",
+      "evidence": [
+        "design.md: 'なし。既存ファイルの削除は不要。'"
+      ]
+    },
+    {
+      "id": "impact-placeholder-task-comments",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task references in section comments (e.g., '// File Domain Services (Task 1.1)') are organizational domain markers, not TODO/FIXME placeholders. No actionable TODO/FIXME/PLACEHOLDER patterns found in new files.",
+      "evidence": [
+        "Grep for TODO/FIXME/PLACEHOLDER/実装予定 in productionServices.ts: No matches",
+        "Grep for TODO/FIXME/PLACEHOLDER/実装予定 in productionServices.test.ts: No matches",
+        "Task X.X references are section headers, not work-to-be-done markers"
+      ]
+    },
+    {
+      "id": "dead-code-agentGetLogs-stub",
+      "category": "dead-code",
+      "status": "FAIL",
+      "severity": "Major",
+      "details": "agentGetLogs is wired as a stub that always returns an empty array `[]`. Design.md (requirement 5.2) specifies it should delegate to logParserService, but logParserService is not imported and not used. The comment says 'For now, return empty array as this was previously handled by direct IPC'. This is effectively a non-functional wiring -- it is wired but does not actually provide the service functionality specified by the requirement.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:273-278 - agentGetLogs returns [] with comment 'For now, return empty array'",
+        "design.md requirement 5.2: 'agentGetLogs配線 | productionServices.ts | logParserService 参照'",
+        "logParserService is not imported in productionServices.ts"
+      ]
+    },
+    {
+      "id": "dead-code-createProductionServices-export",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createProductionServices() is the sole export from productionServices.ts. It is consumed in production code (index.ts) and test code (productionServices.test.ts). No dead exports.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:33 - import { createProductionServices }",
+        "electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts:335 - import { createProductionServices }"
+      ]
+    },
+    {
+      "id": "dead-code-module-level-instances",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Module-level instances (fileService, bugService, settingsFileManager, gitService, gitFileWatcherService, commandInstallerService, etc.) are all consumed within the createProductionServices() return object. No unused module-level declarations.",
+      "evidence": []
+    },
+    {
+      "id": "logging-no-console-usage",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No console.log/warn/error/info/debug usage found in productionServices.ts. The logging.md guideline requiring console.* avoidance is followed.",
+      "evidence": [
+        "Grep for console.* in productionServices.ts: No matches"
+      ]
+    },
+    {
+      "id": "logging-error-handling",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "productionServices.ts has 5 catch blocks that silently swallow errors or return error objects without logging. Per logging.md, error handling should include logging. The catch blocks at lines 295, 304, 356, 436, 535 return error values but do not log them. Since productionServices.ts is a DI assembly layer and does not import a logger, this is understandable but inconsistent with logging guidelines.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:295 - catch {} (agentCheckFolderExists) - silent swallow",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:304 - catch (error) (agentDeleteFolder) - returns error without logging",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:356 - catch (error) (worktreeResolvePath) - returns error without logging",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:436 - catch (error) (installIgnoreJjInstall) - returns error without logging",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts:535 - catch (error) (refreshAccessToken) - returns error without logging"
+      ]
+    },
+    {
+      "id": "logging-no-logger-import",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "productionServices.ts does not import projectLogger or any logger. While the file is primarily a DI assembly layer, the inline closure implementations contain error handling paths that should ideally log errors per logging.md guidelines.",
+      "evidence": [
+        "Grep for logger/projectLogger in productionServices.ts: No matches",
+        "logging.md requires: 'Error handling includes logging'"
+      ]
+    },
+    {
+      "id": "logging-no-loop-excessive",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No logging in loops detected. The only loop (for..of at line 285) does not contain any log calls.",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 21,
+    "passed": 16,
+    "failed": 5,
+    "critical": 0,
+    "major": 1,
+    "minor": 4,
+    "info": 16
+  }
+}

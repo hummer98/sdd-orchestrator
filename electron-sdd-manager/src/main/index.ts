@@ -29,6 +29,8 @@ import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 import { getAgentWatchdog } from './services/agentLifecycleSetup';
 // trpc-infrastructure: tRPC IPC handler setup (Requirements 8.1-8.5)
 import { setupTRPCHandler } from './trpc/handler';
+// trpc-service-wiring-completion: Production services DI assembly
+import { createProductionServices } from './trpc/productionServices';
 // startup-project-selection-race-condition: EventBus imports removed (Push model deleted)
 
 // Prevent EPIPE/EIO errors from crashing the app
@@ -196,7 +198,9 @@ function createWindow(): void {
 
   // trpc-infrastructure: Register tRPC IPC handler (DD-005)
   // Must be called after BrowserWindow creation
-  setupTRPCHandler(mainWindow);
+  // trpc-service-wiring-completion: Pass production services as serviceOverrides
+  const productionServices = createProductionServices();
+  setupTRPCHandler(mainWindow, productionServices);
 
   // Show window when ready (unless headless mode)
   // startup-project-selection-race-condition: Broadcast removed (Pull model)

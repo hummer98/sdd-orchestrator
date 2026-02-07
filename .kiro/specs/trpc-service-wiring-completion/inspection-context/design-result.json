@@ -1,0 +1,334 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-07T11:30:00Z",
+  "checks": [
+    {
+      "id": "design-component-productionServices",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts found at expected path as a new file with createProductionServices() function returning Partial<ContextServices> with 91 properties (72 newly wired + 19 pre-existing Phase 2 services)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/trpc/productionServices.ts"
+      ]
+    },
+    {
+      "id": "design-component-productionServicesTest",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.test.ts found at expected path with 3 wiring completeness tests and 24 individual domain service wiring tests",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/trpc/__tests__/productionServices.test.ts"
+      ]
+    },
+    {
+      "id": "design-component-index-integration",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "index.ts contains import of createProductionServices and passes the result to setupTRPCHandler(mainWindow, productionServices) inside createWindow()",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/index.ts",
+        "Line 33: import { createProductionServices } from './trpc/productionServices';",
+        "Line 202: const productionServices = createProductionServices();",
+        "Line 203: setupTRPCHandler(mainWindow, productionServices);"
+      ]
+    },
+    {
+      "id": "design-component-test-helpers",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts contains createMockServices() with 94 properties including confirmCommonCommands mock definition (requirement 10.3). 94 mock keys - 3 handler-injected = 91, matching productionServices property count.",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts",
+        "Line 159-160: confirmCommonCommands mock present in createMockServices()"
+      ]
+    },
+    {
+      "id": "design-component-handler",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts exists and correctly merges eventBus, getInitialSelectResult, clearInitialSelectResult with serviceOverrides via spread operator",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/trpc/handler.ts",
+        "Line 38-43: mergedOverrides = { eventBus, getInitialSelectResult, clearInitialSelectResult, ...serviceOverrides }"
+      ]
+    },
+    {
+      "id": "design-component-context",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts exists with ContextServices interface defining all 94 properties (91 + 3 handler-injected). createContext() function merges defaults with overrides.",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/trpc-service-wiring-completion/electron-sdd-manager/src/main/trpc/context.ts",
+        "Line 241-688: ContextServices interface",
+        "Line 756: createContext(overrides?: Partial<ContextServices>): Context"
+      ]
+    },
+    {
+      "id": "design-interface-createProductionServices-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createProductionServices() signature matches design exactly: function createProductionServices(): Partial<ContextServices>. No parameters, returns Partial<ContextServices>.",
+      "evidence": [
+        "Design: function createProductionServices(): Partial<ContextServices>",
+        "Actual (line 131): export function createProductionServices(): Partial<ContextServices>"
+      ]
+    },
+    {
+      "id": "design-interface-setupTRPCHandler-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "setupTRPCHandler signature matches design: accepts BrowserWindow and optional Partial<ContextServices> serviceOverrides parameter",
+      "evidence": [
+        "Design: setupTRPCHandler(window, services) flow",
+        "Actual (line 28-31): setupTRPCHandler(window: Electron.BrowserWindow, serviceOverrides?: Partial<ContextServices>): void"
+      ]
+    },
+    {
+      "id": "design-interface-handler-merge-order",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts merge order is {eventBus, getInitialSelectResult, clearInitialSelectResult, ...serviceOverrides}. serviceOverrides is spread LAST, so productionServices values would overwrite handler values if those 3 keys were included. productionServices correctly excludes them, matching the design constraint specified in the 'Important' note.",
+      "evidence": [
+        "handler.ts line 38-43: spread order verified",
+        "productionServices.ts line 7-8: comment documents constraint",
+        "productionServices.test.ts lines 354-360: explicit assertions verify exclusion"
+      ]
+    },
+    {
+      "id": "design-interface-excluded-keys",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts correctly does NOT return eventBus, getInitialSelectResult, clearInitialSelectResult. These 3 properties are handler.ts injected only, as specified in design.",
+      "evidence": [
+        "productionServices.ts: return object does not contain these 3 keys (verified by inspection and test)",
+        "productionServices.test.ts lines 354-360: expect(keys).not.toContain('eventBus') etc."
+      ]
+    },
+    {
+      "id": "design-interface-property-count",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices returns 91 properties (all ContextServices minus 3 handler-injected). createMockServices has 94 keys; 94 - 3 = 91 matches exactly. Design stated '72 services' referring to newly wired services; the total includes pre-existing Phase 2 services. The exact-match test at line 415-422 validates full coverage.",
+      "evidence": [
+        "productionServices.ts: 91 top-level properties (81 key:value + 10 shorthand)",
+        "test-helpers.ts: 94 properties in createMockServices",
+        "productionServices.test.ts line 351: expect(keys.length).toBeGreaterThanOrEqual(72)",
+        "productionServices.test.ts line 415-422: exact match asserted"
+      ]
+    },
+    {
+      "id": "design-DD001-pattern-reuse",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-001 (Accepted): Existing createProductionServices() pattern correctly reused. All services wired in a single function returning Partial<ContextServices> with domain-section comments for readability. No domain-split factory files created (YAGNI compliance). No auto-registration pattern used (complexity avoidance).",
+      "evidence": [
+        "productionServices.ts: single function with domain-section comments (State, System, Config, File, Project, Bug, Spec, Agent, Git, Worktree, Install, Schedule, Misc)",
+        "No new factory files created (alternatives rejected per DD-001)"
+      ]
+    },
+    {
+      "id": "design-DD002-key-set-comparison",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-002 (Accepted): Key set comparison test implemented using createMockServices() keys as baseline. Three tests cover: (1) missing keys in production, (2) extra keys in production, (3) exact key set equality. Error messages include service names for identification.",
+      "evidence": [
+        "productionServices.test.ts line 367: 'should cover all ContextServices properties that mockServices covers (minus handler.ts injected)'",
+        "productionServices.test.ts line 395: 'should not have extra keys that are not in mockServices'",
+        "productionServices.test.ts line 415: 'should have exactly mockServices keys minus handler.ts injected keys'",
+        "Error messages use .join(', ') to list missing/extra service names"
+      ]
+    },
+    {
+      "id": "design-DD003-window-reference",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003 (Accepted): showOpenDialog uses BrowserWindow.getFocusedWindow() with BrowserWindow.getAllWindows()[0] as fallback, returning null if no window available. createNewWindow uses dynamic import of createWindow from index.ts to resolve circular dependency.",
+      "evidence": [
+        "productionServices.ts line 182: BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null",
+        "productionServices.ts line 192-193: dynamic import('../index') for createWindow"
+      ]
+    },
+    {
+      "id": "design-DD004-closure-pattern",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-004 (Accepted): Closure pattern correctly implemented for project-path-dependent services. getCurrentProjectPath() is called at invocation time (inside the closure body), not captured at wiring time. Null checks performed inside closures.",
+      "evidence": [
+        "productionServices.ts line 202-206: bugsWatcherStart calls getCurrentProjectPath() inside async arrow",
+        "productionServices.ts line 212-217: bugWorktreeCreate calls getCurrentProjectPath() inside closure with null check",
+        "productionServices.ts line 224-232: bugWorktreeAutoExecution calls getCurrentProjectPath() inside closure",
+        "productionServices.ts line 233-240: bugConvertToWorktree calls getCurrentProjectPath() inside closure",
+        "productionServices.ts line 475-479: getProjectLogPath calls getCurrentProjectPath() inside closure"
+      ]
+    },
+    {
+      "id": "design-req-10.1-key-set-match",
+      "category": "requirement-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.1 (key set match test): Implemented via exact key set equality assertion comparing sorted productionServices keys with sorted mockServices keys (minus handler-injected).",
+      "evidence": [
+        "productionServices.test.ts line 415-422: 'should have exactly mockServices keys minus handler.ts injected keys'"
+      ]
+    },
+    {
+      "id": "design-req-10.2-new-property-detection",
+      "category": "requirement-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.2 (new property addition detection): The exact equality test at line 415-422 will fail when new properties are added to createMockServices() but not to createProductionServices(), detecting unwired new properties at CI time.",
+      "evidence": [
+        "productionServices.test.ts line 415-422: exact key set comparison fails on any difference"
+      ]
+    },
+    {
+      "id": "design-req-10.3-mock-key-consistency",
+      "category": "requirement-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.3 (mockServices key set consistency): Bidirectional comparison covers both missing and extra keys between production and mock services.",
+      "evidence": [
+        "productionServices.test.ts line 367-393: missing keys in production detected",
+        "productionServices.test.ts line 395-413: extra keys in production detected"
+      ]
+    },
+    {
+      "id": "design-req-10.4-error-messages",
+      "category": "requirement-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 10.4 (explicit error messages): Error messages include the names of missing/extra services via .join(', ') for clear identification of which services are unwired.",
+      "evidence": [
+        "productionServices.test.ts line 389: 'Missing wiring in productionServices for: ${missingInProduction.join(', ')}'",
+        "productionServices.test.ts line 409: 'Extra keys in productionServices not in mockServices: ${extraInProduction.join(', ')}'"
+      ]
+    },
+    {
+      "id": "design-injection-path",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Injection path matches design specification: index.ts createWindow() -> import createProductionServices -> const services = createProductionServices() -> setupTRPCHandler(window, services) -> handler.ts merges with eventBus/getInitialSelectResult/clearInitialSelectResult -> createContext(mergedOverrides)",
+      "evidence": [
+        "index.ts line 33: import { createProductionServices } from './trpc/productionServices';",
+        "index.ts line 202-203: const productionServices = createProductionServices(); setupTRPCHandler(mainWindow, productionServices);",
+        "handler.ts line 38-48: mergedOverrides -> createIPCHandler({ createContext: async () => createContext(mergedOverrides) })",
+        "context.ts line 756-763: createContext merges defaults with overrides"
+      ]
+    },
+    {
+      "id": "design-integration-test-imports",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Integration point: productionServices.test.ts imports both createProductionServices and createMockServices for key set comparison testing, as specified in design.",
+      "evidence": [
+        "productionServices.test.ts line 335: import { createProductionServices } from '../productionServices';",
+        "productionServices.test.ts line 336: import { createMockServices } from '../helpers/test-helpers';"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product.md goals. DI wiring completion enables all tRPC router-based operations to function in production: Agent control (core capability #2), Remote Access/SSH (capability #5), Schedule Execution (capability #6), MCP Server (capability #7), Git diff (capability #8). No out-of-scope functionality added; only wiring of existing services.",
+      "evidence": [
+        "product.md: lists Agent, Remote Access, Schedule, MCP, Git as core capabilities",
+        "productionServices.ts: wires services for all these capabilities without new logic"
+      ]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation uses correct technology stack per tech.md: TypeScript 5.8+, Vitest for testing (vi.fn, vi.mock), tRPC context DI pattern (ctx.services.*), Electron APIs (dialog, clipboard, shell, BrowserWindow). No unauthorized frameworks or libraries introduced.",
+      "evidence": [
+        "productionServices.ts: TypeScript, Electron imports only",
+        "productionServices.test.ts: import { describe, it, expect, vi } from 'vitest'",
+        "tech.md: 'Vitest によるユニットテスト', 'Context DI: ctx.services.* 経由でサービスインスタンスを注入'"
+      ]
+    },
+    {
+      "id": "steering-tech-trpc-pattern",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation follows the tRPC IPC design pattern specified in tech.md: Context DI via ctx.services.*, services injected via Partial<ContextServices>, handler.ts merges with createContext(). Test uses createMockServices() pattern from test-helpers.ts.",
+      "evidence": [
+        "tech.md: 'Context DI: ctx.services.* 経由でサービスインスタンスを注入。テスト時はモックサービスを注入可能'",
+        "productionServices.ts -> handler.ts -> context.ts flow matches documented pattern"
+      ]
+    },
+    {
+      "id": "steering-structure-file-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Files placed in correct directories per structure.md tRPC Pattern section: productionServices.ts in src/main/trpc/ (alongside handler.ts, context.ts), test in src/main/trpc/__tests__/, test-helpers in src/main/trpc/helpers/.",
+      "evidence": [
+        "structure.md tRPC Pattern: 'main/trpc/' for tRPC router/services",
+        "structure.md: 'main/trpc/__tests__/' for router tests",
+        "structure.md: 'main/trpc/helpers/' for router common utilities"
+      ]
+    },
+    {
+      "id": "steering-structure-naming",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File naming conventions follow structure.md: Services use camelCase (productionServices.ts), tests use *.test.ts pattern (productionServices.test.ts), helpers use camelCase (test-helpers.ts).",
+      "evidence": [
+        "structure.md: 'Services: camelCase (agentProcess.ts, fileService.ts)'",
+        "structure.md: 'Tests: *.test.ts(x)'"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No state management violations. productionServices.ts wires services entirely in Main Process (correct per structure.md Electron Process Boundary Rules). No Renderer-side state created or modified. Service instances created at module level or via getter functions (getConfigStore, getAutoExecutionCoordinator, etc.).",
+      "evidence": [
+        "structure.md: 'Main Processが保持すべきステート: セッション状態, プロセス管理, ファイル監視, 永続設定'",
+        "productionServices.ts: all wiring in Main Process, accessed via tRPC context DI"
+      ]
+    },
+    {
+      "id": "steering-structure-no-renderer-imports",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No prohibited module imports. productionServices.ts imports only from: (1) electron built-ins, (2) Node.js built-ins (fs/promises, path), (3) src/main/services/*, (4) src/main/trpc/helpers/*, (5) src/main/utils/*. No imports from src/renderer/ or src/shared/.",
+      "evidence": [
+        "productionServices.ts import analysis: all imports are from main process domain",
+        "structure.md: 'Renderer Process Module Restrictions: Node.js built-inモジュールは使用禁止'"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 28
+  }
+}

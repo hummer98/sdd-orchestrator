@@ -110,16 +110,17 @@ Check adherence to CLAUDE.md Design Principles:
 - **DRY**: Detect code duplication
 - **SSOT**: Verify single source of truth for data/state
 - **KISS**: Flag over-engineered solutions
-- **YAGNI**: Flag unused/premature features
+- **YAGNI**: Flag premature abstractions/generalizations (NOT unused code — that is Dead Code in 2.6)
 - Flag violations as Minor to Major depending on scope
 
 #### 2.6 Dead Code & Zombie Code Detection (DeadCodeChecker)
 
 **New Code (Dead Code)**:
-For new components/services created:
-- Use Grep to verify they are imported and used
-- Check that components are rendered/called
-- Verify exports are consumed
+For ALL new code created in this spec (not limited to design.md key components — also check tasks.md for created files, hooks, utilities):
+- Use Grep to verify they are imported and used in **production** code (test-only usage does NOT count)
+- Check that components are rendered/called in production code
+- Verify exports are consumed by production consumers
+- **Disambiguation**: Unused code = Dead Code (Major), NOT YAGNI (Minor). YAGNI applies to unnecessary abstractions/complexity only
 - Flag orphaned new code as Major
 
 **Old Code (Zombie Code)**:

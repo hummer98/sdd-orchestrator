@@ -161,7 +161,7 @@ Analyze the loaded context and generate a summary for sub-agents:
 
 **Extraction Guidelines**:
 - `spec_overview`: Synthesize from requirements.md Introduction
-- `key_components`: Extract from design.md Components table and interface definitions
+- `key_components`: Extract from design.md Components table AND tasks.md new file creation tasks. Include ALL new exports (components, hooks, utilities, types) created in this spec, not just major architectural components. Missing items here cause dead code checks to be incomplete.
 - `integration_points`: Extract from design.md Architecture section
 - `impact_analysis`: Extract from design.md "Integration & Deprecation Strategy" or similar sections
 

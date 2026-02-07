@@ -84,7 +84,6 @@ describe('EventBus - 集約EventEmitterサービス', () => {
     // Spec/Bug Events
     expect(EVENT_NAMES.SPECS_CHANGED).toBeDefined();
     expect(EVENT_NAMES.BUGS_CHANGED).toBeDefined();
-    expect(EVENT_NAMES.PROJECT_SELECTED).toBeDefined();
 
     // Auto Execution Events
     expect(EVENT_NAMES.AUTO_EXECUTION_STATUS_CHANGED).toBeDefined();
@@ -508,10 +507,10 @@ describe('Events Router - 全Subscriptionプロシージャの存在確認', () 
     'onAgentExitError',
     'onAgentRecordChanged',
 
-    // Spec/Bug系 (3)
+    // Spec/Bug系 (2)
+    // startup-project-selection-race-condition: onProjectSelected removed (Pull model)
     'onSpecsChanged',
     'onBugsChanged',
-    'onProjectSelected',
 
     // Auto Execution系 (5)
     'onAutoExecutionStatusChanged',
@@ -861,33 +860,7 @@ describe('統合テスト - Spec変更イベント配信', () => {
     unsubscribe();
   });
 
-  it('ProjectSelectedイベントがプロジェクト情報と共に配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
-
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
-
-    const payload = {
-      success: true,
-      projectPath: '/home/user/my-project',
-      kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
-    };
-
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onProjectSelected(),
-      () => bus.emit(EVENT_NAMES.PROJECT_SELECTED, payload),
-    );
-
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).projectPath).toBe('/home/user/my-project');
-    expect((received[0] as any).success).toBe(true);
-    unsubscribe();
-  });
+  // startup-project-selection-race-condition: onProjectSelected test removed (Pull model)
 });
 
 // ============================================================
@@ -1589,7 +1562,7 @@ describe('統合テスト - Zodスキーマエクスポートの検証', () => {
     // Spec/Bug系スキーマ
     expect(events.specsChangedSchema).toBeDefined();
     expect(events.bugsChangedSchema).toBeDefined();
-    expect(events.projectSelectedSchema).toBeDefined();
+    // startup-project-selection-race-condition: projectSelectedSchema removed (Pull model)
 
     // AutoExecution系スキーマ
     expect(events.autoExecutionStatusChangedSchema).toBeDefined();

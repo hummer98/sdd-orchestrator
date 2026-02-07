@@ -8,7 +8,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { initializeEventWiring, setInitialProjectPath, selectProject, setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult } from './trpc/helpers/projectSetup';
+import { initializeEventWiring, setInitialProjectPath, selectProject, setInitialSelectResult } from './trpc/helpers/projectSetup';
 // trpc-full-migration Task 10.7: IPC handlers deleted, utility functions moved to services/
 import { setupStatusNotifications, getRemoteAccessServer } from './services/remoteAccessSetup';
 import { setupSSHStatusNotifications } from './services/sshSetup';
@@ -29,9 +29,7 @@ import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 import { getAgentWatchdog } from './services/agentLifecycleSetup';
 // trpc-infrastructure: tRPC IPC handler setup (Requirements 8.1-8.5)
 import { setupTRPCHandler } from './trpc/handler';
-// trpc-full-migration Task 9.2: EventBus for tRPC Subscription event distribution
-import { getGlobalEventBus } from './trpc/services/globalEventBus';
-import { EVENT_NAMES } from './trpc/services/eventBus';
+// startup-project-selection-race-condition: EventBus imports removed (Push model deleted)
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -170,40 +168,6 @@ async function resolveToolPathsAtStartup(): Promise<void> {
   }
 }
 
-/**
- * startup-project-selection-fix Task 4.1: Broadcast initial project selection to Renderer
- * Requirements: 1.2, 4.1, 4.3
- *
- * Broadcasts the cached selectProject result to Renderer via PROJECT_SELECTED channel.
- * This is called on window ready-to-show event to ensure Renderer receives the initial
- * project selection result that Main process completed before window was ready.
- *
- * @param window - The BrowserWindow to broadcast to
- */
-export async function broadcastInitialProjectSelection(window: BrowserWindow): Promise<void> {
-  const cachedResult = getInitialSelectResult();
-
-  if (!cachedResult) {
-    logger.debug('[main] No cached initial select result to broadcast');
-    return;
-  }
-
-  // Safety check: window may have been destroyed
-  if (window.isDestroyed()) {
-    logger.warn('[main] Window destroyed, cannot broadcast initial project selection');
-    return;
-  }
-
-  // Broadcast to Renderer via EventBus (tRPC Subscription)
-  getGlobalEventBus().emit(EVENT_NAMES.PROJECT_SELECTED, cachedResult);
-  logger.info('[main] Broadcasted initial project selection to Renderer', {
-    projectPath: cachedResult.projectPath,
-  });
-
-  // Clear cache after successful broadcast
-  clearInitialSelectResult();
-}
-
 function createWindow(): void {
   const isDev = !app.isPackaged && !isE2ETest;
   const configStore = getConfigStore();
@@ -235,15 +199,11 @@ function createWindow(): void {
   setupTRPCHandler(mainWindow);
 
   // Show window when ready (unless headless mode)
-  // startup-project-selection-fix Task 4.1: Broadcast initial project selection
-  // Requirements: 1.2, 4.1
-  mainWindow.once('ready-to-show', async () => {
+  // startup-project-selection-race-condition: Broadcast removed (Pull model)
+  // Renderer now pulls initial project selection result via tRPC query on mount
+  mainWindow.once('ready-to-show', () => {
     if (!isHeadless) {
       mainWindow?.show();
-    }
-    // Broadcast cached initial project selection to Renderer
-    if (mainWindow) {
-      await broadcastInitialProjectSelection(mainWindow);
     }
   });
 

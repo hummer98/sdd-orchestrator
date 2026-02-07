@@ -305,6 +305,10 @@ export function createMockServices(
     sshAddRecentRemoteProject: vi.fn(),
     sshRemoveRecentRemoteProject: vi.fn(),
 
+    // Startup Project Selection (Pull model)
+    getInitialSelectResult: vi.fn().mockReturnValue(null),
+    clearInitialSelectResult: vi.fn(),
+
     // Event Bus (Task 9.1: events router - Subscription)
     eventBus: createEventBus(),
   };

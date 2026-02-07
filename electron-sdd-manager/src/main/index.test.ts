@@ -151,32 +151,12 @@ vi.mock('./services/sshSetup', () => ({
 // convertWorktreeHandlers: tRPC bugルーターに移行・削除済み (Task 5.4)
 
 // trpc-full-migration Task 11.2: handlers/channels moved to trpc/helpers/projectSetup
-const mockGetInitialSelectResult = vi.fn();
-const mockClearInitialSelectResult = vi.fn();
 const mockSetInitialSelectResult = vi.fn();
 vi.mock('./trpc/helpers/projectSetup', () => ({
   initializeEventWiring: vi.fn(),
   setInitialProjectPath: vi.fn(),
   selectProject: vi.fn(),
-  getInitialSelectResult: mockGetInitialSelectResult,
-  clearInitialSelectResult: mockClearInitialSelectResult,
   setInitialSelectResult: mockSetInitialSelectResult,
-}));
-
-// trpc-full-migration Task 11.2: EventBus mock for broadcastInitialProjectSelection
-const mockEventBusEmit = vi.fn();
-vi.mock('./trpc/services/globalEventBus', () => ({
-  getGlobalEventBus: vi.fn(() => ({
-    emit: mockEventBusEmit,
-    on: vi.fn(),
-    off: vi.fn(),
-  })),
-}));
-
-vi.mock('./trpc/services/eventBus', () => ({
-  EVENT_NAMES: {
-    PROJECT_SELECTED: 'events:project-selected',
-  },
 }));
 
 describe('Main Process Lifecycle', () => {
@@ -291,100 +271,6 @@ describe('Main Process Lifecycle', () => {
     });
   });
 
-  // ============================================================
-  // startup-project-selection-fix Task 4.1: Broadcast on ready-to-show
-  // Requirements: 1.2, 4.1, 4.3
-  // ============================================================
-
-  describe('startup project broadcast', () => {
-    it('should broadcast PROJECT_SELECTED on ready-to-show when cached result exists', async () => {
-      const mockResult = {
-        success: true,
-        projectPath: '/test/project',
-        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
-        specs: [],
-        bugs: [],
-        specJsonMap: {},
-      };
-
-      // Mock cached result
-      mockGetInitialSelectResult.mockReturnValue(mockResult);
-
-      // Import to trigger module execution
-      const { broadcastInitialProjectSelection } = await import('./index');
-
-      // Create mock window
-      const mockWebContents = { send: vi.fn() };
-      const mockWindow = {
-        isDestroyed: vi.fn().mockReturnValue(false),
-        webContents: mockWebContents,
-      };
-
-      // Call broadcast function
-      await broadcastInitialProjectSelection(mockWindow as any);
-
-      // Verify EventBus was used to broadcast (tRPC Subscription path)
-      expect(mockEventBusEmit).toHaveBeenCalledWith(
-        'events:project-selected',
-        mockResult
-      );
-
-      // Verify cache was cleared after broadcast
-      expect(mockClearInitialSelectResult).toHaveBeenCalled();
-    });
-
-    it('should not broadcast when no cached result exists', async () => {
-      // Mock no cached result
-      mockGetInitialSelectResult.mockReturnValue(null);
-
-      // Import function
-      const { broadcastInitialProjectSelection } = await import('./index');
-
-      // Create mock window
-      const mockWebContents = { send: vi.fn() };
-      const mockWindow = {
-        isDestroyed: vi.fn().mockReturnValue(false),
-        webContents: mockWebContents,
-      };
-
-      // Call broadcast function
-      await broadcastInitialProjectSelection(mockWindow as any);
-
-      // Verify webContents.send was not called
-      expect(mockWebContents.send).not.toHaveBeenCalled();
-
-      // Verify cache clear was not called
-      expect(mockClearInitialSelectResult).not.toHaveBeenCalled();
-    });
-
-    it('should not broadcast when window is destroyed', async () => {
-      const mockResult = {
-        success: true,
-        projectPath: '/test/project',
-        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
-        specs: [],
-        bugs: [],
-        specJsonMap: {},
-      };
-
-      // Mock cached result
-      mockGetInitialSelectResult.mockReturnValue(mockResult);
-
-      // Import function
-      const { broadcastInitialProjectSelection } = await import('./index');
-
-      // Create mock window that is destroyed
-      const mockWebContents = { send: vi.fn() };
-      const mockWindow = {
-        isDestroyed: vi.fn().mockReturnValue(true),
-        webContents: mockWebContents,
-      };
-
-      // Call broadcast function
-      await broadcastInitialProjectSelection(mockWindow as any);
-
-      // Verify webContents.send was not called
-      expect(mockWebContents.send).not.toHaveBeenCalled();
-    });
-  });
+  // startup-project-selection-race-condition: broadcastInitialProjectSelection test block
+  // deleted (Push model removed, Renderer now uses Pull model via tRPC query)
 });

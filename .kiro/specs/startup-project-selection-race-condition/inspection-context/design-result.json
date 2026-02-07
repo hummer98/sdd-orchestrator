@@ -1,0 +1,253 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-07T09:15:00Z",
+  "checks": [
+    {
+      "id": "design-component-project-router-getInitialSelectResult",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult query exists in project router at expected path",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:220-227 -- getInitialSelectResult query procedure defined with read-and-clear semantics"
+      ]
+    },
+    {
+      "id": "design-interface-project-router-getInitialSelectResult",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult query signature matches design: calls ctx.services.getInitialSelectResult(), clears if non-null, returns SelectProjectResultLike | null",
+      "evidence": [
+        "Design: getInitialSelectResult: () => SelectProjectResultLike | null",
+        "Actual (project.ts:221-227): const result = ctx.services.getInitialSelectResult(); if (result !== null) { ctx.services.clearInitialSelectResult(); } return result;"
+      ]
+    },
+    {
+      "id": "design-component-context-services-extension",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ContextServices interface extended with getInitialSelectResult and clearInitialSelectResult at expected path",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:677 -- getInitialSelectResult: () => SelectProjectResultLike | null",
+        "electron-sdd-manager/src/main/trpc/context.ts:680 -- clearInitialSelectResult: () => void"
+      ]
+    },
+    {
+      "id": "design-interface-context-services-extension",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ContextServices extension signatures match design exactly",
+      "evidence": [
+        "Design: getInitialSelectResult: () => SelectProjectResultLike | null; clearInitialSelectResult: () => void;",
+        "Actual (context.ts:677,680): getInitialSelectResult: () => SelectProjectResultLike | null; clearInitialSelectResult: () => void;"
+      ]
+    },
+    {
+      "id": "design-component-createDefaultServices-defaults",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createDefaultServices provides default implementations for getInitialSelectResult and clearInitialSelectResult",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:739 -- getInitialSelectResult: () => null",
+        "electron-sdd-manager/src/main/trpc/context.ts:740 -- clearInitialSelectResult: () => {}"
+      ]
+    },
+    {
+      "id": "design-component-handler-di-injection",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts injects projectSetup functions (getInitialSelectResult, clearInitialSelectResult) into tRPC context via DI",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts:16 -- import { getInitialSelectResult, clearInitialSelectResult } from './helpers/projectSetup'",
+        "electron-sdd-manager/src/main/trpc/handler.ts:40 -- getInitialSelectResult: getInitialSelectResult as ContextServices['getInitialSelectResult']",
+        "electron-sdd-manager/src/main/trpc/handler.ts:41 -- clearInitialSelectResult"
+      ]
+    },
+    {
+      "id": "design-component-test-helpers-mock",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts createMockServices includes getInitialSelectResult and clearInitialSelectResult mocks",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts:309 -- getInitialSelectResult: vi.fn().mockReturnValue(null)",
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts:310 -- clearInitialSelectResult: vi.fn()"
+      ]
+    },
+    {
+      "id": "design-component-app-tsx-pull-implementation",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx implements Pull model with useEffect, useRef guard, vanillaClient query, and error handling",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:295-313 -- useEffect with initialSelectPulled ref guard, vanillaClient.project.getInitialSelectResult.query(), try-catch with console.error"
+      ]
+    },
+    {
+      "id": "design-interface-app-tsx-pull",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx Pull implementation matches design: useRef guard (2.3), vanillaClient query (2.1), applySelectProjectResult (2.2), console.error on failure (2.4)",
+      "evidence": [
+        "App.tsx:295 -- const initialSelectPulled = useRef(false) -- useRef guard per design 2.3",
+        "App.tsx:304 -- getVanillaClient().project.getInitialSelectResult.query() -- vanillaClient per design 2.1",
+        "App.tsx:307 -- applySelectProjectResult(result) -- applies result per design 2.2",
+        "App.tsx:310 -- console.error('[App] Failed to pull initial project selection result:', error) -- error handling per design 2.4"
+      ]
+    },
+    {
+      "id": "design-component-app-tsx-subscription-removed",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "onProjectSelected.useSubscription removed from App.tsx (requirement 3.6)",
+      "evidence": [
+        "Grep for 'onProjectSelected' in App.tsx: no results found (subscription hook deleted)"
+      ]
+    },
+    {
+      "id": "design-component-main-index-broadcast-removed",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "broadcastInitialProjectSelection function removed from main/index.ts (requirements 3.1, 3.2, 3.3)",
+      "evidence": [
+        "Grep for 'broadcastInitialProjectSelection' in src/: only comment in index.test.ts (line 274) explaining deletion",
+        "electron-sdd-manager/src/main/index.ts:32 -- comment: 'startup-project-selection-race-condition: EventBus imports removed (Push model deleted)'",
+        "electron-sdd-manager/src/main/index.ts:202-208 -- ready-to-show handler only shows window, no broadcast"
+      ]
+    },
+    {
+      "id": "design-component-main-index-import-cleanup",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "main/index.ts import cleaned up: getInitialSelectResult/clearInitialSelectResult no longer imported from projectSetup for broadcast (only setInitialSelectResult remains for caching)",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:11 -- import { initializeEventWiring, setInitialProjectPath, selectProject, setInitialSelectResult } from './trpc/helpers/projectSetup'"
+      ]
+    },
+    {
+      "id": "design-component-events-router-subscription-removed",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "onProjectSelected Subscription removed from events router (requirement 3.4)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:58 -- comment: 'startup-project-selection-race-condition: projectSelectedSchema removed (Pull model, no Subscription)'",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:181 -- comment: 'startup-project-selection-race-condition: onProjectSelected removed (Pull model)'",
+        "Grep for 'onProjectSelected' in events.ts: only comments remain"
+      ]
+    },
+    {
+      "id": "design-component-eventbus-constant-removed",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EVENT_NAMES.PROJECT_SELECTED constant removed from eventBus.ts (requirement 3.5)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBus.ts:29 -- comment: 'startup-project-selection-race-condition: PROJECT_SELECTED removed (Pull model)'",
+        "Grep for 'PROJECT_SELECTED' in eventBus.ts: only removal comment found"
+      ]
+    },
+    {
+      "id": "design-component-project-router-test-added",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult query tests added to project-router.test.ts (requirements 5.1, 5.2)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts:346-407 -- describe('getInitialSelectResult') with 3 test cases: cache exists (clear called), cache empty (clear not called), read-and-clear semantics (2nd call returns null)"
+      ]
+    },
+    {
+      "id": "design-component-index-test-broadcast-removed",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "broadcastInitialProjectSelection test block removed from index.test.ts (requirement 5.3)",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.test.ts:274-276 -- comment only: 'startup-project-selection-race-condition: broadcastInitialProjectSelection test block deleted (Push model removed, Renderer now uses Pull model via tRPC query)'"
+      ]
+    },
+    {
+      "id": "design-component-events-router-test-updated",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "onProjectSelected test removed from events-router.test.ts and Subscription list updated (requirement 5.4)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts:511 -- comment: 'startup-project-selection-race-condition: onProjectSelected removed (Pull model)'",
+        "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts:863 -- comment: 'startup-project-selection-race-condition: onProjectSelected test removed (Pull model)'",
+        "events-router.test.ts:562 -- expects 36 subscription procedures (was 37 before removal)"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals: SDD Orchestrator's CLI startup with project path is a core use case for E2E testing and development workflows. Fixing race conditions in startup flow improves reliability.",
+      "evidence": [
+        "product.md mentions 'CLI起動オプション' and E2E test support as key capabilities",
+        "Feature scope limited to startup project selection race condition fix -- no out-of-scope functionality"
+      ]
+    },
+    {
+      "id": "steering-tech-compliance",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation follows tech.md patterns: tRPC query (correct pattern), Context DI (DD-006), vanillaClient for React-external calls, Vitest for testing, createTestCaller pattern",
+      "evidence": [
+        "tech.md: 'tRPC query (t.procedure.query)' -- getInitialSelectResult uses publicProcedure.query()",
+        "tech.md: 'ctx.services.* for DI' -- getInitialSelectResult/clearInitialSelectResult injected via ctx.services",
+        "tech.md: 'vanillaClient for React外呼び出し' -- App.tsx uses getVanillaClient().project.getInitialSelectResult.query()",
+        "tech.md: 'Vitest' -- tests use vitest describe/it/expect/vi"
+      ]
+    },
+    {
+      "id": "steering-structure-compliance",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All files in correct directories per structure.md: routers in main/trpc/routers/, context in main/trpc/, handler in main/trpc/, test helpers in main/trpc/helpers/, tests co-located or in __tests__/, renderer App.tsx in renderer/",
+      "evidence": [
+        "structure.md: 'main/trpc/routers/' -- project.ts is in correct location",
+        "structure.md: 'main/trpc/context.ts' -- ContextServices extension in correct location",
+        "structure.md: 'main/trpc/handler.ts' -- DI injection in correct location",
+        "structure.md: 'main/trpc/helpers/' -- test-helpers.ts in correct location",
+        "structure.md: 'main/trpc/__tests__/' -- router tests in correct location",
+        "structure.md: 'renderer/App.tsx' -- Pull implementation in correct location"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management follows structure.md rules: cache (initial select result) is in Main process (projectSetup.ts), Renderer only reads via tRPC query (Pull model). No domain state placed in Renderer.",
+      "evidence": [
+        "structure.md: 'Main Processが保持すべきステート: セッション状態' -- initial select result cached in Main's projectSetup.ts",
+        "structure.md: 'Renderer -> tRPC query -> Main' -- App.tsx pulls result via vanillaClient query, does not manage cache",
+        "structure.md: 'ステート変更はtRPC mutation経由' -- read-and-clear is handled atomically in Main's query handler"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 21
+  }
+}

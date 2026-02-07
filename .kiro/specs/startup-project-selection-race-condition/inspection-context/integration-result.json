@@ -1,0 +1,239 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-07T00:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: ContextServices interface extended with getInitialSelectResult and clearInitialSelectResult"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete: createMockServices updated with mock properties"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: getInitialSelectResult query added to project router"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete: handler.ts DI injection of projectSetup functions"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: App.tsx Pull useEffect implemented, onProjectSelected Subscription removed"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete: broadcastInitialProjectSelection removed from main/index.ts"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete: onProjectSelected Subscription removed from events.ts"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 marked as complete: EVENT_NAMES.PROJECT_SELECTED removed from eventBus.ts"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete: getInitialSelectResult query tests added to project-router.test.ts"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete: broadcastInitialProjectSelection test block removed from index.test.ts"
+    },
+    {
+      "id": "task-5.3",
+      "checkType": "task-completion",
+      "target": "5.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.3 marked as complete: onProjectSelected test removed from events-router.test.ts, subscription count updated"
+    },
+    {
+      "id": "import-getInitialSelectResult-context",
+      "checkType": "import",
+      "target": "getInitialSelectResult (ContextServices)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult is defined in ContextServices interface (context.ts:677) and used in project.ts, handler.ts, test-helpers.ts, App.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts",
+        "electron-sdd-manager/src/main/trpc/routers/project.ts",
+        "electron-sdd-manager/src/main/trpc/handler.ts",
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts",
+        "electron-sdd-manager/src/renderer/App.tsx"
+      ]
+    },
+    {
+      "id": "import-clearInitialSelectResult-context",
+      "checkType": "import",
+      "target": "clearInitialSelectResult (ContextServices)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "clearInitialSelectResult is defined in ContextServices interface (context.ts:680) and used in project.ts, handler.ts, test-helpers.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts",
+        "electron-sdd-manager/src/main/trpc/routers/project.ts",
+        "electron-sdd-manager/src/main/trpc/handler.ts",
+        "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts"
+      ]
+    },
+    {
+      "id": "import-handler-projectSetup",
+      "checkType": "import",
+      "target": "handler.ts imports from projectSetup.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts imports getInitialSelectResult and clearInitialSelectResult from ./helpers/projectSetup (line 16)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts"
+      ]
+    },
+    {
+      "id": "usage-getInitialSelectResult-query",
+      "checkType": "usage",
+      "target": "getInitialSelectResult query in project router",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult query is defined in project.ts (lines 220-227) with read-and-clear semantics"
+    },
+    {
+      "id": "usage-pull-in-app",
+      "checkType": "usage",
+      "target": "Pull model useEffect in App.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx calls getVanillaClient().project.getInitialSelectResult.query() in useEffect (line 304) with useRef guard"
+    },
+    {
+      "id": "usage-di-injection-handler",
+      "checkType": "usage",
+      "target": "DI injection in handler.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts injects getInitialSelectResult and clearInitialSelectResult in mergedOverrides (lines 40-41)"
+    },
+    {
+      "id": "usage-mock-test-helpers",
+      "checkType": "usage",
+      "target": "Mock services in test-helpers.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts includes getInitialSelectResult (line 309) and clearInitialSelectResult (line 310) mocks"
+    },
+    {
+      "id": "usage-test-project-router",
+      "checkType": "usage",
+      "target": "Tests for getInitialSelectResult in project-router.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "project-router.test.ts has 3 test cases: cache exists, cache empty, and read-and-clear semantics (lines 346-406)"
+    },
+    {
+      "id": "wiring-push-model-removed-index",
+      "checkType": "wiring",
+      "target": "Task 4.1: broadcastInitialProjectSelection removed from main/index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "broadcastInitialProjectSelection function and its call in ready-to-show handler are removed. Only a comment referencing the deletion remains in index.test.ts"
+    },
+    {
+      "id": "wiring-push-model-removed-events",
+      "checkType": "wiring",
+      "target": "Task 4.2: onProjectSelected Subscription removed from events.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "onProjectSelected is no longer defined in eventsRouter. Only comments noting its removal remain"
+    },
+    {
+      "id": "wiring-push-model-removed-eventbus",
+      "checkType": "wiring",
+      "target": "Task 4.3: EVENT_NAMES.PROJECT_SELECTED removed from eventBus.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PROJECT_SELECTED constant is removed from EVENT_NAMES. Only a comment noting its removal remains"
+    },
+    {
+      "id": "wiring-subscription-removed-app",
+      "checkType": "wiring",
+      "target": "Task 3.1: onProjectSelected.useSubscription removed from App.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No reference to onProjectSelected.useSubscription in App.tsx. startup-project-selection-fix/Task 9.2 comments also cleaned up"
+    },
+    {
+      "id": "wiring-test-removed-index-test",
+      "checkType": "wiring",
+      "target": "Task 5.2: broadcastInitialProjectSelection test removed from index.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Only a comment at line 274 noting the test block deletion remains. The test block itself is removed"
+    },
+    {
+      "id": "wiring-test-removed-events-test",
+      "checkType": "wiring",
+      "target": "Task 5.3: onProjectSelected test removed from events-router.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "onProjectSelected removed from expectedSubscriptions list. Subscription count verified at 36 (line 570). Only cleanup comments remain"
+    },
+    {
+      "id": "placeholder-check",
+      "checkType": "placeholder",
+      "target": "All implementation files",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO, FIXME, PLACEHOLDER, TBD, IMPLEMENT, or 実装予定 comments found in any of the modified implementation files related to this spec"
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "passed": 27,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 27
+  }
+}

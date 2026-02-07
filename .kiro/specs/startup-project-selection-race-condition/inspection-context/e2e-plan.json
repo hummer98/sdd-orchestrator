@@ -1,0 +1,33 @@
+{
+  "feature": "startup-project-selection-race-condition",
+  "generatedAt": "2026-02-07T00:00:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "flow": "SDD_PROJECT_PATH 付きでアプリ起動、Renderer がマウント完了後に Pull 実行",
+      "expectedResult": "プロジェクトが正しく選択され、UI に反映される",
+      "decision": "Defer",
+      "reason": "設計の Verification Contract で E2E Required: No と明示。既存の startup-project-selection.e2e.spec.ts が SDD_PROJECT_PATH 環境変数による自動プロジェクト選択フロー（ストア反映、spec-list 表示、kiroValidation 取得）を直接カバー。Pull モデルへの内部実装変更であり、外部観測可能な振る舞いは同一のため、既存テストで十分。ただし既存テストの onProjectSelected 参照（line 129-135）は実装時に削除が必要。",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts",
+        "electron-sdd-manager/e2e-wdio/diagnostic-project-selection.e2e.spec.ts"
+      ]
+    },
+    {
+      "journeyId": "UJ-002",
+      "flow": "SDD_PROJECT_PATH 未設定でアプリ起動",
+      "expectedResult": "プロジェクト未選択状態で正常に起動",
+      "decision": "Defer",
+      "reason": "設計の Verification Contract で E2E Required: No と明示。既存の app-launch.spec.ts が SDD_PROJECT_PATH 未設定での正常起動（ウィンドウ表示、セキュリティ設定、メニュー存在）をカバー。Pull モデルではキャッシュが null を返却し、既存の「プロジェクト未選択」状態と同一の振る舞いを維持するため、追加テスト不要。",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/app-launch.spec.ts"
+      ]
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "execute": 0,
+    "defer": 2,
+    "total": 2
+  }
+}

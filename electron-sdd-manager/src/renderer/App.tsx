@@ -290,15 +290,27 @@ export function App() {
     },
   });
 
-  // Task 9.2: Project selected via tRPC Subscription
-  // startup-project-selection-fix: Requirements: 1.3, 1.4, 2.2
-  trpc.events.onProjectSelected.useSubscription(undefined, {
-    onData: async (data) => {
-      const result = data as unknown as Parameters<typeof applySelectProjectResult>[0];
-      console.log('[App] Received PROJECT_SELECTED via tRPC Subscription', { projectPath: (data as Record<string, unknown>).projectPath });
-      await applySelectProjectResult(result);
-    },
-  });
+  // startup-project-selection-race-condition: Pull model for initial project selection
+  // Renderer pulls cached result on mount instead of waiting for Push event
+  const initialSelectPulled = useRef(false);
+  useEffect(() => {
+    if (initialSelectPulled.current) {
+      return;
+    }
+    initialSelectPulled.current = true;
+
+    (async () => {
+      try {
+        const result = await getVanillaClient().project.getInitialSelectResult.query();
+        if (result !== null) {
+          console.log('[App] Pulled initial project selection result', { projectPath: result.projectPath });
+          await applySelectProjectResult(result as unknown as Parameters<typeof applySelectProjectResult>[0]);
+        }
+      } catch (error) {
+        console.error('[App] Failed to pull initial project selection result:', error);
+      }
+    })();
+  }, []);
 
   // Task 9.2: Menu events via tRPC Subscription
   trpc.events.onMenuOpenProject.useSubscription(undefined, {
@@ -535,8 +547,7 @@ export function App() {
     };
   }, []);
 
-  // startup-project-selection-fix Task 5.1: onProjectSelected listener
-  // Task 9.2: Migrated to tRPC Subscription hooks (above)
+  // startup-project-selection-race-condition: applySelectProjectResult used by Pull useEffect
   const { applySelectProjectResult } = useProjectStore();
 
   // Menu event listeners

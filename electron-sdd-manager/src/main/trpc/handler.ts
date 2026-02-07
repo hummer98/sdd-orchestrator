@@ -13,6 +13,7 @@ import { appRouter } from './router';
 import { createContext, type ContextServices } from './context';
 import { projectLogger } from '../services/projectLogger';
 import { getGlobalEventBus } from './services/globalEventBus';
+import { getInitialSelectResult, clearInitialSelectResult } from './helpers/projectSetup';
 
 /**
  * Sets up the tRPC IPC handler for the given BrowserWindow.
@@ -30,8 +31,14 @@ export function setupTRPCHandler(
 ): void {
   try {
     // Task 9.2: Inject global EventBus into context for Subscription support
+    // startup-project-selection-race-condition: Inject projectSetup cache functions for Pull model
+    // Type cast needed: SelectProjectResult (concrete) -> SelectProjectResultLike (interface)
+    // These types are structurally compatible at runtime but BugMetadata[] vs Record<string, unknown>[]
+    // requires explicit assertion for TypeScript
     const mergedOverrides: Partial<ContextServices> = {
       eventBus: getGlobalEventBus(),
+      getInitialSelectResult: getInitialSelectResult as ContextServices['getInitialSelectResult'],
+      clearInitialSelectResult,
       ...serviceOverrides,
     };
 

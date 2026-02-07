@@ -25,10 +25,10 @@ export const EVENT_NAMES = {
   AGENT_EXIT_ERROR: 'events:agent-exit-error',
   AGENT_RECORD_CHANGED: 'events:agent-record-changed',
 
-  // Spec/Bug Events (3)
+  // Spec/Bug Events (2)
+  // startup-project-selection-race-condition: PROJECT_SELECTED removed (Pull model)
   SPECS_CHANGED: 'events:specs-changed',
   BUGS_CHANGED: 'events:bugs-changed',
-  PROJECT_SELECTED: 'events:project-selected',
 
   // Auto Execution Events (5)
   AUTO_EXECUTION_STATUS_CHANGED: 'events:auto-execution-status-changed',

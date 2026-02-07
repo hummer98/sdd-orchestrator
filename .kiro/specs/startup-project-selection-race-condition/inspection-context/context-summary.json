@@ -1,0 +1,145 @@
+{
+  "spec_overview": "起動時の SDD_PROJECT_PATH 環境変数によるプロジェクト自動選択のレースコンディションを、Push モデル（EventBus emit）から Pull モデル（tRPC query）に変更して根本解消する。関連する不要コード（broadcastInitialProjectSelection、onProjectSelected Subscription、EVENT_NAMES.PROJECT_SELECTED）を除去する。",
+  "key_components": [
+    {
+      "name": "project router (getInitialSelectResult query)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/project.ts",
+      "requirements": ["1.1", "1.2", "1.3"]
+    },
+    {
+      "name": "ContextServices (拡張)",
+      "type": "type",
+      "path": "electron-sdd-manager/src/main/trpc/context.ts",
+      "requirements": ["1.4", "1.5", "4.1", "4.2"]
+    },
+    {
+      "name": "handler.ts (DI注入)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/handler.ts",
+      "requirements": ["4.3"]
+    },
+    {
+      "name": "test-helpers.ts (モック追加)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts",
+      "requirements": ["4.1"]
+    },
+    {
+      "name": "App.tsx (Pull実装 + Push削除)",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/App.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "3.6"]
+    },
+    {
+      "name": "main/index.ts (Push除去)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/index.ts",
+      "requirements": ["3.1", "3.2", "3.3"]
+    },
+    {
+      "name": "events.ts router (Subscription削除)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/events.ts",
+      "requirements": ["3.4"]
+    },
+    {
+      "name": "eventBus.ts (定数削除)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/services/eventBus.ts",
+      "requirements": ["3.5"]
+    },
+    {
+      "name": "project-router.test.ts (テスト追加)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts",
+      "requirements": ["5.1", "5.2"]
+    },
+    {
+      "name": "index.test.ts (テスト削除)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/index.test.ts",
+      "requirements": ["5.3"]
+    },
+    {
+      "name": "events-router.test.ts (テスト削除)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts",
+      "requirements": ["5.4"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "App.tsx",
+      "target": "project router (getInitialSelectResult)",
+      "type": "call"
+    },
+    {
+      "source": "project router",
+      "target": "ContextServices (getInitialSelectResult/clearInitialSelectResult)",
+      "type": "call"
+    },
+    {
+      "source": "handler.ts",
+      "target": "projectSetup.ts (DI注入)",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/trpc/routers/project.ts",
+      "action": "UPDATE",
+      "reason": "getInitialSelectResult query 追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/context.ts",
+      "action": "UPDATE",
+      "reason": "ContextServices に getter/clearer 追加、createDefaultServices にデフォルト実装追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/handler.ts",
+      "action": "UPDATE",
+      "reason": "setupTRPCHandler で projectSetup 関数を DI 注入"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/helpers/test-helpers.ts",
+      "action": "UPDATE",
+      "reason": "createMockServices にモック追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/index.ts",
+      "action": "UPDATE",
+      "reason": "broadcastInitialProjectSelection 関数削除、ready-to-show ハンドラー修正、import 修正"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/routers/events.ts",
+      "action": "UPDATE",
+      "reason": "onProjectSelected Subscription 削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/services/eventBus.ts",
+      "action": "UPDATE",
+      "reason": "EVENT_NAMES.PROJECT_SELECTED 定数削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "onProjectSelected.useSubscription 削除、useEffect で Pull 実装追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/index.test.ts",
+      "action": "UPDATE",
+      "reason": "broadcastInitialProjectSelection テストブロック削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts",
+      "action": "UPDATE",
+      "reason": "onProjectSelected テスト削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts",
+      "action": "UPDATE",
+      "reason": "getInitialSelectResult query テスト追加"
+    }
+  ]
+}

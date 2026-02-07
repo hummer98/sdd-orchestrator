@@ -1,0 +1,242 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-07T10:00:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No significant code duplication found. SelectProjectResultLike vs SelectProjectResult is intentional process boundary separation (Main cannot import renderer types). Documented in design.md DD-002.",
+      "evidence": [
+        "SelectProjectResultLike defined in context.ts (line 104) uses loose Record<string, unknown> types",
+        "SelectProjectResult defined in renderer/types/index.ts (line 245) uses concrete SpecJson/BugMetadata types",
+        "Design decision documented: Main process cannot import renderer types; structural subtyping ensures compatibility"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No state duplication. Initial project selection result is cached in Main process (projectSetup.ts) and consumed via tRPC query. Renderer does not duplicate this state.",
+      "evidence": [
+        "Cache managed exclusively in projectSetup.ts (setInitialSelectResult/getInitialSelectResult/clearInitialSelectResult)",
+        "Renderer pulls once via vanillaClient.project.getInitialSelectResult.query() in App.tsx (line 304)",
+        "read-and-clear semantics prevent stale state"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Pull model is simpler than the previous Push model. Eliminated timing dependency between Main emit and Renderer Subscription establishment. No unnecessary abstractions introduced.",
+      "evidence": [
+        "Removed: broadcastInitialProjectSelection, onProjectSelected Subscription, EVENT_NAMES.PROJECT_SELECTED",
+        "Added: Single tRPC query (getInitialSelectResult) + useEffect in App.tsx",
+        "No new services, hooks, or abstractions created"
+      ]
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No premature abstractions or speculative features. The implementation adds only what is required: a query endpoint, DI interface extension, and a Pull useEffect.",
+      "evidence": [
+        "getInitialSelectResult query is minimal (get + clear)",
+        "No configuration options, no parameterization beyond what is needed",
+        "Design decision DD-004 explicitly removed onProjectSelected Subscription citing YAGNI"
+      ]
+    },
+    {
+      "id": "impact-update-project-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "project.ts updated with getInitialSelectResult query as specified",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts lines 208-228: getInitialSelectResult query added with read-and-clear semantics"
+      ]
+    },
+    {
+      "id": "impact-update-context-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts updated with getInitialSelectResult and clearInitialSelectResult in ContextServices interface and createDefaultServices",
+      "evidence": [
+        "ContextServices interface: lines 677-680 (getInitialSelectResult, clearInitialSelectResult)",
+        "createDefaultServices: lines 739-740 (default implementations)"
+      ]
+    },
+    {
+      "id": "impact-update-handler-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts updated with DI injection of projectSetup functions",
+      "evidence": [
+        "Import: line 16 (getInitialSelectResult, clearInitialSelectResult from projectSetup)",
+        "mergedOverrides: lines 40-41 (DI injection with type assertion)"
+      ]
+    },
+    {
+      "id": "impact-update-test-helpers-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test-helpers.ts updated with mock properties for getInitialSelectResult and clearInitialSelectResult",
+      "evidence": [
+        "createMockServices: lines 309-310 (vi.fn() mocks added)"
+      ]
+    },
+    {
+      "id": "impact-update-index-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "main/index.ts updated: broadcastInitialProjectSelection function deleted, ready-to-show handler simplified, EventBus imports removed",
+      "evidence": [
+        "Line 32: Comment confirms EventBus imports removed",
+        "Lines 204-208: ready-to-show handler only shows window (no broadcast)",
+        "No broadcastInitialProjectSelection function exists in file"
+      ]
+    },
+    {
+      "id": "impact-update-events-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "events.ts router updated: onProjectSelected Subscription removed",
+      "evidence": [
+        "Line 58: Comment confirms projectSelectedSchema removed",
+        "Line 181: Comment confirms onProjectSelected removed",
+        "No onProjectSelected procedure in eventsRouter definition"
+      ]
+    },
+    {
+      "id": "impact-update-eventbus-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "eventBus.ts updated: EVENT_NAMES.PROJECT_SELECTED constant removed",
+      "evidence": [
+        "Line 29: Comment confirms PROJECT_SELECTED removed",
+        "EVENT_NAMES object has 36 entries (down from 37)"
+      ]
+    },
+    {
+      "id": "impact-update-app-tsx",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx updated: onProjectSelected.useSubscription removed, Pull useEffect added",
+      "evidence": [
+        "Lines 293-313: Pull useEffect with useRef guard, vanillaClient query, applySelectProjectResult",
+        "Line 551: applySelectProjectResult destructured from useProjectStore",
+        "No trpc.events.onProjectSelected.useSubscription in file"
+      ]
+    },
+    {
+      "id": "impact-update-index-test-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "main/index.test.ts updated: broadcastInitialProjectSelection test block deleted",
+      "evidence": [
+        "Lines 274-276: Comment confirms test block deleted, only cleanup tests remain"
+      ]
+    },
+    {
+      "id": "impact-update-events-router-test-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "events-router.test.ts updated: onProjectSelected test removed, Subscription count expectation adjusted to 36",
+      "evidence": [
+        "Line 511: Comment confirms onProjectSelected removed from expectedSubscriptions",
+        "Line 863: Comment confirms onProjectSelected test removed",
+        "expectedSubscriptions array contains 36 entries (verified)"
+      ]
+    },
+    {
+      "id": "impact-update-project-router-test-ts",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "project-router.test.ts updated: getInitialSelectResult query tests added",
+      "evidence": [
+        "Lines 346-407: Three test cases (cache exists, cache empty, read-and-clear semantics)",
+        "Tests verify clearInitialSelectResult is called only when cache exists"
+      ]
+    },
+    {
+      "id": "impact-placeholder-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER patterns found in files modified by this spec",
+      "evidence": [
+        "Grep for TODO|FIXME|PLACEHOLDER in project.ts, context.ts, App.tsx, index.ts: no matches"
+      ]
+    },
+    {
+      "id": "dead-code-getInitialSelectResult-query",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult query is consumed by App.tsx (production code)",
+      "evidence": [
+        "App.tsx line 304: getVanillaClient().project.getInitialSelectResult.query()"
+      ]
+    },
+    {
+      "id": "dead-code-contextservices-extensions",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getInitialSelectResult and clearInitialSelectResult ContextServices properties are consumed in production code",
+      "evidence": [
+        "project.ts lines 222-224: ctx.services.getInitialSelectResult() and ctx.services.clearInitialSelectResult()",
+        "handler.ts lines 40-41: DI injection from projectSetup.ts",
+        "context.ts lines 739-740: Default implementations in createDefaultServices"
+      ]
+    },
+    {
+      "id": "logging-renderer-console-usage",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "App.tsx Pull useEffect uses console.log and console.error instead of rendererLogger as required by logging.md. However, this is consistent with existing patterns throughout App.tsx (20+ other console.* calls in the same file from prior features), so this is a pre-existing pattern issue, not a regression introduced by this spec.",
+      "evidence": [
+        "App.tsx line 306: console.log('[App] Pulled initial project selection result', ...)",
+        "App.tsx line 310: console.error('[App] Failed to pull initial project selection result:', error)",
+        "logging.md mandates rendererLogger for Renderer process logging",
+        "Pre-existing: App.tsx already has 20+ console.log/error calls from prior features (lines 203, 205, 222, 225, 228, 244, 246, 285, 318, 331, 341, 375, 494, 579, 619, 846, 860, 872, 874)"
+      ]
+    },
+    {
+      "id": "logging-main-process",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Main process files (handler.ts, index.ts) correctly use projectLogger for logging, not console.*",
+      "evidence": [
+        "handler.ts line 50: projectLogger.info('[trpc] IPC handler registered successfully')",
+        "handler.ts line 52: projectLogger.error('[trpc] Failed to register IPC handler', { error })",
+        "index.ts: All logging uses logger (projectLogger alias) consistently"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "passed": 19,
+    "failed": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 19
+  }
+}

@@ -670,6 +670,16 @@ export interface ContextServices {
   sshRemoveRecentRemoteProject?: (uri: string) => void;
 
   // ============================================================
+  // Startup Project Selection (Pull model)
+  // ============================================================
+
+  /** Get cached initial project selection result (returns null if not cached or already consumed) */
+  getInitialSelectResult: () => SelectProjectResultLike | null;
+
+  /** Clear cached initial project selection result */
+  clearInitialSelectResult: () => void;
+
+  // ============================================================
   // Event Bus (Task 9.1: events router - Subscription)
   // ============================================================
 
@@ -726,6 +736,8 @@ function createDefaultServices(): ContextServices {
     showOpenDialog: async () => null,
     createNewWindow: async () => {},
     getIsE2ETest: () => false,
+    getInitialSelectResult: () => null,
+    clearInitialSelectResult: () => {},
   };
 }
 

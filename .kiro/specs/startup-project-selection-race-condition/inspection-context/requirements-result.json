@@ -1,0 +1,240 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-07T10:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: getInitialSelectResult query added to project router with SelectProjectResult | null return type",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:220-227"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: Query calls ctx.services.getInitialSelectResult(), clears cache with clearInitialSelectResult() when result is non-null (read-and-clear semantics)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:222-226"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: When cache is null (SDD_PROJECT_PATH not set or already consumed), query returns null. The if(result !== null) guard handles this correctly.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/project.ts:222-226"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: ContextServices interface includes getInitialSelectResult and clearInitialSelectResult with correct signatures",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:677-680"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.5: createDefaultServices provides default implementations for getInitialSelectResult (returns null) and clearInitialSelectResult (no-op)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:739-740"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: useEffect in App.tsx calls vanillaClient.project.getInitialSelectResult.query() after component mount",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:293-313"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: When query result is not null, applySelectProjectResult(result) is called to apply to store",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:305-307",
+        "electron-sdd-manager/src/renderer/App.tsx:550-551"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: useRef (initialSelectPulled) prevents duplicate pull calls, ensuring only one execution on mount",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:295-300"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: try/catch around pull with console.error logging prevents application crash on error",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:302-311"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: broadcastInitialProjectSelection function removed from main/index.ts. Grep confirms no occurrences in source code (only comment in test file).",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts (function absent)",
+        "electron-sdd-manager/src/main/index.test.ts:274 (deletion comment only)"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: ready-to-show handler in index.ts no longer calls broadcastInitialProjectSelection. Handler only shows window.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:204-208"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: getInitialSelectResult and clearInitialSelectResult imports removed from index.ts. Only setInitialSelectResult remains (needed for caching).",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:11 (import line has setInitialSelectResult only)"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: onProjectSelected Subscription removed from events.ts. Only a comment remains at line 181 noting the removal.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:181 (comment only)"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.5: EVENT_NAMES.PROJECT_SELECTED constant removed from eventBus.ts. Only a comment remains at line 29.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBus.ts:29 (comment only)"
+      ]
+    },
+    {
+      "id": "req-3.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.6: trpc.events.onProjectSelected.useSubscription() hook removed from App.tsx. Grep confirms no occurrences.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx (no onProjectSelected references)"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: Redirected to Requirement 1.4 (same content, merged). ContextServices getter/clearer verified.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:677-680"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: Redirected to Requirement 1.5 (same content, merged). createDefaultServices defaults verified.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts:739-740"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: handler.ts imports getInitialSelectResult/clearInitialSelectResult from projectSetup.ts and injects them into mergedOverrides for tRPC context DI.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts:16",
+        "electron-sdd-manager/src/main/trpc/handler.ts:38-41"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: getInitialSelectResult query tests added with cache-hit (returns result and clears) and cache-miss (returns null) patterns.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts:346-407"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: Read-and-clear semantics test verifies first call returns result, clearInitialSelectResult is called, and second call returns null.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/project-router.test.ts:383-406"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: broadcastInitialProjectSelection test block deleted from index.test.ts. Comment at line 274 confirms intentional removal.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.test.ts:274-276"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.4: onProjectSelected test removed from events-router.test.ts. Comments at lines 511 and 863 confirm intentional removal. Test list no longer includes onProjectSelected.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts:511",
+        "electron-sdd-manager/src/main/trpc/__tests__/events-router.test.ts:863"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "partial": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 22
+  }
+}

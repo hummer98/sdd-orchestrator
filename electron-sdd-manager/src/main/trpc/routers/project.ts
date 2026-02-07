@@ -203,4 +203,26 @@ export const projectRouter = router({
     .query(({ ctx }) => {
       return ctx.services.getIsE2ETest();
     }),
+
+  // ============================================================
+  // getInitialSelectResult (query)
+  // startup-project-selection-race-condition: Pull model
+  // Renderer calls this on mount to get cached startup project selection result
+  // ============================================================
+
+  /**
+   * Get the cached initial project selection result.
+   * Uses read-and-clear semantics: returns result and clears cache,
+   * so subsequent calls return null.
+   * Returns null if no cached result exists (SDD_PROJECT_PATH not set,
+   * or result already consumed).
+   */
+  getInitialSelectResult: publicProcedure
+    .query(({ ctx }) => {
+      const result = ctx.services.getInitialSelectResult();
+      if (result !== null) {
+        ctx.services.clearInitialSelectResult();
+      }
+      return result;
+    }),
 });

@@ -339,6 +339,74 @@ describe('Project Router (project.ts)', () => {
   });
 
   // ============================================================
+  // getInitialSelectResult (query)
+  // startup-project-selection-race-condition: Pull model for initial project selection
+  // ============================================================
+
+  describe('getInitialSelectResult', () => {
+    it('should return cached result and call clearInitialSelectResult when cache exists', async () => {
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [{ name: 'my-feature' }],
+        bugs: [],
+        specJsonMap: {},
+      };
+      const mockGetInitialSelectResult = vi.fn().mockReturnValue(mockResult);
+      const mockClearInitialSelectResult = vi.fn();
+      const caller = createTestCaller({
+        getInitialSelectResult: mockGetInitialSelectResult,
+        clearInitialSelectResult: mockClearInitialSelectResult,
+      });
+
+      const result = await caller.project.getInitialSelectResult();
+      expect(result).toEqual(mockResult);
+      expect(mockGetInitialSelectResult).toHaveBeenCalledOnce();
+      expect(mockClearInitialSelectResult).toHaveBeenCalledOnce();
+    });
+
+    it('should return null and not call clearInitialSelectResult when cache is empty', async () => {
+      const mockGetInitialSelectResult = vi.fn().mockReturnValue(null);
+      const mockClearInitialSelectResult = vi.fn();
+      const caller = createTestCaller({
+        getInitialSelectResult: mockGetInitialSelectResult,
+        clearInitialSelectResult: mockClearInitialSelectResult,
+      });
+
+      const result = await caller.project.getInitialSelectResult();
+      expect(result).toBeNull();
+      expect(mockGetInitialSelectResult).toHaveBeenCalledOnce();
+      expect(mockClearInitialSelectResult).not.toHaveBeenCalled();
+    });
+
+    it('should return null on second call (read-and-clear semantics)', async () => {
+      let cache: Record<string, unknown> | null = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      };
+      const mockGetInitialSelectResult = vi.fn().mockImplementation(() => cache);
+      const mockClearInitialSelectResult = vi.fn().mockImplementation(() => { cache = null; });
+      const caller = createTestCaller({
+        getInitialSelectResult: mockGetInitialSelectResult,
+        clearInitialSelectResult: mockClearInitialSelectResult,
+      });
+
+      // First call returns result
+      const result1 = await caller.project.getInitialSelectResult();
+      expect(result1).not.toBeNull();
+
+      // Second call returns null (cache was cleared)
+      const result2 = await caller.project.getInitialSelectResult();
+      expect(result2).toBeNull();
+    });
+  });
+
+  // ============================================================
   // Task 4.4: レガシーprojectHandlers.tsからのエッジケース引き継ぎ
   // Legacy: projectHandlers.test.ts validateProjectPath, selection lock
   // ============================================================

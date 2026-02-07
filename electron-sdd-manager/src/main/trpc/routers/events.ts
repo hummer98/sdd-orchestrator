@@ -55,7 +55,7 @@ export const specsChangedSchema = z.record(z.unknown());
 
 export const bugsChangedSchema = z.record(z.unknown());
 
-export const projectSelectedSchema = z.record(z.unknown());
+// startup-project-selection-race-condition: projectSelectedSchema removed (Pull model, no Subscription)
 
 // --- Auto Execution Events ---
 export const autoExecutionStatusChangedSchema = z.record(z.unknown());
@@ -177,7 +177,8 @@ export const eventsRouter = router({
   ),
 
   // ============================================================
-  // Spec/Bug Events (3)
+  // Spec/Bug Events (2)
+  // startup-project-selection-race-condition: onProjectSelected removed (Pull model)
   // ============================================================
 
   /** Specs changed notification */
@@ -188,11 +189,6 @@ export const eventsRouter = router({
   /** Bugs changed notification */
   onBugsChanged: createEventSubscription<z.infer<typeof bugsChangedSchema>>(
     EVENT_NAMES.BUGS_CHANGED,
-  ),
-
-  /** Project selected notification */
-  onProjectSelected: createEventSubscription<z.infer<typeof projectSelectedSchema>>(
-    EVENT_NAMES.PROJECT_SELECTED,
   ),
 
   // ============================================================

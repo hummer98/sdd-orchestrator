@@ -78,6 +78,7 @@ _Include this section when the feature involves `.claude/commands/` definitions.
 
 **Data Flow**:
 ```mermaid
+%%{init: {'theme': 'neutral'}}%%
 sequenceDiagram
     participant CC as Claude Code
     participant Tool as CLI/MCP Tool

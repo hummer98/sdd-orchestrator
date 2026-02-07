@@ -164,6 +164,7 @@ Generate technical design document for feature based on approved requirements.
   - Text explanations limited to 3-5 bullet points of key decisions per diagram
   - Do NOT narrate the diagram step-by-step in prose
   - Focus on WHY (decisions, trade-offs) not WHAT (already shown in diagram)
+  - **Mermaid Theme**: Every Mermaid code block MUST start with `%%{init: {'theme': 'neutral'}}%%` as the first line (ensures readability in both light and dark mode)
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
 
 ### Internal Consistency

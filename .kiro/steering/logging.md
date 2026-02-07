@@ -109,53 +109,60 @@ AIアシスタントがログを正確に解析できるフォーマットを採
 - 処理対象のリソースID
 - エラー発生時のスタックトレース
 
-## Rendererプロセスのロギングアーキテクチャ（renderer-unified-logging）
+## Rendererプロセスのロギングアーキテクチャ
 
-Rendererプロセス（UIフロントエンド）は直接ファイルにログを書けないため、IPCを経由してMainプロセスに送信し、ファイルに記録する。この仕組みは2つのレイヤーで構成される。
+Rendererプロセス（UIフロントエンド）は直接ファイルにログを書けないため、2つの経路でMainプロセスに送信し、ファイルに記録する。
 
 ### レイヤー構成
 
 | レイヤー | ファイル | 役割 | 有効環境 |
 |----------|----------|------|----------|
-| **consoleHook**（グローバルフック） | `renderer/utils/consoleHook.ts` | `console.*` を自動フック、IPC転送 | development, e2e のみ（**productionでは無効**） |
-| **rendererLogger**（明示的ロガー） | `renderer/utils/rendererLogger.ts` | `console.*` 互換API、IPC転送 | 全環境 |
+| **console-message**（native キャプチャ） | `main/index.ts` | Electron native API で Renderer の `console.*` 出力をキャプチャし、Main logger にレベル別記録 | 全環境 |
+| **rendererLogger**（明示的ロガー） | `renderer/utils/rendererLogger.ts` | `console.*` 互換API、tRPC経由でMainに送信 | 全環境 |
 
-### consoleHook（グローバルフック）
+### console-message（native キャプチャ）
 
-- `initializeConsoleHook()` でrendererの `console.log/info/warn/error/debug` をモンキーパッチ
-- フック後の `console.*` はオリジナルのconsole出力 + IPCでmainプロセスに送信
-- `shouldFilter()` でノイズメッセージ（Vite HMR等）を除外
-- **production環境では自動的に無効化**（`app.isPackaged` 判定ではなく、Viteの `import.meta.env.PROD` で判定）
+- Electron の `webContents.on('console-message')` native API で Renderer の全 `console.*` 出力を自動キャプチャ
+- `level` パラメータ（0=debug, 1=info, 2=warn, 3=error）を Main process の `logger` メソッドに直接マッピング
+- monkey-patch 不要、tRPC 依存なし、全環境で動作
+- `consoleHook.ts` と `noiseFilter.ts` は廃止済み（ipclink-singleton-unification DD-003）
 
 ### rendererLogger（明示的ロガー）
 
 - `console.*` 互換のAPI（`rendererLogger.log/info/warn/error/debug`）
-- `window.electronAPI.logRenderer()` 経由でIPCでmainプロセスに送信
+- `getVanillaClient().misc.logRenderer.mutate()` 経由でtRPCでMainプロセスに送信
 - 自動コンテキスト付与: 現在のspecId/bugName、スタックトレースからのファイル名抽出
 - `import { rendererLogger as console }` でdrop-in置換可能
 
 ### IPC経路
 
 ```
-Renderer (console.* or rendererLogger)
-  → window.electronAPI.logRenderer(level, message, context)
-    → IPC: 'log:renderer'
-      → Main process ProjectLogger
+経路1: console-message native（全 console.* 出力を自動キャプチャ）
+Renderer console.*
+  → Electron native IPC (console-message event)
+    → Main process: webContents.on('console-message')
+      → ProjectLogger (level別: debug/info/warn/error)
         → {projectPath}/.kiro/logs/main.log + グローバルログ
+
+経路2: rendererLogger（明示的ロガーAPI、構造化コンテキスト付き）
+rendererLogger.log/info/warn/error/debug(message)
+  → getVanillaClient().misc.logRenderer.mutate({ level, message, context })
+    → tRPC IPC
+      → Main process: misc.logRenderer handler
+        → ProjectLogger
+          → {projectPath}/.kiro/logs/main.log + グローバルログ
 ```
 
 ### 実装時の注意
 
 - Rendererでの新しいロギングには `rendererLogger` を使用すること（`console.*` ではなく）
 - `notify.*()` 呼び出しは内部的にrendererログも出力する（`debugging.md` のnotifyセクション参照）
-- consoleHookのproduction無効化は意図的な設計。本番環境では `rendererLogger` の明示的使用のみがログされる
+- `console.*` は console-message native API で自動的にキャプチャされるが、構造化コンテキスト（specId等）は付与されない。コンテキスト付きログが必要な場合は `rendererLogger` を使用
 
 ### 関連ソース
 
-- [consoleHook.ts](electron-sdd-manager/src/renderer/utils/consoleHook.ts) - グローバルフック
 - [rendererLogger.ts](electron-sdd-manager/src/renderer/utils/rendererLogger.ts) - 明示的ロガーAPI
 - [contextProvider.ts](electron-sdd-manager/src/renderer/utils/contextProvider.ts) - 自動コンテキスト取得
-- [noiseFilter.ts](electron-sdd-manager/src/renderer/utils/noiseFilter.ts) - ノイズフィルタリング
 
 ## 参照
 

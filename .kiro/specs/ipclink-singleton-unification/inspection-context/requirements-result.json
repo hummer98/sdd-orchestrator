@@ -1,0 +1,250 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-08T12:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ipcLink() は provider.tsx (行39) で1回のみ呼び出される。vanillaClient.ts には ipcLink の import が存在しない。provider.test.tsx でも 'should call ipcLink() exactly once' テストで検証済み。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.tsx:39 - links: [ipcLink()]",
+        "electron-sdd-manager/src/shared/trpc/provider.tsx:23 - import { ipcLink } from 'electron-trpc/renderer' (唯一の import)",
+        "electron-sdd-manager/src/shared/trpc/provider.test.tsx:72 - it('should call ipcLink() exactly once')",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts - ipcLink の import なし"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getVanillaClient() は setSharedClient() で共有された TRPCClient を createTRPCClientProxy() でラップした proxy を返す。provider.tsx の createTRPCClient() 内で setSharedClient(client) が呼ばれ、React client と同じ TRPCClient インスタンスを共有。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:103-104 - setSharedClient() で createTRPCClientProxy(client) を生成",
+        "electron-sdd-manager/src/shared/trpc/provider.tsx:42 - setSharedClient(client) 呼び出し",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:55-63 - 'should return a proxy created from the shared TRPCClient after setSharedClient()'"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getVanillaClient() の API シグネチャ (getVanillaClient().{router}.{procedure}.query/mutate/subscribe()) は維持されている。createTRPCClientProxy が同じ型 CreateTRPCProxyClient<AppRouter> を返すため互換性あり。テストでも query/mutate/subscribe パターンを確認。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:27 - type VanillaClient = CreateTRPCProxyClient<AppRouter>",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:115 - getVanillaClient(): VanillaClient",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:108-123 - query/mutate API テスト",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:87-106 - subscribe API テスト"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient.ts に ipcLink の import がないことをテストで検証。vanillaClient.test.ts の 'no ipcLink import' テストが、electron-trpc/renderer をモックせずにモジュールをロードし、ipcLink が import されていないことを間接的に証明。provider.test.tsx でも ipcLink() の呼び出し回数を検証。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:143-152 - 'no ipcLink import (Requirement 1.4)' テスト",
+        "electron-sdd-manager/src/shared/trpc/provider.test.tsx:72-82 - 'should call ipcLink() exactly once (Requirement 1.1, 1.4)'"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "requestId 衝突が解消されたため、phantom data の受信は自動的に解消される。ipcLink() が1回のみ呼ばれることで単一の IPC マネージャが使用され、requestId の独立採番による衝突が発生しない。直接的な onMenuOpenProject の phantom data テストはないが、根本原因の修正（req-1.1）により自動的に解決。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.tsx:9-12 - 'SOLE location where ipcLink() is called... prevent requestId collisions'",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:10-11 - 'single ipcLink() call and eliminates requestId collisions (electron-trpc Issue #201)'"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "req-2.1 と同じ根本原因修正により自動的に解消。onMenuResetLayout subscription も同一の IPC マネージャを使用するため、requestId 衝突による意図しないレイアウトリセットは発生しない。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.tsx:9-12 - 単一 ipcLink() でrequestId衝突防止",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:10-11 - requestId collisions 解消の説明"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "単一 IPC マネージャにより requestId が一意になるため、EventBus でイベントが発火するまで onData コールバックが誤って呼ばれることはない。deferred proxy パターンにより、setSharedClient() 前の subscribe 呼び出しもキューイングされ、正しい IPC マネージャ上で replay される。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:83-97 - flushDeferredSubscriptions() による遅延 subscribe の replay",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:87-106 - deferred proxy のキューイングと flush テスト"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "webContents.on('console-message') リスナーが main/index.ts の createWindow() 内で登録されている。isE2ETest ガードは除去され、全環境で有効（コメントにも 'All environments (previously E2E-only)' と記載）。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:226-245 - console-message リスナー登録（全環境）",
+        "electron-sdd-manager/src/main/index.ts:227 - 'All environments (previously E2E-only)' コメント"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "console-message イベントの level パラメータに基づき、Main process の logger に適切なレベルで記録。logMethods マップで 0=debug, 1=info, 2=warn, 3=error のマッピングを実装。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:230-234 - logMethods レベル別マッピング",
+        "electron-sdd-manager/src/main/index.ts:236-244 - console-message ハンドラ実装"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer console レベル DEBUG (0) は logger.debug() にマッピングされている。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:231 - 0: (msg, meta) => logger.debug(msg, meta)"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer console レベル INFO (1) は logger.info() にマッピングされている。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:232 - 1: (msg, meta) => logger.info(msg, meta)"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer console レベル WARNING (2) は logger.warn() にマッピングされている。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:233 - 2: (msg, meta) => logger.warn(msg, meta)"
+      ]
+    },
+    {
+      "id": "req-3.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer console レベル ERROR (3) は logger.error() にマッピングされている。",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:234 - 3: (msg, meta) => logger.error(msg, meta)"
+      ]
+    },
+    {
+      "id": "req-3.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "consoleHook.ts, consoleHook.test.ts, noiseFilter.ts, noiseFilter.test.ts, rendererLogging.integration.test.ts が全て削除されている。ファイル検索で見つからないことを確認。ソースコード内の参照もコメントのみ（import なし）。",
+      "evidence": [
+        "Glob: consoleHook.ts - No files found",
+        "Glob: noiseFilter.ts - No files found",
+        "Glob: consoleHook.test.ts - No files found",
+        "Glob: noiseFilter.test.ts - No files found",
+        "Glob: rendererLogging.integration.test.ts - No files found"
+      ]
+    },
+    {
+      "id": "req-3.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "main.tsx から initializeConsoleHook() の呼び出しが削除されている。main.tsx 行19 のコメントで 'consoleHook removed' と明記。Grep で initializeConsoleHook の参照が一切見つからない。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/main.tsx:19 - '// ipclink-singleton-unification Task 3.2: consoleHook removed'",
+        "Grep: initializeConsoleHook - No files found (全ソースで参照なし)"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md の vanillaClient セクション（行111）に 'React client の proxy ラッパー' としての記述がある。'内部実装は provider.tsx の TRPCClient を createTRPCClientProxy() でラップした proxy' と記載。",
+      "evidence": [
+        ".kiro/steering/tech.md:111 - 'vanillaClient: ...内部実装は provider.tsx の TRPCClient を createTRPCClientProxy() でラップした proxy（ipcLink() は provider.tsx で1回のみ呼び出し、requestId 衝突を防止）'"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md 行111 に 'ipcLink() は provider.tsx で1回のみ呼び出し、requestId 衝突を防止' という設計方針が明記されている。",
+      "evidence": [
+        ".kiro/steering/tech.md:111 - 'ipcLink() は provider.tsx で1回のみ呼び出し、requestId 衝突を防止'"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "build/typecheck の成功は直接検証していない（テスト実行はこの検査のスコープ外）。ただし、TypeScript 型定義は正しく使用されており（CreateTRPCProxyClient<AppRouter>）、コンパイルエラーになる要素は見当たらない。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:27 - type VanillaClient = CreateTRPCProxyClient<AppRouter>",
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts:103 - export function setSharedClient(client: TRPCClient<AppRouter>): void"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient.test.ts で getVanillaClient() の API 互換性テストが実装されている。setup.ts のグローバルモックも setSharedClient, resetVanillaClient を含む形に更新されており、既存テストとの互換性が維持されている。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts:44-153 - 包括的な vanillaClient テスト",
+        "electron-sdd-manager/src/test/setup.ts:113-134 - グローバルモックに setSharedClient, resetVanillaClient を含む"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "consoleHook.test.ts, noiseFilter.test.ts, rendererLogging.integration.test.ts が全て削除されており、テストスイートの実行を妨げるファイルは存在しない。",
+      "evidence": [
+        "Glob: consoleHook.test.ts - No files found (削除済み)",
+        "Glob: noiseFilter.test.ts - No files found (削除済み)",
+        "Glob: rendererLogging.integration.test.ts - No files found (削除済み)"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "rendererLogger.ts は変更対象外（Out of Scope にも記載）。vanillaClient の API シグネチャが維持されているため、rendererLogger 経由の getVanillaClient().misc.logRenderer.mutate() は正常に動作する。logging.md にも rendererLogger の記述が維持されている。",
+      "evidence": [
+        ".kiro/steering/logging.md:121 - rendererLogger レイヤーの記述が維持",
+        ".kiro/steering/logging.md:133 - getVanillaClient().misc.logRenderer.mutate() 経由の記述が維持"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 21,
+    "passed": 20,
+    "failed": 0,
+    "partial": 1,
+    "critical": 0,
+    "major": 1,
+    "minor": 0,
+    "info": 20
+  }
+}

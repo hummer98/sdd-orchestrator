@@ -128,6 +128,7 @@ vi.mock('../shared/trpc/vanillaClient', () => {
   };
   return {
     getVanillaClient: vi.fn(() => createMockProxy()),
+    setSharedClient: vi.fn(),
     resetVanillaClient: vi.fn(),
   };
 });

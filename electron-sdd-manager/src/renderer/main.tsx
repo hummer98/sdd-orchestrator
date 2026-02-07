@@ -16,20 +16,8 @@ import { getAgentStartErrorMessage } from '@shared/types/agentStartErrorMessages
 // trpc-full-migration Task 9.2: tRPC Subscription for event listeners
 import { getVanillaClient } from '@shared/trpc/vanillaClient';
 
-// renderer-unified-logging feature: Initialize console hook before React rendering
-// Requirements: 1.1, 1.3, 1.4
-import { initializeConsoleHook } from './utils/consoleHook';
-
-// Initialize console hook early (before StrictMode)
-// This hooks console.log/warn/error/debug to send logs to main process
-// Only active in development and E2E environments (disabled in production)
-try {
-  initializeConsoleHook();
-} catch (error) {
-  // Silent fallback - hook initialization failure should not block app startup
-  // Requirement 7.3: Error handling during initialization
-  console.error('[main] Failed to initialize console hook:', error);
-}
+// ipclink-singleton-unification Task 3.2: consoleHook removed
+// Renderer console logging is now handled by Main process console-message native API (DD-003)
 
 // worktree-rebase-from-main: Configure shared notification handler
 // This connects the shared notification store to the renderer's notify helpers

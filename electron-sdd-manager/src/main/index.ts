@@ -223,14 +223,24 @@ function createWindow(): void {
     mainWindow = null;
   });
 
-  // E2E mode: Forward Renderer console output to Main process log
-  // This allows wdio afterTest hooks to read Renderer logs from the log file
-  if (isE2ETest) {
-    const levelMap: Record<number, string> = { 0: 'DEBUG', 1: 'INFO', 2: 'WARNING', 3: 'ERROR' };
+  // ipclink-singleton-unification Task 3.1: Forward Renderer console output to Main process log
+  // All environments (previously E2E-only). Replaces consoleHook.ts (SSOT/KISS, DD-003).
+  // Level mapping: 0=debug, 1=info, 2=warn, 3=error (Electron native console-message event)
+  {
+    const logMethods: Record<number, (msg: string, meta?: Record<string, unknown>) => void> = {
+      0: (msg, meta) => logger.debug(msg, meta),
+      1: (msg, meta) => logger.info(msg, meta),
+      2: (msg, meta) => logger.warn(msg, meta),
+      3: (msg, meta) => logger.error(msg, meta),
+    };
     mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-      const levelName = levelMap[level] ?? 'INFO';
-      const source = sourceId ? sourceId.split('/').pop() : '';
-      logger.info(`[Renderer Console] [${levelName}] ${message}`, { line, source });
+      try {
+        const source = sourceId ? sourceId.split('/').pop() : '';
+        const logMethod = logMethods[level] ?? logMethods[1];
+        logMethod(`[Renderer Console] ${message}`, { line, source });
+      } catch (error) {
+        logger.error('[main] Error in console-message listener', { error });
+      }
     });
   }
 

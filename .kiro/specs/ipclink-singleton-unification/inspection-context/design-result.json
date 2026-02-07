@@ -1,0 +1,325 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-08T10:00:00Z",
+  "checks": [
+    {
+      "id": "design-component-vanillaClient",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient.ts exists at expected path with setSharedClient(), getVanillaClient(), resetVanillaClient() exports",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts"
+      ]
+    },
+    {
+      "id": "design-component-provider",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "provider.tsx exists at expected path with TRPCProvider component exported",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.tsx"
+      ]
+    },
+    {
+      "id": "design-component-main-index-console-message",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "main/index.ts contains console-message listener with level mapping (0=debug, 1=info, 2=warn, 3=error) and try-catch error handling",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:229-245"
+      ]
+    },
+    {
+      "id": "design-component-renderer-main",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/main.tsx exists, initializeConsoleHook() import and call have been removed, comment references DD-003",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/main.tsx:19-20"
+      ]
+    },
+    {
+      "id": "design-delete-consoleHook",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "consoleHook.ts has been deleted as designed (Req 3.7)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/utils/consoleHook.ts - file not found (correctly deleted)"
+      ]
+    },
+    {
+      "id": "design-delete-consoleHook-test",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "consoleHook.test.ts has been deleted as designed (Req 3.7)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/utils/consoleHook.test.ts - file not found (correctly deleted)"
+      ]
+    },
+    {
+      "id": "design-delete-noiseFilter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "noiseFilter.ts has been deleted as designed (Req 3.7)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/utils/noiseFilter.ts - file not found (correctly deleted)"
+      ]
+    },
+    {
+      "id": "design-delete-noiseFilter-test",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "noiseFilter.test.ts has been deleted as designed (Req 3.7)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/utils/noiseFilter.test.ts - file not found (correctly deleted)"
+      ]
+    },
+    {
+      "id": "design-delete-rendererLogging-integration-test",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "rendererLogging.integration.test.ts has been deleted as designed (Req 5.3)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/utils/rendererLogging.integration.test.ts - file not found (correctly deleted)"
+      ]
+    },
+    {
+      "id": "design-interface-setSharedClient",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "setSharedClient(client: TRPCClient<AppRouter>): void - matches design specification exactly",
+      "evidence": [
+        "Design: function setSharedClient(client: TRPCClient<AppRouter>): void",
+        "Actual: export function setSharedClient(client: TRPCClient<AppRouter>): void (line 103)"
+      ]
+    },
+    {
+      "id": "design-interface-getVanillaClient",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getVanillaClient(): VanillaClient (CreateTRPCProxyClient<AppRouter>) - matches design specification",
+      "evidence": [
+        "Design: function getVanillaClient(): VanillaClient",
+        "Actual: export function getVanillaClient(): VanillaClient (line 115)",
+        "VanillaClient = CreateTRPCProxyClient<AppRouter> (line 27)"
+      ]
+    },
+    {
+      "id": "design-interface-resetVanillaClient",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "resetVanillaClient(): void - matches design specification",
+      "evidence": [
+        "Design: function resetVanillaClient(): void",
+        "Actual: export function resetVanillaClient(): void (line 130)"
+      ]
+    },
+    {
+      "id": "design-interface-TRPCProvider",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "TRPCProvider(props: { children: ReactNode }): JSX.Element - matches design specification",
+      "evidence": [
+        "Design: function TRPCProvider(props: { children: ReactNode }): JSX.Element",
+        "Actual: export function TRPCProvider({ children }: TRPCProviderProps) (line 52)",
+        "TRPCProviderProps = { children: ReactNode } (line 27-29)"
+      ]
+    },
+    {
+      "id": "design-dd001-createTRPCClientProxy",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-001: vanillaClient.ts uses createTRPCClientProxy() to wrap the shared TRPCClient (not createTRPCProxyClient). No ipcLink() import in vanillaClient.ts",
+      "evidence": [
+        "import { createTRPCClientProxy } from '@trpc/client' (vanillaClient.ts:23)",
+        "vanillaClient = createTRPCClientProxy<AppRouter>(client) (vanillaClient.ts:104)",
+        "No createTRPCProxyClient usage found in vanillaClient.ts"
+      ]
+    },
+    {
+      "id": "design-dd002-deferred-initialization",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-002: Deferred initialization pattern implemented. getVanillaClient() returns deferred proxy before setSharedClient(). Subscribe calls are queued and flushed. query/mutate throw errors",
+      "evidence": [
+        "createDeferredProxy() at vanillaClient.ts:43-78",
+        "deferredSubscriptions queue at vanillaClient.ts:36",
+        "flushDeferredSubscriptions() at vanillaClient.ts:83-97",
+        "query/mutate throw Error at vanillaClient.ts:62-67"
+      ]
+    },
+    {
+      "id": "design-dd003-console-message-native",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003: console-message native API unified. No isE2ETest guard on listener. Level mapping 0=debug,1=info,2=warn,3=error implemented. consoleHook.ts and noiseFilter.ts deleted",
+      "evidence": [
+        "console-message listener at main/index.ts:229-245 (no isE2ETest guard)",
+        "logMethods map: 0=debug, 1=info, 2=warn, 3=error (main/index.ts:230-235)",
+        "consoleHook.ts deleted (confirmed not found)",
+        "noiseFilter.ts deleted (confirmed not found)",
+        "renderer/main.tsx comment: 'consoleHook removed' (line 19)"
+      ]
+    },
+    {
+      "id": "design-dd004-deprecated-acceptance",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-004: createTRPCClientProxy @deprecated accepted. Used in vanillaClient.ts for wrapping existing TRPCClient",
+      "evidence": [
+        "import { createTRPCClientProxy } from '@trpc/client' (vanillaClient.ts:23)"
+      ]
+    },
+    {
+      "id": "design-ipcLink-single-call",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Req 1.1/1.4: ipcLink() is called exactly once, only in provider.tsx. No ipcLink import in vanillaClient.ts",
+      "evidence": [
+        "Only ipcLink import: provider.tsx:23 (import { ipcLink } from 'electron-trpc/renderer')",
+        "Only ipcLink() call: provider.tsx:39 (links: [ipcLink()])",
+        "vanillaClient.ts has zero ipcLink references (only in comment)"
+      ]
+    },
+    {
+      "id": "design-provider-setSharedClient-call",
+      "category": "design-decision",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "provider.tsx calls setSharedClient(client) after trpc.createClient() as designed",
+      "evidence": [
+        "import { setSharedClient } from './vanillaClient' (provider.tsx:25)",
+        "setSharedClient(client) called at provider.tsx:42"
+      ]
+    },
+    {
+      "id": "design-test-vanillaClient",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "vanillaClient.test.ts exists with comprehensive test coverage: setSharedClient, deferred proxy, subscribe queuing, query/mutate error, resetVanillaClient, no ipcLink import",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.test.ts (153 lines, 7 test cases)"
+      ]
+    },
+    {
+      "id": "design-test-provider",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "provider.test.tsx exists with tests for setSharedClient() call and ipcLink() single call verification",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.test.tsx (83 lines, 2 test cases)"
+      ]
+    },
+    {
+      "id": "design-test-setup-mock-compatibility",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "test/setup.ts global mock for vanillaClient includes setSharedClient and resetVanillaClient mocks, maintaining compatibility with existing 93 files",
+      "evidence": [
+        "test/setup.ts:129-133: exports getVanillaClient (Proxy mock), setSharedClient (vi.fn()), resetVanillaClient (vi.fn())"
+      ]
+    },
+    {
+      "id": "steering-tech-vanillaClient-update",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "tech.md vanillaClient section updated to describe createTRPCClientProxy() wrapper pattern and ipcLink() single call (Req 4.1, 4.2)",
+      "evidence": [
+        "tech.md:111: 'vanillaClient: ...createTRPCClientProxy() でラップした proxy（ipcLink() は provider.tsx で1回のみ呼び出し、requestId 衝突を防止）'"
+      ]
+    },
+    {
+      "id": "steering-logging-update",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "logging.md Renderer logging architecture updated: console-message native capture described as primary layer, consoleHook.ts/noiseFilter.ts noted as deprecated (Req 4.3)",
+      "evidence": [
+        "logging.md:120: console-message native capture described with '全環境' scope",
+        "logging.md:125-128: native API details with level mapping",
+        "logging.md:128: 'consoleHook.ts と noiseFilter.ts は廃止済み（ipclink-singleton-unification DD-003）'"
+      ]
+    },
+    {
+      "id": "steering-structure-file-locations",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All files are placed in correct directories per structure.md: shared/trpc/ for vanillaClient and provider, main/ for index.ts, renderer/ for main.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/vanillaClient.ts - correct (shared tRPC layer)",
+        "electron-sdd-manager/src/shared/trpc/provider.tsx - correct (shared tRPC layer)",
+        "electron-sdd-manager/src/main/index.ts - correct (main process)",
+        "electron-sdd-manager/src/renderer/main.tsx - correct (renderer entry)"
+      ]
+    },
+    {
+      "id": "steering-structure-naming",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Naming conventions followed per structure.md: Services use camelCase (vanillaClient.ts), Components use PascalCase (TRPCProvider), Tests use *.test.ts(x) co-located pattern",
+      "evidence": [
+        "vanillaClient.ts - camelCase (Service)",
+        "provider.tsx - camelCase file, TRPCProvider PascalCase export (Component)",
+        "vanillaClient.test.ts - co-located with implementation",
+        "provider.test.tsx - co-located with implementation"
+      ]
+    },
+    {
+      "id": "steering-product-scope",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals: fixes tRPC IPC communication reliability (core capability). No out-of-scope functionality added",
+      "evidence": [
+        "product.md: IPC = tRPC (electron-trpc)",
+        "Feature fixes requestId collision - core IPC reliability issue",
+        "No new features beyond design scope (logging unification is a simplification)"
+      ]
+    },
+    {
+      "id": "steering-tech-frameworks",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Correct frameworks/libraries used per tech.md: @trpc/client for createTRPCClientProxy, electron-trpc/renderer for ipcLink, Vitest for testing",
+      "evidence": [
+        "vanillaClient.ts: import { createTRPCClientProxy } from '@trpc/client'",
+        "provider.tsx: import { ipcLink } from 'electron-trpc/renderer'",
+        "Tests use Vitest (import from 'vitest')"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 28
+  }
+}

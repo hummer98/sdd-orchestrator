@@ -108,7 +108,7 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 - **Context DI**: `ctx.services.*` 経由でサービスインスタンスを注入。テスト時はモックサービスを注入可能
 - **Zodバリデーション**: 全プロシージャに入力/出力スキーマを定義
 - **Subscriptions**: `events` ルーターで37のリアルタイムイベントをSubscription経由で配信（EventBusパターン）
-- **vanillaClient**: Zustand storeなどReact外からの呼び出しは `getVanillaClient()` シングルトンを使用
+- **vanillaClient**: Zustand storeなどReact外からの呼び出しは `getVanillaClient()` シングルトンを使用。内部実装は `provider.tsx` の `TRPCClient` を `createTRPCClientProxy()` でラップした proxy（`ipcLink()` は `provider.tsx` で1回のみ呼び出し、requestId 衝突を防止）
 
 **新しいAPI追加の手順**:
 1. Zodスキーマ定義（入力/出力）

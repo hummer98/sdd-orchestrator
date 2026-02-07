@@ -54,13 +54,33 @@ const ALL_PHASES_COMPLETED_SPEC_JSON = {
   },
   documentReview: {
     status: 'approved',
-    currentRound: 1,
-    rounds: [
+    roundDetails: [
       {
         roundNumber: 1,
-        status: 'approved',
-        startedAt: '2024-01-01T00:00:00.000Z',
-        completedAt: '2024-01-01T00:01:00.000Z',
+        status: 'reply_complete',
+        reviewCompletedAt: '2024-01-01T00:00:00.000Z',
+        replyCompletedAt: '2024-01-01T00:01:00.000Z',
+        fixRequired: 2,
+        needsDiscussion: 0,
+        fixStatus: 'applied',
+      },
+      {
+        roundNumber: 2,
+        status: 'reply_complete',
+        reviewCompletedAt: '2024-01-01T00:02:00.000Z',
+        replyCompletedAt: '2024-01-01T00:03:00.000Z',
+        fixRequired: 1,
+        needsDiscussion: 0,
+        fixStatus: 'applied',
+      },
+      {
+        roundNumber: 3,
+        status: 'reply_complete',
+        reviewCompletedAt: '2024-01-01T00:04:00.000Z',
+        replyCompletedAt: '2024-01-01T00:05:00.000Z',
+        fixRequired: 0,
+        needsDiscussion: 0,
+        fixStatus: 'not_required',
       },
     ],
   },

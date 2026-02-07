@@ -637,6 +637,15 @@ async function executeDocumentReviewReply(service: SpecManagerService, specPath:
           const currentRoundNumber = roundDetails.length;
 
           if (isApproved || fixStatus === 'not_required') {
+            // Persist approved status before completing (SSOT: documentReview.status)
+            if (!isApproved) {
+              try {
+                await docReviewService.approveReview(specPath);
+                logger.info('[projectSetup] executeDocumentReviewReply: approveReview succeeded (not_required)', { specPath });
+              } catch (error) {
+                logger.error('[projectSetup] executeDocumentReviewReply: approveReview failed (not_required)', { specPath, error: error instanceof Error ? error.message : String(error) });
+              }
+            }
             coordinator.handleDocumentReviewCompleted(specPath, true);
           } else if (fixStatus === 'pending') {
             coordinator.handleDocumentReviewCompleted(specPath, false);
@@ -645,7 +654,18 @@ async function executeDocumentReviewReply(service: SpecManagerService, specPath:
           } else if (fixStatus === 'applied') {
             coordinator.handleDocumentReviewCompleted(specPath, false);
           } else {
-            if (fixRequired === 0 && needsDiscussion === 0) coordinator.handleDocumentReviewCompleted(specPath, true);
+            if (fixRequired === 0 && needsDiscussion === 0) {
+              // Fallback: persist approved status before completing (SSOT: documentReview.status)
+              if (!isApproved) {
+                try {
+                  await docReviewService.approveReview(specPath);
+                  logger.info('[projectSetup] executeDocumentReviewReply: approveReview succeeded (fallback)', { specPath });
+                } catch (error) {
+                  logger.error('[projectSetup] executeDocumentReviewReply: approveReview failed (fallback)', { specPath, error: error instanceof Error ? error.message : String(error) });
+                }
+              }
+              coordinator.handleDocumentReviewCompleted(specPath, true);
+            }
             else if (needsDiscussion > 0) coordinator.handleDocumentReviewCompleted(specPath, false);
             else if (fixRequired > 0 && currentRoundNumber < MAX_DOCUMENT_REVIEW_ROUNDS) coordinator.continueDocumentReviewLoop(specPath, currentRoundNumber + 1);
             else coordinator.handleDocumentReviewCompleted(specPath, false);

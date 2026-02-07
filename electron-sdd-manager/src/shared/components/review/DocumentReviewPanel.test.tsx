@@ -176,7 +176,7 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('progress-indicator-unchecked')).toBeInTheDocument();
     });
 
-    it('ラウンドがある場合checkedアイコンを表示する', () => {
+    it('status: approved + roundDetailsありでcheckedアイコンを表示する', () => {
       const reviewState: DocumentReviewState = {
         status: 'approved',
         roundDetails: [{ roundNumber: 1, status: 'reply_complete' }],
@@ -185,6 +185,41 @@ describe('DocumentReviewPanel', () => {
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
 
       expect(screen.getByTestId('progress-indicator-checked')).toBeInTheDocument();
+    });
+
+    it('status: pending + roundDetailsありでuncheckedアイコンを表示する（SSOTルール）', () => {
+      const reviewState: DocumentReviewState = {
+        status: 'pending',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete' },
+          { roundNumber: 2, status: 'reply_complete' },
+        ],
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+
+      expect(screen.getByTestId('progress-indicator-unchecked')).toBeInTheDocument();
+    });
+
+    it('status: pending + roundDetailsなしでuncheckedアイコンを表示する', () => {
+      const reviewState: DocumentReviewState = {
+        status: 'pending',
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+
+      expect(screen.getByTestId('progress-indicator-unchecked')).toBeInTheDocument();
+    });
+
+    it('status: in_progress で executingアイコンを表示する', () => {
+      const reviewState: DocumentReviewState = {
+        status: 'in_progress',
+        currentRound: 1,
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} isExecuting={true} />);
+
+      expect(screen.getByTestId('progress-indicator-executing')).toBeInTheDocument();
     });
 
     it('実行中の場合executingアイコンを表示する', () => {

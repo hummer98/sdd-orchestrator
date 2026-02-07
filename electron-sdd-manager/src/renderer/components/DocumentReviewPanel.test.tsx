@@ -129,9 +129,21 @@ describe('DocumentReviewPanel', () => {
   // Requirements: 6.5, 6.6
   // ============================================================
   describe('Task 6.1: Progress indicator', () => {
-    it('should show checked state when has roundDetails', () => {
+    it('should show unchecked state when status is pending with roundDetails (SSOT: only approved shows checked)', () => {
       const reviewState: DocumentReviewState = {
         status: 'pending',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete' },
+          { roundNumber: 2, status: 'reply_complete' },
+        ],
+      };
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+      expect(screen.getByTestId('progress-indicator-unchecked')).toBeInTheDocument();
+    });
+
+    it('should show checked state when status is approved with roundDetails', () => {
+      const reviewState: DocumentReviewState = {
+        status: 'approved',
         roundDetails: [
           { roundNumber: 1, status: 'reply_complete' },
           { roundNumber: 2, status: 'reply_complete' },

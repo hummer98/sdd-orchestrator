@@ -70,8 +70,8 @@ function getProgressIndicatorState(
     return 'executing';
   }
 
-  // Priority 2: Checked (has roundDetails)
-  if (reviewState && (reviewState.roundDetails?.length ?? 0) >= 1) {
+  // Priority 2: Checked (SSOT: documentReview.status === 'approved')
+  if (reviewState?.status === 'approved') {
     return 'checked';
   }
 

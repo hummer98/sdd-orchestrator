@@ -1,0 +1,79 @@
+{
+  "spec_overview": "DocumentReviewの完了判定基準をUI（roundDetails.length >= 1）と自動実行（status === 'approved'）で統一し、documentReview.status === 'approved' をSSOTとしてUI表示と自動実行のGO/NOGO判定を一致させる。",
+  "key_components": [
+    {
+      "name": "getProgressIndicatorState",
+      "type": "service",
+      "path": "src/shared/components/review/DocumentReviewPanel.tsx",
+      "requirements": ["1.1", "1.2", "1.3", "1.4"]
+    },
+    {
+      "name": "executeDocumentReviewReply",
+      "type": "service",
+      "path": "src/main/trpc/helpers/projectSetup.ts",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]
+    },
+    {
+      "name": "DocumentReviewPanel.test.tsx (shared)",
+      "type": "component",
+      "path": "src/shared/components/review/DocumentReviewPanel.test.tsx",
+      "requirements": ["3.1", "3.2", "3.3", "3.4", "3.5"]
+    },
+    {
+      "name": "DocumentReviewPanel.test.tsx (renderer)",
+      "type": "component",
+      "path": "src/renderer/components/DocumentReviewPanel.test.tsx",
+      "requirements": ["3.5"]
+    },
+    {
+      "name": "ALL_PHASES_COMPLETED_SPEC_JSON (E2E fixture)",
+      "type": "component",
+      "path": "electron-sdd-manager/e2e-wdio/auto-execution-impl-phase.e2e.spec.ts",
+      "requirements": ["4.1", "4.2", "4.3", "4.4"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "getProgressIndicatorState",
+      "target": "DocumentReviewPanel (render)",
+      "type": "call"
+    },
+    {
+      "source": "executeDocumentReviewReply",
+      "target": "DocumentReviewService.approveReview",
+      "type": "call"
+    },
+    {
+      "source": "executeDocumentReviewReply",
+      "target": "AutoExecutionCoordinator.handleDocumentReviewCompleted",
+      "type": "call"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "src/shared/components/review/DocumentReviewPanel.tsx",
+      "action": "UPDATE",
+      "reason": "getProgressIndicatorState の判定ロジックを status === 'approved' ベースに変更"
+    },
+    {
+      "target": "src/main/trpc/helpers/projectSetup.ts",
+      "action": "UPDATE",
+      "reason": "executeDocumentReviewReply に approveReview 呼び出しを追加"
+    },
+    {
+      "target": "src/shared/components/review/DocumentReviewPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "新SSOTルールに合わせてテストケース追加・期待値修正"
+    },
+    {
+      "target": "src/renderer/components/DocumentReviewPanel.test.tsx",
+      "action": "UPDATE",
+      "reason": "pending + roundDetails ありの期待値を unchecked に修正"
+    },
+    {
+      "target": "electron-sdd-manager/e2e-wdio/auto-execution-impl-phase.e2e.spec.ts",
+      "action": "UPDATE",
+      "reason": "ALL_PHASES_COMPLETED_SPEC_JSON に多ラウンド roundDetails を追加"
+    }
+  ]
+}

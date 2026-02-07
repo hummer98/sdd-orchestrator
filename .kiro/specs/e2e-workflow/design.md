@@ -489,13 +489,14 @@ interface E2EPlan {
 - e2e-plannerの計画でCreate判定されたJourneyのテストを生成
 - steering/inspection-e2e.mdのフレームワーク情報を参照
 - 既存helper関数、fixture、data-testidパターンを活用
-- 生成テストを`e2e-wdio/generated/`に配置
+- inspection-e2e.mdの`Output Directory`に指定された場所に配置（人間のレビュー不要）
 
 **Dependencies**:
 - Inbound: spec-inspection-agent.md - 呼び出し元 (P0)
 - External: e2e-plan.json - テスト計画 (P0)
-- External: inspection-e2e.md - フレームワーク情報 (P0)
-- External: e2e-wdio/helpers/ - 既存ヘルパー (P1)
+- External: inspection-e2e.md - フレームワーク情報・出力先 (P0)
+- External: templates/specs/e2e-test.spec.ts - テストテンプレート (P0)
+- External: {testDir}/helpers/ - 既存ヘルパー (P1)
 
 **Contracts**: Service [x]
 
@@ -525,9 +526,9 @@ interface FrameworkInfo {
 }
 ```
 
-- Preconditions: e2e-plan.json存在、Create決定あり
-- Postconditions: 生成テストファイル配置、e2e-plan.jsonに生成パス追記
-- Invariants: 既存テストファイルを上書きしない
+- Preconditions: e2e-plan.json存在、Create決定あり、inspection-e2e.md存在
+- Postconditions: 生成テストファイルをOutput Directoryに配置、e2e-plan.jsonに生成パス追記
+- Invariants: 既存テストファイルを上書きしない、ファイル名衝突時はサフィックス追加
 
 #### e2e-validator-agent.md
 
@@ -588,12 +589,13 @@ interface ValidationResult {
 - e2e-plannerの計画に基づきテストを実行
 - 失敗時にスクリーンショット、DOMスナップショット、コンソールログを収集
 - 失敗タイプを分類（Critical/Warning/Info）
-- e2e-report-{n}.mdを生成
+- e2e-report-{n}.mdを生成（生成テストの詳細コードを含む）
 
 **Dependencies**:
 - Inbound: spec-inspection-agent.md - 呼び出し元 (P0)
 - External: e2e-plan.json - 実行対象 (P0)
-- External: wdio.conf.ts - テスト設定 (P0)
+- External: inspection-e2e.md - フレームワーク情報 (P0)
+- External: templates/specs/e2e-report.md - レポートテンプレート (P0)
 
 **Contracts**: Service [x]
 
@@ -637,6 +639,20 @@ interface E2EResult {
 - Postconditions: e2e-result.json出力、e2e-report-{n}.md生成
 - Invariants: 環境チェック失敗時は実行しない
 
+##### テンプレートファイル
+
+E2E関連の出力フォーマットはテンプレートファイルで定義：
+
+| テンプレート | 用途 |
+|-------------|------|
+| `.kiro/settings/templates/specs/e2e-report.md` | E2Eレポートのフォーマット |
+| `.kiro/settings/templates/specs/e2e-test.spec.ts` | 生成テストのスケルトン |
+
+**設計方針**:
+- e2e-runnerはe2e-report.mdテンプレートを参照してレポート生成
+- e2e-creatorはe2e-test.spec.tsテンプレートを参照してテスト生成
+- プロジェクト固有のスタイルをテンプレートでカスタマイズ可能
+
 #### generate-inspection-e2e-agent.md
 
 | Field | Detail |
@@ -673,6 +689,8 @@ interface DetectedFramework {
   type: 'wdio' | 'playwright' | 'other';
   configPath: string;
   version?: string;
+  testDir: string;      // 既存テストディレクトリ
+  outputDir: string;    // 生成テスト出力先（testDirと同じ or サブディレクトリ）
 }
 
 interface E2EAnalysis {
@@ -687,6 +705,40 @@ interface E2EAnalysis {
 - Preconditions: E2Eテストディレクトリ存在
 - Postconditions: steering/inspection-e2e.md生成
 - Invariants: 既存e2e-testing.mdを上書きしない
+
+##### inspection-e2e.md テンプレート
+
+```markdown
+# E2E Testing Configuration
+
+## Framework
+- Type: wdio
+- Config: wdio.conf.ts
+- Version: 9.20.0
+
+## Directories
+- Test Directory: e2e-wdio/
+- Output Directory: e2e-wdio/
+- Helpers: e2e-wdio/helpers/
+- Fixtures: e2e-wdio/fixtures/
+
+## Naming Convention
+- Generated Test Pattern: uj-{NNN}-{feature}.spec.ts
+- Example: uj-001-e2e-workflow.spec.ts
+
+## Available Helpers
+- launchApp(): Electronアプリ起動
+- selectProject(path): プロジェクト選択
+- ...
+
+## References
+- See also: [e2e-testing.md](./e2e-testing.md) for guidelines
+```
+
+**設計方針**:
+- `Output Directory` でe2e-creatorの出力先を指定
+- generate-inspection-e2e-agentがプロジェクト構成から自動検出
+- e2e-creatorはこの設定を参照してテストを配置
 
 ### Data Models
 
@@ -825,7 +877,7 @@ interface E2ECheck {
 **generated tests Location**:
 
 ```
-e2e-wdio/generated/
+{inspection-e2e.md の Output Directory}/
 └── uj-{NNN}-{feature}.spec.ts  # 生成されたE2Eテスト
 ```
 
@@ -833,6 +885,12 @@ e2e-wdio/generated/
 - Journey ID `UJ-{NNN}` から数字部分を抽出
 - 例: `UJ-001` → `001`, `UJ-012` → `012`, `UJ-123` → `123`
 - 3桁ゼロパディングを維持（UJ-1 → 001, UJ-12 → 012）
+
+**設計方針**:
+- 出力先は`steering/inspection-e2e.md`の`Output Directory`で設定
+- 人間のレビュー・移動ステップは不要
+- e2e-validatorがSTABLE判定したテストのみ配置
+- FLAKY/EXCLUDEDテストは配置せず、e2e-report-{n}.mdにのみ記録
 
 ## Error Handling
 
@@ -993,7 +1051,8 @@ E2Eパイプラインの検証は、Mock Claude CLIを拡張して行う。
 | `.claude/agents/kiro/e2e-validator.md` | テスト安定性検証サブエージェント |
 | `.claude/agents/kiro/e2e-runner.md` | E2E実行・レポートサブエージェント |
 | `.claude/agents/kiro/generate-inspection-e2e.md` | steering生成コマンド |
-| `e2e-wdio/generated/` | 自動生成E2Eテスト配置ディレクトリ |
+| `.kiro/settings/templates/specs/e2e-report.md` | E2Eレポートテンプレート |
+| `.kiro/settings/templates/specs/e2e-test.spec.ts` | 生成テストテンプレート |
 
 ### 後方互換性
 
@@ -1055,9 +1114,9 @@ spec-inspection → e2e-planner → e2e-creator → e2e-validator → e2e-runner
 
 ### Verification Points
 1. e2e-plan.json生成: User Journeyからの計画抽出
-2. 生成テストファイル: e2e-wdio/generated/への配置
+2. 生成テストファイル: e2e-wdio/への直接配置（STABLE判定後）
 3. e2e-result.json生成: テスト結果の構造化
-4. e2e-report-{n}.md生成: レポートフォーマット
+4. e2e-report-{n}.md生成: レポートフォーマット（生成テストコード詳細を含む）
 5. inspection-{n}.md更新: E2E参照の追加
 
 ### Robustness Strategy
@@ -1069,7 +1128,6 @@ spec-inspection → e2e-planner → e2e-creator → e2e-validator → e2e-runner
 - Mock Claude CLI (mock-claude.sh) の拡張
   - `--full`オプション対応
   - e2e-plan.json, e2e-result.jsonのモック生成
-- e2e-wdio/generated/ ディレクトリの.gitignore登録
 
 ## Open Questions Resolution
 
@@ -1077,13 +1135,14 @@ spec-inspection → e2e-planner → e2e-creator → e2e-validator → e2e-runner
 
 **Resolution**: DD-007で決定。inspection-e2e.mdは自動生成されるE2Eメタデータ（フレームワーク、ヘルパー、カバレッジ）、e2e-testing.mdは手動管理のガイドライン。両者は参照関係を持ち、inspection-e2e.mdからe2e-testing.mdを参照する形式。
 
-### Q2: e2e-wdio/generated/の配置と管理
+### Q2: 生成テストの配置と管理
 
 **Resolution**:
-- 配置: `e2e-wdio/generated/`
-- 管理: .gitignoreに追加（デフォルト）
-- レビュー後に正式採用する場合は、手動でe2e-wdio/本体に移動
+- 配置: `e2e-wdio/`（直接配置、`generated/`サブディレクトリは不使用）
+- 管理: 通常のテストファイルとして扱い、コミット対象
+- 人間のレビュー・移動ステップ: **不要**
 - ファイル名形式: `uj-{NNN}-{feature}.spec.ts`
+- 詳細確認: e2e-report-{n}.mdに生成テストのコード全文と判定理由を記録
 
 ### Q3: E2Eテスト実行の排他制御
 

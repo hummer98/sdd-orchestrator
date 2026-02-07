@@ -90,20 +90,7 @@ SDD OrchestratorにDiscord Bot統合機能を追加する。この機能によ�
 4. If 応答が2000文字を超える場合, the SDD Orchestrator shall 複数メッセージに分割して送信する
 5. The SDD Orchestrator shall コードブロックを適切にMarkdown形式で表示する
 
-### Requirement 7: AskQuestion対応（Discordボタン）
-
-**Objective:** As a ユーザー, I want Claude Codeからの質問にDiscordボタンで回答できること, so that インタラクティブな操作ができる
-
-#### Acceptance Criteria
-
-1. When Claude CodeがAskQuestionを発行した場合, the SDD Orchestrator shall 質問内容をDiscordメッセージとして送信する
-2. The SDD Orchestrator shall AskQuestion応答用のDiscordボタンUIを表示する
-3. When ユーザーがボタンをクリックした場合, the SDD Orchestrator shall 選択された回答をClaude Codeに送信する
-4. If AskQuestionがテキスト入力を要求している場合, the SDD Orchestrator shall Discordモーダルで入力フォームを表示する
-5. The SDD Orchestrator shall ボタンにタイムアウト（5分）を設定する
-6. If タイムアウトした場合, the SDD Orchestrator shall ボタンを無効化してタイムアウトメッセージを表示する
-
-### Requirement 8: 詳細ログ折りたたみ表示
+### Requirement 7: 詳細ログ折りたたみ表示
 
 **Objective:** As a ユーザー, I want 詳細なログ情報を折りたたみ表示で確認できること, so that 重要な情報だけを素早く確認できる
 
@@ -114,7 +101,7 @@ SDD OrchestratorにDiscord Bot統合機能を追加する。この機能によ�
 3. The SDD Orchestrator shall 主要な応答テキストは折りたたまずに表示する
 4. If ログ内容が1000文字を超える場合, the SDD Orchestrator shall 折りたたみ内でも省略表示してファイル添付を提案する
 
-### Requirement 9: エラーハンドリングと復旧
+### Requirement 8: エラーハンドリングと復旧
 
 **Objective:** As a ユーザー, I want Bot障害時に適切なエラー通知と自動復旧が行われること, so that 安定した運用ができる
 
@@ -126,7 +113,7 @@ SDD OrchestratorにDiscord Bot統合機能を追加する。この機能によ�
 4. When Bot接続エラーが発生した場合, the SDD Orchestrator shall エラー内容をアプリログに記録する
 5. If Claude Codeプロセスがクラッシュした場合, the SDD Orchestrator shall Discordにエラーメッセージを送信する
 
-### Requirement 10: セキュリティ
+### Requirement 9: セキュリティ
 
 **Objective:** As a ユーザー, I want Bot Tokenや通信が安全に保護されること, so that セキュリティリスクを低減できる
 

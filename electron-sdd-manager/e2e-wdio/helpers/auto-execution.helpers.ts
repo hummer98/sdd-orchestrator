@@ -141,13 +141,15 @@ export async function waitForSpecDetailReady(
         });
 
         // Check that specDetail is loaded and matches the expected spec
-        // Also check selectedSpec as a fallback
+        // specDetail !== null is required because SpecPane shows a loading
+        // spinner when specDetail is null, preventing workflow-view from rendering.
         const specDetailReady =
           state.specDetail !== null &&
           !state.isDetailLoading &&
           state.specDetail?.metadata?.name === name;
 
         const selectedSpecReady =
+          state.specDetail !== null &&
           state.selectedSpec !== null &&
           state.selectedSpec?.name === name &&
           !state.isDetailLoading;

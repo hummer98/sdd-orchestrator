@@ -1,12 +1,12 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2E\u30c6\u30b9\u30c8\u7528\u306e\u30c6\u30b9\u30c8\u6a5f\u80fd",
-  "phase": "requirements-generated",
+  "description": "E2Eテスト用のテスト機能",
+  "phase": "initialized",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": true,
+      "generated": false,
       "approved": false
     },
     "design": {
@@ -19,107 +19,5 @@
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z",
-  "documentReview": {
-    "status": "pending",
-    "roundDetails": [
-      {
-        "roundNumber": 1,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 2,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 3,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 4,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 5,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 6,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 7,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 8,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 9,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 10,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 11,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 12,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 13,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 14,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 15,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 16,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 17,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 18,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 19,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 20,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 21,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 22,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 23,
-        "status": "review_complete"
-      },
-      {
-        "roundNumber": 24,
-        "status": "review_complete"
-      }
-    ]
-  },
-  "updated_at": "2026-02-05T21:31:37.042894Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z"
 }

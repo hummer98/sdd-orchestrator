@@ -223,6 +223,17 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  // E2E mode: Forward Renderer console output to Main process log
+  // This allows wdio afterTest hooks to read Renderer logs from the log file
+  if (isE2ETest) {
+    const levelMap: Record<number, string> = { 0: 'DEBUG', 1: 'INFO', 2: 'WARNING', 3: 'ERROR' };
+    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      const levelName = levelMap[level] ?? 'INFO';
+      const source = sourceId ? sourceId.split('/').pop() : '';
+      logger.info(`[Renderer Console] [${levelName}] ${message}`, { line, source });
+    });
+  }
+
   // Load the app
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');

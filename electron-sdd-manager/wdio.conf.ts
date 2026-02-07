@@ -1,5 +1,6 @@
 import type { Options } from '@wdio/types';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // ELECTRON_RUN_AS_NODEが設定されていると、ElectronがNode.jsモードで動作し
 // Chromedriverのコマンドラインオプションを認識できなくなる問題を回避
@@ -7,6 +8,61 @@ import * as path from 'path';
 delete process.env.ELECTRON_RUN_AS_NODE;
 
 const projectRoot = path.resolve(__dirname);
+const e2eWdioDir = path.join(projectRoot, 'e2e-wdio');
+const fixturesDir = path.join(e2eWdioDir, 'fixtures');
+
+// Main process E2E log file path (Renderer console logs are forwarded here)
+const mainE2ELogPath = path.join(projectRoot, '..', 'logs', 'main-e2e.log');
+
+/**
+ * Spec file → Fixture project mapping
+ *
+ * Each E2E spec file is launched with SDD_PROJECT_PATH pointing to its fixture.
+ * Default fixture is 'test-project'. Only overrides are listed here.
+ *
+ * To add a new mapping: add the spec file basename (without .e2e.spec.ts / .spec.ts)
+ * and the fixture directory name under e2e-wdio/fixtures/.
+ */
+const DEFAULT_FIXTURE = 'test-project';
+const fixtureOverrides: Record<string, string> = {
+  'agent-log-streaming': 'auto-exec-test',
+  'agent-resume-log-display': 'auto-exec-test',
+  'auto-execution-document-review': 'document-review-test',
+  'auto-execution-impl-flow': 'tasks-approved-project',
+  'auto-execution-impl-phase': 'impl-test',
+  'auto-execution-resume': 'resume-test',
+  'bug-auto-execution': 'bug-auto-exec-test',
+  'bugs-file-watcher': 'bugs-pane-test',
+  'bugs-pane-integration': 'bugs-pane-test',
+  'bugs-worktree-support': 'bugs-pane-test',
+  'cloudflare-tunnel': 'bugs-pane-test',
+  'diagnostic-project-selection': 'impl-test',
+  'document-review-ui-states': 'doc-review-ui-test',
+  'file-watcher-ui-update': 'auto-exec-test',
+  'gemini-document-review': 'doc-review-ui-test',
+  'inspection-workflow': 'inspection-test',
+  'mermaid-preview': 'mermaid-test',
+  'parsed-log-entry-display': 'auto-exec-test',
+  'permission-control': 'permission-control-test',
+  'project-docs-viewer': 'docs-viewer-test',
+  'remote-webserver': 'bugs-pane-test',
+  'simple-auto-execution': 'auto-exec-test',
+  'worktree-execution': 'worktree-exec-test',
+  'worktree-spec-sync': 'worktree-spec-sync-test',
+  'worktree-two-stage-watcher': 'worktree-spec-sync-test',
+};
+
+/**
+ * Resolve fixture path for a given spec file.
+ * Strips .e2e.spec.ts or .spec.ts suffix and looks up the override map.
+ */
+function resolveFixtureForSpec(specFilePath: string): string {
+  const basename = path.basename(specFilePath)
+    .replace(/\.e2e\.spec\.ts$/, '')
+    .replace(/\.spec\.ts$/, '');
+  const fixture = fixtureOverrides[basename] || DEFAULT_FIXTURE;
+  return path.join(fixturesDir, fixture);
+}
 
 // Mock Claude CLI for E2E testing
 // This allows workflow tests to run without actual Claude API calls
@@ -90,6 +146,23 @@ export const config: Options.Testrunner = {
   },
 
   /**
+   * Specファイルごとに SDD_PROJECT_PATH を動的に設定
+   * Main processが直接読み取るため、Renderer→IPC→Main の不安定な経路を回避
+   */
+  beforeSession: function (_config, capabilities, specs) {
+    const specFile = specs[0];
+    // CLI の --spec オプション or 環境変数 SDD_PROJECT_PATH が優先
+    if (!process.env.SDD_PROJECT_PATH && specFile) {
+      const fixturePath = resolveFixtureForSpec(specFile);
+      const electronOpts = (capabilities as any)['wdio:electronServiceOptions'];
+      if (electronOpts?.appEnv) {
+        electronOpts.appEnv.SDD_PROJECT_PATH = fixturePath;
+        console.log(`[wdio] SDD_PROJECT_PATH set to ${fixturePath} for ${path.basename(specFile)}`);
+      }
+    }
+  },
+
+  /**
    * テスト開始前に既存のゾンビプロセスをクリーンアップ
    * user-data-dirが存在しないプロセスのみ終了（実行中のテストには影響しない）
    */
@@ -108,6 +181,114 @@ export const config: Options.Testrunner = {
       }
     } catch {
       // Cleanup script not found or failed, ignore
+    }
+  },
+
+  /**
+   * Rendererのconsole出力をキャプチャ（Main process ログファイル経由）
+   *
+   * Main process が webContents.on('console-message') で Renderer のコンソール出力を
+   * main-e2e.log に [Renderer Console] プレフィックス付きで記録する。
+   * セッション開始時のログファイルサイズを記録し、各テスト終了時に差分を表示する。
+   *
+   * テスト失敗時に自動出力、E2E_VERBOSE_LOGS=true で常時出力。
+   */
+  before: async function () {
+    // Record log file size at session start (before Electron app loads)
+    // This captures all Renderer logs including app initialization
+    try {
+      const stat = fs.statSync(mainE2ELogPath);
+      (globalThis as any).__logOffsetSessionStart = stat.size;
+    } catch {
+      (globalThis as any).__logOffsetSessionStart = 0;
+    }
+    // Per-test offset starts at session start
+    (globalThis as any).__logOffsetBeforeTest = (globalThis as any).__logOffsetSessionStart;
+  },
+
+  beforeTest: async function () {
+    // Record log file size at test start to extract only new entries per test
+    try {
+      const stat = fs.statSync(mainE2ELogPath);
+      (globalThis as any).__logOffsetBeforeTest = stat.size;
+    } catch {
+      // Keep previous offset
+    }
+  },
+
+  afterTest: async function (_test, _context, result) {
+    const showLogs = !result.passed || process.env.E2E_VERBOSE_LOGS === 'true';
+    if (!showLogs) return;
+
+    const offsetBefore: number = (globalThis as any).__logOffsetBeforeTest ?? 0;
+
+    try {
+      const stat = fs.statSync(mainE2ELogPath);
+      const bytesToRead = stat.size - offsetBefore;
+      if (bytesToRead <= 0) return;
+
+      // Read only the new portion of the log file
+      const fd = fs.openSync(mainE2ELogPath, 'r');
+      const buffer = Buffer.alloc(Math.min(bytesToRead, 256 * 1024)); // cap at 256KB
+      fs.readSync(fd, buffer, 0, buffer.length, offsetBefore);
+      fs.closeSync(fd);
+
+      const newLines = buffer.toString('utf-8').split('\n');
+      // Filter for Renderer Console entries only
+      const rendererLines = newLines.filter(line => line.includes('[Renderer Console]'));
+
+      if (rendererLines.length === 0) return;
+
+      console.log(`\n[renderer-console] ${rendererLines.length} entries:`);
+      for (const line of rendererLines) {
+        const errMatch = line.includes('[ERROR]');
+        const warnMatch = line.includes('[WARNING]');
+        const icon = errMatch ? 'ERR' : warnMatch ? 'WRN' : '   ';
+        const idx = line.indexOf('[Renderer Console]');
+        const content = idx >= 0 ? line.substring(idx) : line;
+        console.log(`  ${icon} ${content}`);
+      }
+    } catch {
+      // Log file not available or read error — silent fallback
+    }
+  },
+
+  /**
+   * セッション終了時に全Rendererコンソールログをダンプ（初期化ログ含む）
+   * テスト失敗時 or E2E_VERBOSE_LOGS=true で出力
+   */
+  after: async function (result) {
+    const showLogs = result !== 0 || process.env.E2E_VERBOSE_LOGS === 'true';
+    if (!showLogs) return;
+
+    const sessionOffset: number = (globalThis as any).__logOffsetSessionStart ?? 0;
+
+    try {
+      const stat = fs.statSync(mainE2ELogPath);
+      const bytesToRead = stat.size - sessionOffset;
+      if (bytesToRead <= 0) return;
+
+      const fd = fs.openSync(mainE2ELogPath, 'r');
+      const buffer = Buffer.alloc(Math.min(bytesToRead, 512 * 1024)); // cap at 512KB
+      fs.readSync(fd, buffer, 0, buffer.length, sessionOffset);
+      fs.closeSync(fd);
+
+      const newLines = buffer.toString('utf-8').split('\n');
+      const rendererLines = newLines.filter(line => line.includes('[Renderer Console]'));
+
+      if (rendererLines.length === 0) return;
+
+      console.log(`\n[renderer-console-session] ${rendererLines.length} total entries for this session:`);
+      for (const line of rendererLines) {
+        const errMatch = line.includes('[ERROR]');
+        const warnMatch = line.includes('[WARNING]');
+        const icon = errMatch ? 'ERR' : warnMatch ? 'WRN' : '   ';
+        const idx = line.indexOf('[Renderer Console]');
+        const content = idx >= 0 ? line.substring(idx) : line;
+        console.log(`  ${icon} ${content}`);
+      }
+    } catch {
+      // Silent fallback
     }
   },
 

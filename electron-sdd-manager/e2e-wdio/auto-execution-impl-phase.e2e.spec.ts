@@ -20,19 +20,42 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  selectSpecViaStore,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
-  refreshSpecStore,
   clearAgentStore,
   resetAutoExecutionService,
   resetSpecStoreAutoExecution,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
-  waitForProjectUIReady,
   waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
+
+/**
+ * Helper: Store上で直接selectProjectを呼び出してプロジェクトを選択する。
+ *
+ * SDD_PROJECT_PATHのブロードキャストは起動時のレースコンディションで
+ * 常に消失するため、Renderer側からstore.selectProject()を呼ぶ必要がある。
+ * ensureProjectSelectedはselectProjectViaStoreのPromiseラッパーを経由して
+ * 不安定なため、直接store操作を行う。
+ */
+async function selectProjectViaStoreDirect(projectPath: string): Promise<boolean> {
+  return browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (!stores?.project?.getState) {
+        done(false);
+        return;
+      }
+      await stores.project.getState().selectProject(projPath);
+      const result = stores.project.getState().lastSelectResult;
+      done(result?.success ?? false);
+    } catch (e) {
+      console.error('[E2E] selectProjectViaStoreDirect error:', e);
+      done(false);
+    }
+  }, projectPath);
+}
 
 // Fixture project path
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/impl-test');
@@ -336,16 +359,17 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to all phases completed (including document-review approved)
       resetFixtureToAllPhasesCompleted();
 
-      // Project is pre-selected via SDD_PROJECT_PATH environment variable
-      await waitForProjectUIReady(15000);
+      // Project is pre-selected via SDD_PROJECT_PATH (set by wdio.conf.ts beforeSession)
+      // Wait for File Watcher to detect fixture changes
+      await browser.pause(500);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
+      // Select spec via UI click (not store manipulation)
+      const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
+      await specItem.waitForExist({ timeout: 15000 });
+      await specItem.click();
 
-      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);
-
-      // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
     });
@@ -451,20 +475,17 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to design completed (tasks, document-review, impl not done yet)
       resetFixtureToDesignCompleted();
 
-      // Project is pre-selected via SDD_PROJECT_PATH environment variable
-      await waitForProjectUIReady(15000);
-
-      // Refresh spec store to pick up fixture changes
-      await refreshSpecStore();
+      // Project is pre-selected via SDD_PROJECT_PATH (set by wdio.conf.ts beforeSession)
+      // Wait for File Watcher to detect fixture changes
       await browser.pause(500);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
+      // Select spec via UI click (not store manipulation)
+      const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
+      await specItem.waitForExist({ timeout: 15000 });
+      await specItem.click();
 
-      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);
-
-      // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
     });
@@ -536,16 +557,17 @@ describe('Auto Execution impl Phase E2E', () => {
       // Reset to all phases completed
       resetFixtureToAllPhasesCompleted();
 
-      // Project is pre-selected via SDD_PROJECT_PATH environment variable
-      await waitForProjectUIReady(15000);
+      // Project is pre-selected via SDD_PROJECT_PATH (set by wdio.conf.ts beforeSession)
+      // Wait for File Watcher to detect fixture changes
+      await browser.pause(500);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
+      // Select spec via UI click (not store manipulation)
+      const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
+      await specItem.waitForExist({ timeout: 15000 });
+      await specItem.click();
 
-      // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+      // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);
-
-      // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
     });

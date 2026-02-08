@@ -114,6 +114,14 @@ Report → Analyze → Fix → Verify
 
 Custom files are supported (managed via `/kiro:steering-custom`)
 
+### Skills
+
+| Skill | 場所 | トリガー |
+|-------|------|----------|
+| `investigation-mode` | `.claude/skills/` | 「調査して」「デバッグして」「エラーの原因は？」等 |
+| `e2e-test-writer` | `.claude/skills/` | 「E2Eテストを書いて」「テストシナリオを作成」等 |
+| `gemini-cli` | `~/.claude/skills/` | WebFetch/WebSearch失敗時のウェブ調査代行 |
+
 ## Development Commands
 
 ### Electronアプリ制御（多重起動防止機能付き）
@@ -161,7 +169,7 @@ Electronアプリの操作には`task`コマンドを使用する。
 
 ## Web Research
 
-- WebFetch/WebSearchが失敗・制限される場合、gemini-cli Skill（`~/.claude/skills/gemini-cli/`）を使用してウェブ調査を代行する
+- WebFetch/WebSearchが失敗・制限される場合、gemini-cli Skillでウェブ調査を代行する
 - 基本コマンド: `gemini -p "質問" -y -o text 2>&1`
 - WebFetchを1回試して失敗した場合、リトライせずgemini-cliに切り替えること
 

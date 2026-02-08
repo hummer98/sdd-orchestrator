@@ -208,6 +208,7 @@ export function setupAgentEventListeners(): () => void {
   // Task 9.2: window.electronAPI.onAgentStatusChange -> tRPC Subscription
   const statusSub = getVanillaClient().events.onAgentStatusChange.subscribe(undefined, {
     onData: (data: { agentId: string; status: string }) => {
+      if (!data) return;
       console.log('[agentStoreAdapter] Agent status changed', { agentId: data.agentId, status: data.status });
       useSharedAgentStore.getState().updateAgentStatus(data.agentId, data.status as AgentStatus);
     },

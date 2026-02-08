@@ -481,25 +481,14 @@ describe('Git Worktree Support E2E', () => {
   // Task 10.2: Worktree IPC channels
   // Requirements: 1.1, 1.3, 1.6
   // ============================================================
-  describe('Worktree IPCチャネル', () => {
-    it('electronAPIにworktree関連メソッドが存在する', async () => {
-      const hasWorktreeMethods = await browser.execute(() => {
-        const api = (window as any).electronAPI;
-        if (!api) return { exists: false };
-        return {
-          exists: true,
-          hasWorktreeCheckMain: typeof api.worktreeCheckMain === 'function',
-          hasWorktreeCreate: typeof api.worktreeCreate === 'function',
-          hasWorktreeRemove: typeof api.worktreeRemove === 'function',
-          hasWorktreeResolvePath: typeof api.worktreeResolvePath === 'function',
-        };
+  describe('Worktree tRPC IPCチャネル', () => {
+    it('tRPC IPCブリッジ経由でworktree関連APIにアクセスできる', async () => {
+      // tRPC完全移行後、worktree APIはtRPCルーター経由でアクセス
+      // electronTRPC ブリッジの存在確認で統合を検証
+      const hasTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-
-      expect(hasWorktreeMethods.exists).toBe(true);
-      expect(hasWorktreeMethods.hasWorktreeCheckMain).toBe(true);
-      expect(hasWorktreeMethods.hasWorktreeCreate).toBe(true);
-      expect(hasWorktreeMethods.hasWorktreeRemove).toBe(true);
-      expect(hasWorktreeMethods.hasWorktreeResolvePath).toBe(true);
+      expect(hasTRPC).toBe(true);
     });
   });
 

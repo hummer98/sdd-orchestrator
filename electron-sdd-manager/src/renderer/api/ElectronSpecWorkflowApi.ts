@@ -374,7 +374,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       const result = await getVanillaClient().spec.startImpl.mutate({
         specName: specId,
         featureName,
-        commandPrefix: commandPrefix ?? this.commandPrefix,
+        commandPrefix: (commandPrefix ?? this.commandPrefix) as 'kiro' | 'spec-manager',
       });
       return result as Result<{ agentId: string }, ImplStartError>;
     } catch (error) {
@@ -391,7 +391,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
   async parseTasksForParallel(specName: string): Promise<ParseResult | null> {
     try {
       // trpc-full-migration Task 5.3: Use tRPC for parseTasksForParallel
-      return await getVanillaClient().spec.parseTasksForParallel.query({ specName });
+      return await getVanillaClient().spec.parseTasksForParallel.query({ featureName: specName });
     } catch (error) {
       console.error('Failed to parse tasks for parallel:', error);
       return null;

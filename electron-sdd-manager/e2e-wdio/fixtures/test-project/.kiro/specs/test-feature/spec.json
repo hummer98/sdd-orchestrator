@@ -1,12 +1,12 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2Eテスト用のテスト機能",
-  "phase": "initialized",
+  "description": "E2E\u30c6\u30b9\u30c8\u7528\u306e\u30c6\u30b9\u30c8\u6a5f\u80fd",
+  "phase": "requirements-generated",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "design": {
@@ -19,5 +19,251 @@
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "documentReview": {
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 2,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 3,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 4,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 5,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 6,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 7,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 8,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 9,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 10,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 11,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 12,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 13,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 14,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 15,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 16,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 17,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 18,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 19,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 20,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 21,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 22,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 23,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 24,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 25,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 26,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 27,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 28,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 29,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 30,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 31,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 32,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 33,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 34,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 35,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 36,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 37,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 38,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 39,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 40,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 41,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 42,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 43,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 44,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 45,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 46,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 47,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 48,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 49,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 50,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 51,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 52,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 53,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 54,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 55,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 56,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 57,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 58,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 59,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 60,
+        "status": "review_complete"
+      }
+    ],
+    "status": "approved"
+  },
+  "updated_at": "2026-02-08T16:35:04.339847Z"
 }

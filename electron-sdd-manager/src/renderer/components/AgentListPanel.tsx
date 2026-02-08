@@ -149,7 +149,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
       const agentInfo = await getVanillaClient().spec.executeAskSpec.mutate({
         specId,
         featureName,
-        prompt,
+        question: prompt,
       }) as unknown as RendererAgentInfo;
       addAgent(specId, agentInfo);
       selectAgent(agentInfo.agentId);

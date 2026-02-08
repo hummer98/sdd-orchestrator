@@ -66,11 +66,19 @@ function resolveFixtureForSpec(specFilePath: string): string {
 
 // Mock Claude CLI for E2E testing
 // This allows workflow tests to run without actual Claude API calls
+// Environment variables set on process.env are inherited by the Electron child process
 const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude.sh');
 process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
 // Allow E2E_MOCK_CLAUDE_DELAY to be set via environment variable (default: 0.1s)
 if (!process.env.E2E_MOCK_CLAUDE_DELAY) {
   process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
+}
+// Default mock environment variables (can be overridden via CLI env vars)
+if (!process.env.E2E_MOCK_DOC_REVIEW_RESULT) {
+  process.env.E2E_MOCK_DOC_REVIEW_RESULT = '';
+}
+if (!process.env.E2E_MOCK_TASKS_COMPLETE) {
+  process.env.E2E_MOCK_TASKS_COMPLETE = 'false';
 }
 
 // E2Eテスト用のアプリ起動方法を選択
@@ -113,18 +121,9 @@ export const config: Options.Testrunner = {
         ...(usePackagedApp ? { appBinaryPath } : { appEntryPoint }),
         // E2Eテストモードを示すカスタム引数のみ
         appArgs: ['--e2e-test'],
-        // Pass mock Claude CLI environment variables to the Electron app
-        // E2E_MOCK_DOC_REVIEW_RESULT: "approved" or "needs_fix"
-        // E2E_MOCK_TASKS_COMPLETE: "true" to mark tasks as complete after impl
-        appEnv: {
-          E2E_MOCK_CLAUDE_COMMAND: mockClaudePath,
-          E2E_MOCK_CLAUDE_DELAY: process.env.E2E_MOCK_CLAUDE_DELAY || '0.1',
-          E2E_MOCK_DOC_REVIEW_RESULT: process.env.E2E_MOCK_DOC_REVIEW_RESULT || '',
-          E2E_MOCK_TASKS_COMPLETE: process.env.E2E_MOCK_TASKS_COMPLETE || 'false',
-          // Allow setting initial project path via environment variable
-          // Usage: SDD_PROJECT_PATH=/path/to/project npm run test:e2e -- --spec ...
-          ...(process.env.SDD_PROJECT_PATH ? { SDD_PROJECT_PATH: process.env.SDD_PROJECT_PATH } : {}),
-        },
+        // NOTE: appEnv is NOT a valid wdio-electron-service option (silently ignored).
+        // Environment variables are passed via process.env inheritance instead.
+        // See: process.env.* settings at the top of this file.
       },
     },
   ],
@@ -147,18 +146,28 @@ export const config: Options.Testrunner = {
 
   /**
    * Specファイルごとに SDD_PROJECT_PATH を動的に設定
+   * process.env に直接設定 → Electron子プロセスが継承
    * Main processが直接読み取るため、Renderer→IPC→Main の不安定な経路を回避
+   *
+   * _sddProjectPathSetByWdio: wdioが自動設定した場合のフラグ。
+   * ユーザーが明示的に SDD_PROJECT_PATH を設定した場合はそちらを優先する。
    */
-  beforeSession: function (_config, capabilities, specs) {
+  beforeSession: function (_config, _capabilities, specs) {
     const specFile = specs[0];
-    // CLI の --spec オプション or 環境変数 SDD_PROJECT_PATH が優先
-    if (!process.env.SDD_PROJECT_PATH && specFile) {
+    const userSetPath = process.env.SDD_PROJECT_PATH;
+    const autoSet = (process.env as any)._sddProjectPathSetByWdio === 'true';
+
+    // ユーザーが明示的に設定 & wdioの自動設定ではない場合は維持
+    if (userSetPath && !autoSet) {
+      console.log(`[wdio] Using user-specified SDD_PROJECT_PATH: ${userSetPath}`);
+      return;
+    }
+
+    if (specFile) {
       const fixturePath = resolveFixtureForSpec(specFile);
-      const electronOpts = (capabilities as any)['wdio:electronServiceOptions'];
-      if (electronOpts?.appEnv) {
-        electronOpts.appEnv.SDD_PROJECT_PATH = fixturePath;
-        console.log(`[wdio] SDD_PROJECT_PATH set to ${fixturePath} for ${path.basename(specFile)}`);
-      }
+      process.env.SDD_PROJECT_PATH = fixturePath;
+      (process.env as any)._sddProjectPathSetByWdio = 'true';
+      console.log(`[wdio] SDD_PROJECT_PATH set to ${fixturePath} for ${path.basename(specFile)}`);
     }
   },
 

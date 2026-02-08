@@ -4,9 +4,15 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { initializeE2EShim } from './api/E2EShim';
 import { App } from './App';
 import { TRPCProvider } from '../shared/trpc/provider';
 import './styles/index.css';
+
+// Initialize E2E Shim if in E2E environment
+if ((window as any).isE2E) {
+  initializeE2EShim();
+}
 import { useProjectStore, useSpecStore, useSharedBugStore, notify } from './stores';
 import { setNotificationHandler } from '@shared/stores/notificationStore';
 
@@ -38,6 +44,7 @@ if (typeof window !== 'undefined') {
   try {
     getVanillaClient().events.onAgentStartError.subscribe(undefined, {
       onData: (data: { agentId: string; specId: string; error: Record<string, unknown> }) => {
+        if (!data) return;
         const message = getAgentStartErrorMessage(data.error as unknown as Parameters<typeof getAgentStartErrorMessage>[0]);
         notify.error(message);
       },

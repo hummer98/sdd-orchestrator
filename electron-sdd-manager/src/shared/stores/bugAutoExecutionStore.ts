@@ -363,6 +363,10 @@ export function initBugAutoExecutionIpcListeners(): void {
     onData: (rawData: Record<string, unknown>) => {
       const data = rawData as unknown as BugAutoExecutionStatusChangedEvent;
       const { bugPath, state } = data;
+      if (!state) {
+        console.warn('[BugAutoExecutionStore] Received status changed event with empty state', data);
+        return;
+      }
       useBugAutoExecutionStore.getState().updateFromMainProcess(bugPath, {
         status: state.status as MainProcessBugAutoExecutionState['status'],
         currentPhase: state.currentPhase,
@@ -395,6 +399,7 @@ export function initBugAutoExecutionIpcListeners(): void {
   const errorSub = getVanillaClient().events.onBugAutoExecutionError.subscribe(undefined, {
     onData: (rawData: Record<string, unknown>) => {
       const data = rawData as { bugPath: string; error: Record<string, unknown> };
+      if (!data || !data.error) return;
       console.error('[BugAutoExecutionStore] Bug auto-execution error:', data.error);
       // Extract phase from error if available
       const phase = 'phase' in data.error ? (data.error.phase as BugWorkflowPhase | null) : null;
@@ -505,6 +510,7 @@ export function initBugAutoExecutionWebSocketListeners(
 
     // Listen for BUG_AUTO_EXECUTION_ERROR events
     const unsubscribeError = apiClient.on('bugAutoExecutionError', (data: { bugPath: string; error: { type: string; message?: string; phase?: string } }) => {
+      if (!data || !data.error) return;
       console.error('[BugAutoExecutionStore] Bug auto-execution error:', data.error);
       const phase = data.error.phase as BugWorkflowPhase | null;
       const currentState = useBugAutoExecutionStore.getState().getBugAutoExecutionRuntime(data.bugPath);

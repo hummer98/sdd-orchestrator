@@ -201,12 +201,46 @@ export async function waitForProjectUIReady(timeout: number = 10000): Promise<bo
 }
 
 /**
+ * Helper: Select spec using UI click (recommended approach)
+ *
+ * This is the recommended way to select a spec in E2E tests.
+ * Store-based selectSpec (selectSpecViaStore) is an anti-pattern because
+ * tRPC IPC calls inside selectSpec don't complete properly in browser.executeAsync context,
+ * resulting in specDetail remaining null and workflow-view not rendering.
+ *
+ * @param specName The spec name to select (used to find data-testid="spec-item-{specName}")
+ * @param timeout Timeout for waiting for elements
+ * @returns true if spec was selected, false otherwise
+ */
+export async function selectSpecViaUI(specName: string, timeout: number = 10000): Promise<boolean> {
+  try {
+    // Wait for spec list to be visible
+    const specList = await $('[data-testid="spec-list"]');
+    await specList.waitForExist({ timeout });
+
+    // Find and click the spec item
+    const specItem = await $(`[data-testid="spec-item-${specName}"]`);
+    if (await specItem.isExisting()) {
+      await specItem.click();
+      await browser.pause(1000);
+      return true;
+    }
+    console.error(`[E2E] selectSpecViaUI: spec-item-${specName} not found`);
+    return false;
+  } catch (e) {
+    console.error(`[E2E] selectSpecViaUI error:`, e);
+    return false;
+  }
+}
+
+/**
  * Helper: Select spec using Zustand specStore action
  *
- * This function:
- * 1. Waits for specs array to be populated (async loading after project selection)
- * 2. Finds the spec by name in the specs list
- * 3. Calls selectSpec() which is async and automatically loads spec detail
+ * @deprecated selectSpecViaUI() を使用してください。
+ * この関数は browser.executeAsync 内で tRPC IPC を呼び出すため、
+ * specDetail が null のまま完了し workflow-view が描画されない問題があります。
+ * UI クリック（selectSpecViaUI）を使用すると React の正常なレンダリングパイプラインで
+ * tRPC レスポンスが処理されるため安定します。
  *
  * Bug fix: mermaid-preview E2E
  * - Wait for specs to load before attempting selection

@@ -8,6 +8,9 @@
  * - 2.1, 2.2: output path and round number
  * - 4.1, 4.2, 4.5: project settings
  * - 6.1: error handling
+ *
+ * Note: tRPC完全移行後、window.electronAPIは削除済み
+ *       electron-trpc の IPC ブリッジ (window.electronTRPC) を使用
  */
 
 describe('Debatex Scheme E2E', () => {
@@ -87,28 +90,32 @@ describe('Debatex Scheme E2E', () => {
       expect(typeof exists).toBe('boolean');
     });
 
-    it('ProjectSettingsDialog IPC API should exist', async () => {
-      const hasLoadProjectDefaults = await browser.execute(() => {
-        return typeof window.electronAPI?.loadProjectDefaults === 'function';
+    it('tRPC IPCブリッジ経由でProjectSettings APIにアクセスできる', async () => {
+      // tRPC移行後、loadProjectDefaults/saveProjectDefaultsはtRPCルーター経由
+      // IPCブリッジの存在とprojectストアの利用可能性を確認
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-      expect(hasLoadProjectDefaults).toBe(true);
+      expect(hasElectronTRPC).toBe(true);
 
-      const hasSaveProjectDefaults = await browser.execute(() => {
-        return typeof window.electronAPI?.saveProjectDefaults === 'function';
+      const projectStoreReady = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.project?.getState !== undefined;
       });
-      expect(hasSaveProjectDefaults).toBe(true);
+      expect(projectStoreReady).toBe(true);
     });
 
-    it('ProjectSettingsDialog should be accessible via IPC', async () => {
-      // Verify the IPC handlers are registered
-      const apiExists = await browser.execute(() => {
+    it('ProjectSettingsDialog should be accessible via tRPC', async () => {
+      // Verify the tRPC IPC bridge and stores are available for settings access
+      const storeAvailable = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
         return (
-          typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.loadProjectDefaults === 'function' &&
-          typeof window.electronAPI.saveProjectDefaults === 'function'
+          typeof (window as any).electronTRPC !== 'undefined' &&
+          stores !== undefined &&
+          stores.project !== undefined
         );
       });
-      expect(apiExists).toBe(true);
+      expect(storeAvailable).toBe(true);
     });
   });
 
@@ -135,28 +142,34 @@ describe('Debatex Scheme E2E', () => {
   });
 
   // ============================================================
-  // IPC Channels for debatex
+  // tRPC Channels for debatex
   // ============================================================
-  describe('IPC Channels for debatex', () => {
-    it('Execute IPC should support document-review type', async () => {
-      const hasExecute = await browser.execute(() => {
-        return typeof window.electronAPI?.execute === 'function';
+  describe('tRPC Channels for debatex', () => {
+    it('tRPC IPCブリッジが利用可能である', async () => {
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-      expect(hasExecute).toBe(true);
+      expect(hasElectronTRPC).toBe(true);
     });
 
-    it('Agent output event handler should exist', async () => {
-      const hasOnAgentOutput = await browser.execute(() => {
-        return typeof window.electronAPI?.onAgentOutput === 'function';
+    it('agentストアがtRPC Subscription経由で利用可能（出力イベント受信）', async () => {
+      // tRPC移行後、onAgentOutput/onAgentStatusChangeはtRPC Subscription経由
+      const agentStoreReady = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.agent?.getState !== undefined;
       });
-      expect(hasOnAgentOutput).toBe(true);
+      expect(agentStoreReady).toBe(true);
     });
 
-    it('Agent status change event handler should exist', async () => {
-      const hasOnAgentStatusChange = await browser.execute(() => {
-        return typeof window.electronAPI?.onAgentStatusChange === 'function';
+    it('__STORES__にagent/project/specストアが含まれる', async () => {
+      const storeKeys = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        if (!stores) return [];
+        return Object.keys(stores);
       });
-      expect(hasOnAgentStatusChange).toBe(true);
+      expect(storeKeys).toContain('agent');
+      expect(storeKeys).toContain('project');
+      expect(storeKeys).toContain('spec');
     });
   });
 

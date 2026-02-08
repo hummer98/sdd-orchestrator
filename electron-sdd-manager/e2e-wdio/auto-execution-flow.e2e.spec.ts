@@ -18,7 +18,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -150,10 +150,11 @@ describe('Auto Execution Flow E2E Tests', () => {
       console.log('[E2E] WARNING: Project UI not ready after selection');
     }
 
-    const specSuccess = await selectSpecViaStore(SPEC_NAME);
+    // Select spec via UI click (not store manipulation - anti-pattern)
+    const specSuccess = await selectSpecViaUI(SPEC_NAME);
     expect(specSuccess).toBe(true);
 
-    // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+    // Wait for spec detail to be ready after UI click
     const specDetailReady = await waitForSpecDetailReady(SPEC_NAME, 15000);
     if (!specDetailReady) {
       console.log('[E2E] WARNING: Spec detail not ready after selection');

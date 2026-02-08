@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, AlertCircle, GitBranch } from 'lucide-react';
-import { useProjectStore, useAgentStore, useWorkflowStore, notify, type AgentInfo } from '../stores';
+import { useProjectStore, useAgentStore, notify, type AgentInfo } from '../stores';
 import { clsx } from 'clsx';
 // create-spec-dialog-simplify: Task 1.3 - AgentIcon/AgentBranchIconインポート
 import { AgentIcon, AgentBranchIcon } from '@shared/components/ui/AgentIcon';
@@ -25,7 +25,6 @@ interface CreateSpecDialogProps {
 export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const { currentProject } = useProjectStore();
   const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
-  const { commandPrefix } = useWorkflowStore();
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -65,10 +64,8 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
       // trpc-full-migration Task 5.3: Use tRPC for executeSpecPlan
       // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
       const agentInfo = await getVanillaClient().spec.executeSpecPlan.mutate({
-        projectPath: currentProject,
-        description: trimmed,
-        commandPrefix,
-        worktreeMode,
+        specId: '',
+        featureName: trimmed,
       }) as unknown as AgentInfo;
 
       // Add agent to store and navigate to project agents panel

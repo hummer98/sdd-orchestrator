@@ -28,7 +28,13 @@ export default defineConfig({
           build: {
             outDir: 'dist/main',
             rollupOptions: {
-              external: ['electron'],
+              external: ['electron', 'zod'],
+              // vite-plugin-electron uses build.lib mode, which makes Vite set
+              // preserveEntrySignatures: 'strict'. With 'strict', Rollup creates
+              // a facade (shim) when the chunk needs internal exports even if the
+              // entry module has zero exports. 'exports-only' avoids the facade
+              // for zero-export entries, producing a single output file.
+              preserveEntrySignatures: 'exports-only',
             },
           },
         },

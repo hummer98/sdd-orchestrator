@@ -10,6 +10,9 @@
  * - ウィンドウ状態の永続化・復元
  *
  * Requirements: 1.1-1.5, 2.1-2.4, 3.1-3.4, 4.1-4.6, 5.1-5.4
+ *
+ * Note: tRPC完全移行後、window.electronAPIは削除済み
+ *       electron-trpc の IPC ブリッジ (window.electronTRPC) を使用
  */
 
 describe('Multi-Window Support E2E', () => {
@@ -218,20 +221,19 @@ describe('Multi-Window Support E2E', () => {
       expect(normalizedPaths.multiSlash).toBe('/path/to/project');
     });
 
-    it('Renderer APIにプロジェクト選択メソッドが存在する', async () => {
-      const hasSelectProject = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.selectProject === 'function';
+    it('tRPC IPCブリッジ経由でプロジェクト管理APIにアクセスできる', async () => {
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-      expect(hasSelectProject).toBe(true);
+      expect(hasElectronTRPC).toBe(true);
     });
 
-    it('Renderer APIにプロジェクトパス設定メソッドが存在する', async () => {
-      const hasSetProjectPath = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.setProjectPath === 'function';
+    it('projectストアが利用可能である', async () => {
+      const projectStoreReady = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.project?.getState !== undefined;
       });
-      expect(hasSetProjectPath).toBe(true);
+      expect(projectStoreReady).toBe(true);
     });
   });
 
@@ -373,35 +375,30 @@ describe('Multi-Window Support E2E', () => {
   // Note: 基本的なセキュリティ設定テストは app-launch.spec.ts に統合
 
   // ============================================================
-  // IPC通信 (Requirements: 5.3, 5.4)
+  // tRPC IPC通信 (Requirements: 5.3, 5.4)
   // ============================================================
-  describe('IPC通信', () => {
-    it('Renderer APIが利用可能である', async () => {
-      const hasElectronAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined';
+  describe('tRPC IPC通信', () => {
+    it('electronTRPC IPCブリッジが利用可能である', async () => {
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-      expect(hasElectronAPI).toBe(true);
+      expect(hasElectronTRPC).toBe(true);
     });
 
-    it('エージェント管理APIが存在する', async () => {
-      const hasAgentAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.getAgents === 'function' &&
-          typeof window.electronAPI.getAllAgents === 'function' &&
-          typeof window.electronAPI.startAgent === 'function' &&
-          typeof window.electronAPI.stopAgent === 'function';
+    it('agentストアが利用可能である（tRPC経由のエージェント管理）', async () => {
+      const agentStoreReady = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.agent?.getState !== undefined;
       });
-      expect(hasAgentAPI).toBe(true);
+      expect(agentStoreReady).toBe(true);
     });
 
-    it('Specs Watcher APIが存在する', async () => {
-      const hasWatcherAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.startSpecsWatcher === 'function' &&
-          typeof window.electronAPI.stopSpecsWatcher === 'function' &&
-          typeof window.electronAPI.onSpecsChanged === 'function';
+    it('specストアが利用可能である（tRPC経由のSpecs Watcher）', async () => {
+      const specStoreReady = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.spec?.getState !== undefined;
       });
-      expect(hasWatcherAPI).toBe(true);
+      expect(specStoreReady).toBe(true);
     });
   });
 

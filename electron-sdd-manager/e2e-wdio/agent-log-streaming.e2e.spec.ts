@@ -18,7 +18,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -117,13 +117,12 @@ describe('Agent Log Streaming E2E Test', () => {
     await refreshSpecStore();
     await browser.pause(500);
 
-    const specSuccess = await selectSpecViaStore(SPEC_NAME);
+    // Select spec via UI click (not store manipulation - anti-pattern)
+    const specSuccess = await selectSpecViaUI(SPEC_NAME);
     expect(specSuccess).toBe(true);
-    await browser.pause(500);
 
     // Wait for spec detail to be fully loaded before proceeding
     await waitForSpecDetailReady(SPEC_NAME, 15000);
-    await refreshSpecStore();
 
     // Wait for agent-list-panel to appear
     const agentPanelVisible = await waitForCondition(async () => {

@@ -29,28 +29,30 @@
         "status": "reply_complete",
         "reviewCompletedAt": "2024-01-01T00:01:00.000Z",
         "replyCompletedAt": "2024-01-01T00:02:00.000Z",
-        "fixStatus": "applied",
         "fixRequired": 3,
-        "needsDiscussion": 0
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 2,
         "status": "reply_complete",
         "reviewCompletedAt": "2024-01-01T00:03:00.000Z",
         "replyCompletedAt": "2024-01-01T00:04:00.000Z",
-        "fixStatus": "applied",
         "fixRequired": 1,
-        "needsDiscussion": 0
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 3,
         "status": "reply_complete",
         "reviewCompletedAt": "2024-01-01T00:05:00.000Z",
         "replyCompletedAt": "2024-01-01T00:06:00.000Z",
-        "fixStatus": "not_required",
         "fixRequired": 0,
-        "needsDiscussion": 0
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
       }
-    ]
-  }
+    ],
+    "scheme": "gemini-cli"
+  },
+  "updated_at": "2026-02-08T16:17:13.521Z"
 }

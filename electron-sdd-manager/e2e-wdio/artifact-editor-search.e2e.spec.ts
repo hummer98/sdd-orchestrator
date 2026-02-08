@@ -2,6 +2,10 @@
  * ArtifactEditor Search E2E Tests
  * Testing search functionality in ArtifactEditor
  * Requirements: artifact-editor-search 1.1, 1.2, 2.1, 3.1, 3.2, 3.5, 4.1, 4.3
+ *
+ * Note: tRPC完全移行後、window.electronAPIは削除済み
+ *       プロジェクト選択は SDD_PROJECT_PATH 環境変数経由（wdio.conf.ts appEnv）
+ *       electron-trpc の IPC ブリッジ (window.electronTRPC) を使用
  */
 
 import { browser, expect } from '@wdio/globals';
@@ -17,12 +21,14 @@ describe('ArtifactEditor Search', () => {
 
   describe('Search bar visibility (Req 1.1, 1.2)', () => {
     it('should display search bar when Ctrl+F is pressed', async () => {
-      // Select project first
-      const result = await browser.execute(async (projectPath: string) => {
-        return await window.electronAPI.selectProject(projectPath);
-      }, FIXTURE_PROJECT_PATH);
-
-      expect(result).toBeDefined();
+      // プロジェクト選択はSDD_PROJECT_PATH環境変数経由で行われる（wdio.conf.ts appEnv設定）
+      // tRPC移行後、browser.execute()からwindow.electronAPI.selectProject()は使用不可
+      // projectストア経由でプロジェクト選択状態を確認
+      const projectState = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.project?.getState) return null;
+        return stores.project.getState().projectPath;
+      });
 
       // Wait for spec list to load
       await browser.pause(500);

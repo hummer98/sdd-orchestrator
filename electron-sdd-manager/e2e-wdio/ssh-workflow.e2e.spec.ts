@@ -3,29 +3,30 @@
  * SSH接続フロー - SSHConnectDialog、SSHAuthDialogのE2Eテスト
  *
  * テスト内容:
- * - SSH API の存在確認
+ * - tRPC IPCブリッジの確認（SSH API用）
  * - SSHConnectDialog/SSHAuthDialog のUI要素確認（ダイアログが開いている場合のみ）
  *
  * Requirements: 1.3, 1.4, 2.1, 2.2, 2.3
  *
  * Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
  * Note: ダイアログのUI要素テストは実際にダイアログを開く操作が必要。
- *       現在はAPI存在確認のみを実施。
+ *       現在はtRPC IPCブリッジ存在確認のみを実施。
+ * Note: tRPC完全移行後、window.electronAPIは削除済み
+ *       electron-trpc の IPC ブリッジ (window.electronTRPC) を使用
  */
 
 describe('SSH Workflow E2E', () => {
   // ============================================================
-  // SSH API存在確認
+  // SSH tRPC API確認
   // Requirements: 1.3, 1.4
   // ============================================================
-  describe('SSH API', () => {
-    it('Renderer APIにSSH接続関連のメソッドが存在する', async () => {
-      const hasSSHConnectAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.sshConnect === 'function';
+  describe('SSH tRPC API', () => {
+    it('tRPC IPCブリッジが定義されている（SSH API用）', async () => {
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
-      // SSH APIの存在を確認（未実装の場合はfalse）
-      expect(typeof hasSSHConnectAPI).toBe('boolean');
+      // tRPC IPCブリッジの存在を確認
+      expect(hasElectronTRPC).toBe(true);
     });
   });
 

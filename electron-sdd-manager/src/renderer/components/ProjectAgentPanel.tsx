@@ -134,7 +134,7 @@ export function ProjectAgentPanel() {
       // trpc-full-migration Task 5.3: Use tRPC for executeProjectCommand
       // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
       const agentInfo = await getVanillaClient().spec.executeProjectCommand.mutate({
-        projectPath: currentProject,
+        specId: '',
         command,
         title: 'ask',
       }) as unknown as AgentInfo;
@@ -180,7 +180,7 @@ export function ProjectAgentPanel() {
       // trpc-full-migration Task 5.3: Use tRPC for executeProjectCommand (release)
       // trpc-full-migration: Cast to AgentInfo (tRPC infers wider AgentStatus from server-side type)
       const agentInfo = await getVanillaClient().spec.executeProjectCommand.mutate({
-        projectPath: currentProject,
+        specId: '',
         command: '/release --auto',
         title: 'release',
       }) as unknown as AgentInfo;

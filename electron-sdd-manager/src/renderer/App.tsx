@@ -281,6 +281,7 @@ export function App() {
   // agent-exit-robustness: Requirements: 3.4, 3.5 - Notify user when agent exit processing fails
   trpc.events.onAgentExitError.useSubscription(undefined, {
     onData: (data) => {
+      if (!data) return;
       console.error('[App] Agent exit error:', data);
       addNotification({
         type: 'error',
@@ -300,10 +301,19 @@ export function App() {
 
     (async () => {
       try {
+        console.log('[App] Pulling initial project selection result via tRPC...');
         const result = await getVanillaClient().project.getInitialSelectResult.query();
+        console.log('[App] getInitialSelectResult returned:', {
+          hasResult: result !== null,
+          projectPath: result?.projectPath ?? null,
+          success: result?.success ?? null,
+        });
         if (result !== null) {
-          console.log('[App] Pulled initial project selection result', { projectPath: result.projectPath });
+          console.log('[App] Applying initial project selection result', { projectPath: result.projectPath });
           await applySelectProjectResult(result as unknown as Parameters<typeof applySelectProjectResult>[0]);
+          console.log('[App] Initial project selection applied successfully');
+        } else {
+          console.log('[App] No initial project selection cached (SDD_PROJECT_PATH not set or result already consumed)');
         }
       } catch (error) {
         console.error('[App] Failed to pull initial project selection result:', error);
@@ -508,6 +518,7 @@ export function App() {
     onAgentLog: (callback: (agentId: string, log: ParsedLogEntry) => void): (() => void) => {
       const sub = getVanillaClient().events.onAgentLog.subscribe(undefined, {
         onData: (data: { agentId: string; parsedLog: Record<string, unknown> }) => {
+          if (!data || !data.agentId) return;
           callback(data.agentId, data.parsedLog as unknown as ParsedLogEntry);
         },
       });

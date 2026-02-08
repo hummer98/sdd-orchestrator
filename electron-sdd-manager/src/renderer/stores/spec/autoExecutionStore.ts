@@ -74,6 +74,10 @@ export function initAutoExecutionIpcListeners(): void {
   const statusSub = getVanillaClient().events.onAutoExecutionStatusChanged.subscribe(undefined, {
     onData: (data: Record<string, unknown>) => {
       const typedData = data as { specPath: string; state: MainProcessAutoExecutionState };
+      if (!typedData.state) {
+        console.warn('[AutoExecutionStore] Received status changed event with empty state', typedData);
+        return;
+      }
       const { specId, status, currentPhase } = typedData.state;
 
       // Update store directly - this is the key fix for the state sync bug
@@ -108,6 +112,7 @@ export function initAutoExecutionIpcListeners(): void {
   const errorSub = getVanillaClient().events.onAutoExecutionError.subscribe(undefined, {
     onData: (data: Record<string, unknown>) => {
       const typedData = data as { specPath: string; error: { type: string; message?: string } };
+      if (!typedData || !typedData.error) return;
       console.error('[AutoExecutionStore] Auto-execution error:', typedData.error);
       // Error state is handled via status changed event with status='error'
     },

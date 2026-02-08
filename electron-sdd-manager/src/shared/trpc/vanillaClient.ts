@@ -10,18 +10,13 @@
  * provider.tsx via setSharedClient(). This ensures a single ipcLink() call
  * and eliminates requestId collisions (electron-trpc Issue #201).
  *
- * Before setSharedClient() is called (i.e., before React mount), a deferred
- * proxy is returned that queues subscribe operations and flushes them when
- * the shared client becomes available. query/mutate calls before setSharedClient()
- * throw an error to aid debugging.
- *
- * Usage:
- *   const client = getVanillaClient();
- *   const projects = await client.config.getRecentProjects.query();
- *   await client.config.addRecentProject.mutate({ path: '/my/project' });
+ * Before setSharedClient() is called (i.e., before React mount), it now
+ * attempts to create a standalone IPC client if in a browser environment.
+ * If that fails, it returns a deferred proxy that queues subscribe operations.
  */
 import { createTRPCClientProxy } from '@trpc/client';
-import type { TRPCClient, CreateTRPCProxyClient } from '@trpc/client';
+import { createTRPCClient, type TRPCClient, type CreateTRPCProxyClient } from '@trpc/client';
+import { ipcLink } from 'electron-trpc/renderer';
 import type { AppRouter } from '../../main/trpc/router';
 
 type VanillaClient = CreateTRPCProxyClient<AppRouter>;
@@ -37,8 +32,16 @@ let deferredSubscriptions: DeferredSubscription[] = [];
 let deferredProxy: VanillaClient | null = null;
 
 /**
+ * Check if electron-trpc bridge is available in window
+ */
+function getTRPCBridge(): any {
+  if (typeof window === 'undefined') return null;
+  return (window as any).electronTRPC || (window as any).__electronTRPC__;
+}
+
+/**
  * Create a deferred proxy that queues subscribe calls and throws on query/mutate.
- * This is used when getVanillaClient() is called before setSharedClient().
+ * This is used when getVanillaClient() is called before setSharedClient() and IPC is not available.
  */
 function createDeferredProxy(): VanillaClient {
   const createNestedProxy = (path: string[]): unknown => {
@@ -52,6 +55,27 @@ function createDeferredProxy(): VanillaClient {
       apply: (_target, _thisArg, args) => {
         const lastSegment = path[path.length - 1];
 
+        // Check again if bridge became available in the meantime
+        if (!vanillaClient) {
+          const bridge = getTRPCBridge();
+          if (bridge) {
+            console.info('[vanillaClient] Bridge found during proxy call, creating client');
+            const client = createTRPCClient<AppRouter>({
+              links: [ipcLink()],
+            });
+            vanillaClient = createTRPCClientProxy<AppRouter>(client);
+          }
+        }
+
+        // If we have a real client now, use it
+        if (vanillaClient) {
+          let target: any = vanillaClient;
+          for (const segment of path) {
+            target = target[segment];
+          }
+          return target(...args);
+        }
+
         if (lastSegment === 'subscribe') {
           // Queue the subscribe call for later replay
           deferredSubscriptions.push({ path: [...path], args });
@@ -60,6 +84,7 @@ function createDeferredProxy(): VanillaClient {
         }
 
         if (lastSegment === 'query' || lastSegment === 'mutate') {
+          console.error(`[vanillaClient] ERROR: Cannot call ${path.join('.')}() before setSharedClient() and IPC link not available.`);
           throw new Error(
             `[vanillaClient] Cannot call ${path.join('.')}() before setSharedClient(). ` +
             `query/mutate are only available after TRPCProvider mounts.`
@@ -101,6 +126,7 @@ function flushDeferredSubscriptions(): void {
  * Creates the vanilla proxy and flushes any deferred subscriptions.
  */
 export function setSharedClient(client: TRPCClient<AppRouter>): void {
+  console.info('[vanillaClient] Shared client set from TRPCProvider');
   vanillaClient = createTRPCClientProxy<AppRouter>(client);
   deferredProxy = null;
 
@@ -110,15 +136,35 @@ export function setSharedClient(client: TRPCClient<AppRouter>): void {
 
 /**
  * Get the singleton vanilla tRPC client.
- * Returns a deferred proxy if setSharedClient() has not been called yet.
+ * In E2E/Production environment, if shared client is not yet set,
+ * creates a standalone client using ipcLink to allow early calls.
  */
 export function getVanillaClient(): VanillaClient {
   if (vanillaClient) {
     return vanillaClient;
   }
 
+  // If in a browser-like environment with IPC availability,
+  // we can create a standalone client immediately.
+  const bridge = getTRPCBridge();
+  if (bridge) {
+    console.info('[vanillaClient] Creating early standalone IPC client');
+    try {
+      const client = createTRPCClient<AppRouter>({
+        links: [ipcLink()],
+      });
+      vanillaClient = createTRPCClientProxy<AppRouter>(client);
+      return vanillaClient;
+    } catch (error) {
+      console.error('[vanillaClient] Failed to create standalone IPC client:', error);
+    }
+  } else if (typeof window !== 'undefined') {
+    console.warn('[vanillaClient] Browser environment detected but bridge (electronTRPC/__electronTRPC__) missing. Bridge not yet established?');
+  }
+
   // Return deferred proxy (singleton)
   if (!deferredProxy) {
+    console.info('[vanillaClient] Using deferred proxy');
     deferredProxy = createDeferredProxy();
   }
   return deferredProxy;

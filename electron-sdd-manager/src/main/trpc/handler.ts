@@ -7,18 +7,32 @@
  * Registers the tRPC IPC handler for the given BrowserWindow.
  * Called from createWindow() after the window is created (DD-005).
  * Passes createContext factory to createIPCHandler for service DI.
+ *
+ * Handler-injected services (not in productionServices.ts):
+ * - eventBus: Global EventBus for tRPC Subscription event distribution
+ * - getInitialSelectResult: Cached startup project selection result (Pull model)
+ * - clearInitialSelectResult: Clear cached startup project selection result
  */
 import { createIPCHandler } from 'electron-trpc/main';
 import { appRouter } from './router';
 import { createContext, type ContextServices } from './context';
 import { projectLogger } from '../services/projectLogger';
 import { createProductionServices } from './productionServices';
+import { getInitialSelectResult as getInitialSelectResultImpl, clearInitialSelectResult } from './helpers/projectState';
+import { getGlobalEventBus } from './services/globalEventBus';
+
+// Type-safe wrapper: projectSetup returns SelectProjectResult,
+// but ContextServices expects SelectProjectResultLike (structurally compatible superset)
+const getInitialSelectResult: ContextServices['getInitialSelectResult'] =
+  () => getInitialSelectResultImpl() as ReturnType<ContextServices['getInitialSelectResult']>;
 
 /**
  * Sets up the tRPC IPC handler for the given BrowserWindow.
  * This enables Renderer processes to call tRPC procedures via IPC.
  *
  * Production services are automatically resolved via createProductionServices().
+ * Handler-injected services (eventBus, getInitialSelectResult, clearInitialSelectResult)
+ * are added after the merge to ensure they are always present.
  * Tests can override individual services via serviceOverrides parameter.
  *
  * @param window - The BrowserWindow instance to attach the handler to
@@ -34,7 +48,19 @@ export function setupTRPCHandler(
     const mergedOverrides: Partial<ContextServices> = {
       ...productionDefaults,
       ...serviceOverrides,
+      // Handler-injected services: These are NOT in productionServices.ts
+      // because they depend on module-level singletons that must be wired here.
+      getInitialSelectResult,
+      clearInitialSelectResult,
+      eventBus: getGlobalEventBus(),
     };
+
+    projectLogger.info('[trpc] Handler-injected services wired', {
+      hasEventBus: !!mergedOverrides.eventBus,
+      hasGetInitialSelectResult: typeof mergedOverrides.getInitialSelectResult === 'function',
+      hasClearInitialSelectResult: typeof mergedOverrides.clearInitialSelectResult === 'function',
+      initialSelectResultValue: mergedOverrides.getInitialSelectResult?.() !== null ? 'cached' : 'null',
+    });
 
     createIPCHandler({
       router: appRouter,

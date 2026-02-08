@@ -342,7 +342,6 @@ export class CcSddWorkflowInstaller {
     }
 
     // Read all .md files from the directory
-    const { readdir } = await import('fs/promises');
     let files: string[];
     try {
       files = await readdir(templateDirPath);

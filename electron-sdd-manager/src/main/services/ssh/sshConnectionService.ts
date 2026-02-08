@@ -5,6 +5,7 @@
  */
 
 import { Client, type ConnectConfig, type SFTPWrapper } from 'ssh2';
+import * as fs from 'fs/promises';
 import type { Result } from '../../../renderer/types';
 import type { SSHUri } from './sshUriParser';
 import { SSHAuthService } from './sshAuthService';
@@ -172,7 +173,6 @@ export class SSHConnectionService {
       const keyMethod = authMethods.find((m) => m.type === 'privateKey');
       if (keyMethod && keyMethod.type === 'privateKey') {
         try {
-          const fs = await import('fs/promises');
           const keyContent = await fs.readFile(keyMethod.keyPath, 'utf-8');
           connectConfig.privateKey = keyContent;
 

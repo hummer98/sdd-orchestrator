@@ -11,7 +11,7 @@ import { BugsWatcherService } from '../../services/bugsWatcherService';
 import { AgentRecordWatcherService } from '../../services/agentRecordWatcherService';
 import type { FileService } from '../../services/fileService';
 import { projectLogger as logger } from '../../services/projectLogger';
-import { getDefaultMetricsService } from '../../services/metricsService';
+import { getMetricsService } from './projectState';
 import { getGlobalEventBus } from '../services/globalEventBus';
 import { EVENT_NAMES } from '../services/eventBus';
 
@@ -44,7 +44,7 @@ export async function startSpecsWatcher(
     getGlobalEventBus().emit(EVENT_NAMES.SPECS_CHANGED, event);
 
     if (event.type === 'add' && event.path.endsWith('spec.json') && event.specId) {
-      const metricsService = getDefaultMetricsService();
+      const metricsService = getMetricsService();
       await metricsService.startSpecLifecycle(event.specId);
       logger.debug('[watcherUtils] Spec lifecycle started', { specId: event.specId });
     }

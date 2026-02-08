@@ -103,6 +103,12 @@ vi.mock('./services/agentLifecycleSetup', () => ({
   })),
 }));
 
+// Mock windowFactory (createWindow extracted from index.ts)
+vi.mock('./windowFactory', () => ({
+  createWindow: vi.fn(),
+  getMainWindow: vi.fn(() => null),
+}));
+
 // Mock other services
 vi.mock('./services/logger', () => ({
   logger: {
@@ -171,7 +177,7 @@ describe('Main Process Lifecycle', () => {
   describe('cleanup on will-quit', () => {
     it('should stop agent watchdog', async () => {
       // Import the cleanup function (to be exported from index.ts)
-      const { cleanupOnQuit } = await import('./index');
+      const { cleanupOnQuit } = await import('./appLifecycle');
 
       // Execute cleanup
       await cleanupOnQuit();
@@ -182,7 +188,7 @@ describe('Main Process Lifecycle', () => {
 
     it('should stop remote UI server if running', async () => {
       // Import the cleanup function
-      const { cleanupOnQuit } = await import('./index');
+      const { cleanupOnQuit } = await import('./appLifecycle');
 
       // Mock server as running
       mockRemoteAccessServerGetStatus.mockReturnValue({
@@ -203,7 +209,7 @@ describe('Main Process Lifecycle', () => {
 
     it('should not stop remote UI server if not running', async () => {
       // Import the cleanup function
-      const { cleanupOnQuit } = await import('./index');
+      const { cleanupOnQuit } = await import('./appLifecycle');
 
       // Mock server as not running
       mockRemoteAccessServerGetStatus.mockReturnValue({
@@ -224,7 +230,7 @@ describe('Main Process Lifecycle', () => {
 
     it('should handle remote UI server stop error gracefully', async () => {
       // Import the cleanup function
-      const { cleanupOnQuit } = await import('./index');
+      const { cleanupOnQuit } = await import('./appLifecycle');
       const { projectLogger: logger } = await import('./services/projectLogger');
 
       // Mock server as running
@@ -252,7 +258,7 @@ describe('Main Process Lifecycle', () => {
 
     it('should handle agent watchdog stop error gracefully', async () => {
       // Import the cleanup function
-      const { cleanupOnQuit } = await import('./index');
+      const { cleanupOnQuit } = await import('./appLifecycle');
       const { projectLogger: logger } = await import('./services/projectLogger');
 
       // Mock watchdog stop to throw error

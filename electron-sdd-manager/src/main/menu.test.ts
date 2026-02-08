@@ -37,8 +37,8 @@ vi.mock('./services/configStore', () => ({
   })),
 }));
 
-// Mock index module (createWindow)
-vi.mock('./index', () => ({
+// Mock windowFactory module (createWindow)
+vi.mock('./windowFactory', () => ({
   createWindow: vi.fn(),
 }));
 
@@ -65,7 +65,7 @@ vi.mock('./trpc/services/eventBus', () => ({
 // Import after mocks
 import { createMenu, updateMenu, setMenuProjectPath, updateWindowTitle } from './menu';
 import { getConfigStore } from './services/configStore';
-import { createWindow } from './index';
+import { createWindow } from './windowFactory';
 
 describe('Menu Module', () => {
   let mockWindow: Partial<BrowserWindow>;

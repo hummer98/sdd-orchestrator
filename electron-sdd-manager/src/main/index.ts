@@ -6,9 +6,9 @@
  */
 
 import { app, BrowserWindow, dialog } from 'electron';
-import { join } from 'path';
 import { existsSync } from 'fs';
-import { initializeEventWiring, setInitialProjectPath, selectProject, setInitialSelectResult } from './trpc/helpers/projectSetup';
+import { initializeEventWiring, selectProject } from './trpc/helpers/projectSetup';
+import { setInitialProjectPath, setInitialSelectResult } from './trpc/helpers/projectState';
 // trpc-full-migration Task 10.7: IPC handlers deleted, utility functions moved to services/
 import { setupStatusNotifications, getRemoteAccessServer } from './services/remoteAccessSetup';
 import { setupSSHStatusNotifications } from './services/sshSetup';
@@ -25,13 +25,10 @@ import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser'
 import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
-// Task 7.4: Agent Lifecycle Management (agent-lifecycle-management feature)
-import { getAgentWatchdog } from './services/agentLifecycleSetup';
-// trpc-infrastructure: tRPC IPC handler setup (Requirements 8.1-8.5)
-import { setupTRPCHandler } from './trpc/handler';
-// trpc-service-wiring-completion: Production services DI assembly
-import { createProductionServices } from './trpc/productionServices';
-// startup-project-selection-race-condition: EventBus imports removed (Push model deleted)
+// Circular dependency elimination: createWindow extracted to windowFactory.ts
+import { createWindow } from './windowFactory';
+// Entry point must have zero exports — testable cleanup logic lives in appLifecycle.ts
+import { cleanupOnQuit } from './appLifecycle';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -88,8 +85,6 @@ process.on('unhandledRejection', (reason: unknown) => {
   logger.error('[main] Unhandled promise rejection', { reason: message, stack });
 });
 
-let mainWindow: BrowserWindow | null = null;
-
 // Task 10.2: Parse CLI arguments using cliArgsParser
 // In packaged apps, argv structure may differ (no 'electron' as first arg)
 const isAppPackaged = app.isPackaged;
@@ -138,6 +133,17 @@ function getInitialProjectPathFromConfig(): string | null {
 // Initial project path from CLI or environment variable
 const initialProjectPath = getInitialProjectPathFromConfig();
 
+// Diagnostic: Log env vars and resolved initialProjectPath
+logger.info('[main] Startup diagnostic', {
+  envSDD_PROJECT_PATH: process.env.SDD_PROJECT_PATH ?? '(not set)',
+  envE2E_MOCK_CLAUDE_COMMAND: process.env.E2E_MOCK_CLAUDE_COMMAND ?? '(not set)',
+  cliProjectPath: cliOptions.projectPath ?? '(not set)',
+  resolvedInitialProjectPath: initialProjectPath ?? '(null)',
+  isE2ETest,
+  isAppPackaged,
+  cliArgsRaw: cliArgs.join(' '),
+});
+
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
 if (!isAppPackaged && !isE2ETest) {
@@ -170,91 +176,9 @@ async function resolveToolPathsAtStartup(): Promise<void> {
   }
 }
 
-function createWindow(): void {
-  const isDev = !app.isPackaged && !isE2ETest;
-  const configStore = getConfigStore();
-  const savedBounds = configStore.getWindowBounds();
-
-  // Task 10.2: Headless mode - create window but don't show it
-  const isHeadless = cliOptions.headless;
-
-  mainWindow = new BrowserWindow({
-    width: savedBounds?.width ?? 1200,
-    height: savedBounds?.height ?? 800,
-    x: savedBounds?.x,
-    y: savedBounds?.y,
-    minWidth: 800,
-    minHeight: 600,
-    title: isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator',
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: !isE2ETest, // Disable sandbox in E2E test mode
-      preload: join(__dirname, '../preload/index.js'),
-    },
-    show: false,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-  });
-
-  // trpc-infrastructure: Register tRPC IPC handler (DD-005)
-  // Must be called after BrowserWindow creation
-  // trpc-service-wiring-completion: Pass production services as serviceOverrides
-  const productionServices = createProductionServices();
-  setupTRPCHandler(mainWindow, productionServices);
-
-  // Show window when ready (unless headless mode)
-  // startup-project-selection-race-condition: Broadcast removed (Pull model)
-  // Renderer now pulls initial project selection result via tRPC query on mount
-  mainWindow.once('ready-to-show', () => {
-    if (!isHeadless) {
-      mainWindow?.show();
-    }
-  });
-
-  // Save window bounds on close
-  mainWindow.on('close', () => {
-    if (mainWindow) {
-      const bounds = mainWindow.getBounds();
-      configStore.setWindowBounds(bounds);
-    }
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  // ipclink-singleton-unification Task 3.1: Forward Renderer console output to Main process log
-  // All environments (previously E2E-only). Replaces consoleHook.ts (SSOT/KISS, DD-003).
-  // Level mapping: 0=debug, 1=info, 2=warn, 3=error (Electron native console-message event)
-  {
-    const logMethods: Record<number, (msg: string, meta?: Record<string, unknown>) => void> = {
-      0: (msg, meta) => logger.debug(msg, meta),
-      1: (msg, meta) => logger.info(msg, meta),
-      2: (msg, meta) => logger.warn(msg, meta),
-      3: (msg, meta) => logger.error(msg, meta),
-    };
-    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-      try {
-        const source = sourceId ? sourceId.split('/').pop() : '';
-        const logMethod = logMethods[level] ?? logMethods[1];
-        logMethod(`[Renderer Console] ${message}`, { line, source });
-      } catch (error) {
-        logger.error('[main] Error in console-message listener', { error });
-      }
-    });
-  }
-
-  // Load the app
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-}
-
 // Application lifecycle
 app.whenReady().then(async () => {
+
   // Set app name with (dev) suffix in development mode
   const isDev = !app.isPackaged;
   if (isDev) {
@@ -413,43 +337,9 @@ app.on('window-all-closed', () => {
   }
 });
 
-/**
- * Cleanup function called on app quit
- * Stops agent watchdog and remote UI server
- */
-export async function cleanupOnQuit(): Promise<void> {
-  logger.info('[main] Starting cleanup on quit');
-
-  // Stop agent watchdog
-  try {
-    const watchdog = getAgentWatchdog();
-    if (watchdog) {
-      watchdog.stop();
-      logger.info('[main] Agent watchdog stopped');
-    }
-  } catch (error) {
-    logger.warn('[main] Error stopping agent watchdog', { error });
-  }
-
-  // Stop remote UI server if running
-  try {
-    const server = getRemoteAccessServer();
-    const status = server.getStatus();
-    if (status.isRunning) {
-      await server.stop();
-      logger.info('[main] Remote UI server stopped');
-    }
-  } catch (error) {
-    logger.warn('[main] Error stopping remote UI server', { error });
-  }
-}
-
 // Task 7.4: Stop watchdog on app quit (Requirement: 7.5)
 // Extended: Also stop remote UI server if running
 app.on('will-quit', async () => {
   logger.info('[main] will-quit event fired');
   await cleanupOnQuit();
 });
-
-// Export for testing
-export { createWindow, mainWindow };

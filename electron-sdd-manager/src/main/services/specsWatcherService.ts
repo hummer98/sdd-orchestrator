@@ -7,7 +7,7 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { readFile, writeFile, access, constants } from 'fs/promises';
+import { readFile, writeFile, access, constants, readdir } from 'fs/promises';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
 import type { FileService } from './fileService';
@@ -115,7 +115,6 @@ export class SpecsWatcherService {
     // Enumerate existing worktrees and add their spec paths
     try {
       await access(this.worktreeSpecsBaseDir, constants.F_OK);
-      const { readdir } = await import('fs/promises');
       const worktreeDirs = await readdir(this.worktreeSpecsBaseDir, { withFileTypes: true });
 
       for (const dir of worktreeDirs) {

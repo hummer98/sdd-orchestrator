@@ -24,14 +24,18 @@ import type { ContextServices } from './context';
 
 // State / Setup
 import {
-  getCurrentProjectPath,
   setProjectPath,
+  selectProject,
+  getAutoExecutionCoordinatorInternal as getAutoExecutionCoordinator,
+} from './helpers/projectSetup';
+
+import {
+  getCurrentProjectPath,
   getInitialProjectPath,
   setInitialProjectPath,
   getSpecManagerService,
-  selectProject,
-  getAutoExecutionCoordinator,
-} from './helpers/projectSetup';
+  getMetricsService,
+} from './helpers/projectState';
 
 // File Domain
 import {
@@ -84,10 +88,12 @@ import { setLastActivityTime } from '../services/idleTimeTracker';
 import { getRemoteAccessServer } from '../services/remoteAccessSetup';
 import { sshConnectionService } from '../services/ssh/sshConnectionService';
 import { getRecentRemoteProjectsService } from '../services/ssh/recentRemoteProjects';
-import { getDefaultMetricsService } from '../services/metricsService';
 import { addShellPermissions, addPermissionsToProject, checkRequiredPermissions } from '../services/permissionsService';
 import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { projectLogger } from '../services/projectLogger';
+import { sshUriParser } from '../services/ssh/sshUriParser';
+import { readParsedLogs } from '../services/logFileService';
+import { stopBugsWatcher } from './helpers/watcherUtils';
 
 // AutoExecution / Cloudflare / MCP / Schedule
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
@@ -186,11 +192,8 @@ export function createProductionServices(): Partial<ContextServices> {
       if (result.canceled || result.filePaths.length === 0) return null;
       return result.filePaths[0];
     },
-    createNewWindow: async () => {
-      // Dynamic import to avoid circular dependency with index.ts
-      const { createWindow } = await import('../index');
-      createWindow();
-    },
+    // createNewWindow: injected via windowFactory.ts → setupTRPCHandler serviceOverrides
+    // (circular dependency elimination — no longer defined here)
     getIsE2ETest: () => process.argv.includes('--e2e-test'),
 
     // ============================================================
@@ -205,7 +208,6 @@ export function createProductionServices(): Partial<ContextServices> {
     },
     bugsWatcherStop: async () => {
       // Stop is handled at application level via watcherUtils
-      const { stopBugsWatcher } = await import('./helpers/watcherUtils');
       await stopBugsWatcher();
     },
     bugWorktreeCreate: (async (bugName: string) => {
@@ -265,12 +267,15 @@ export function createProductionServices(): Partial<ContextServices> {
         await manager.stopAgent(agentId, 'user_request');
       } else {
         // Fallback to SpecManagerService
-        const specManager = getSpecManagerService();
-        await specManager.stopAgent?.(agentId);
+        try {
+          const specManager = getSpecManagerService();
+          await specManager.stopAgent?.(agentId);
+        } catch {
+          // Ignore if not initialized
+        }
       }
     },
     agentGetLogs: async (specId: string, agentId: string) => {
-      const { readParsedLogs } = await import('../services/logFileService');
       return readParsedLogs(specId, agentId);
     },
     agentGetRunningCounts: async () => {
@@ -454,17 +459,17 @@ export function createProductionServices(): Partial<ContextServices> {
       projectLogger[level](`[renderer] ${message}`, context ? { rendererContext: context } : undefined);
     },
     recordHumanSession: async (session) => {
-      const service = getDefaultMetricsService();
+      const service = getMetricsService();
       await service.recordHumanSession(session);
       return { ok: true as const };
     },
     getSpecMetrics: async (specId) => {
-      const service = getDefaultMetricsService();
+      const service = getMetricsService();
       const metrics = await service.getMetricsForSpec(specId);
       return { ok: true as const, value: metrics as unknown as Record<string, unknown> };
     },
     getProjectMetrics: async () => {
-      const service = getDefaultMetricsService();
+      const service = getMetricsService();
       const metrics = await service.getProjectMetrics();
       return { ok: true as const, value: metrics as unknown as Record<string, unknown> };
     },
@@ -533,7 +538,6 @@ export function createProductionServices(): Partial<ContextServices> {
       }
     },
     sshConnect: async (uri: string) => {
-      const { sshUriParser } = await import('../services/ssh/sshUriParser');
       const parseResult = sshUriParser.parse(uri);
       if (!parseResult.ok) {
         return { ok: false, error: { type: 'INVALID_URI', message: `Invalid SSH URI: ${parseResult.error.type}` } };

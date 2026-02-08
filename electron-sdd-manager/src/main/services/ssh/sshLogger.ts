@@ -4,6 +4,7 @@
  * Requirements: 10.1, 10.2, 10.3
  */
 
+import * as fs from 'fs/promises';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../projectLogger';
 
@@ -179,7 +180,6 @@ export class SSHLogger {
    */
   async exportLogsToFile(filePath: string): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
-      const fs = await import('fs/promises');
       const content = this.exportLogs();
       await fs.writeFile(filePath, content, 'utf-8');
       logger.info('[SSHLogger] Logs exported to file', { filePath });

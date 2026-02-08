@@ -8,8 +8,8 @@
 import { readFile, writeFile, mkdir, unlink } from 'fs/promises';
 import { join, dirname } from 'path';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
-import { projectLogger as logger } from './projectLogger';
-import { MetricsFileWriter, getDefaultMetricsFileWriter } from './metricsFileWriter';
+import { type ProjectLoggerService } from './projectLogger';
+import { MetricsFileWriter } from './metricsFileWriter';
 import {
   SESSION_TEMP_FILE_PATH,
   IDLE_TIMEOUT_MS,
@@ -40,9 +40,11 @@ export interface RecoveryResult {
  */
 export class SessionRecoveryService {
   private writer: MetricsFileWriter;
+  private logger: ProjectLoggerService;
 
-  constructor(writer?: MetricsFileWriter) {
-    this.writer = writer ?? getDefaultMetricsFileWriter();
+  constructor(logger: ProjectLoggerService, writer: MetricsFileWriter) {
+    this.logger = logger;
+    this.writer = writer;
   }
 
   /**
@@ -79,12 +81,12 @@ export class SessionRecoveryService {
       // Write session state
       await writeFile(filePath, JSON.stringify(sessionData, null, 2), 'utf-8');
 
-      logger.debug('[SessionRecoveryService] Session state saved', {
+      this.logger.debug('[SessionRecoveryService] Session state saved', {
         aiSessions: sessionData.activeAiSessions.length,
         hasHumanSession: !!sessionData.activeHumanSession,
       });
     } catch (error) {
-      logger.error('[SessionRecoveryService] Failed to save session state', {
+      this.logger.error('[SessionRecoveryService] Failed to save session state', {
         path: filePath,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -108,7 +110,7 @@ export class SessionRecoveryService {
         return null;
       }
 
-      logger.warn('[SessionRecoveryService] Failed to load session state', {
+      this.logger.warn('[SessionRecoveryService] Failed to load session state', {
         path: filePath,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -127,10 +129,10 @@ export class SessionRecoveryService {
 
     try {
       await unlink(filePath);
-      logger.debug('[SessionRecoveryService] Temp file deleted', { path: filePath });
+      this.logger.debug('[SessionRecoveryService] Temp file deleted', { path: filePath });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        logger.warn('[SessionRecoveryService] Failed to delete temp file', {
+        this.logger.warn('[SessionRecoveryService] Failed to delete temp file', {
           path: filePath,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -164,7 +166,7 @@ export class SessionRecoveryService {
     const sessionData = await this.loadActiveSessionState(projectPath);
 
     if (!sessionData) {
-      logger.debug('[SessionRecoveryService] No session state to recover');
+      this.logger.debug('[SessionRecoveryService] No session state to recover');
       return result;
     }
 
@@ -192,13 +194,13 @@ export class SessionRecoveryService {
           await this.writer.appendRecord(projectPath, record);
           aiRecovered++;
 
-          logger.info('[SessionRecoveryService] AI session recovered', {
+          this.logger.info('[SessionRecoveryService] AI session recovered', {
             specId: aiSession.specId,
             phase: aiSession.phase,
             ms,
           });
         } catch (error) {
-          logger.error('[SessionRecoveryService] Failed to recover AI session', {
+          this.logger.error('[SessionRecoveryService] Failed to recover AI session', {
             specId: aiSession.specId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -227,12 +229,12 @@ export class SessionRecoveryService {
           await this.writer.appendRecord(projectPath, record);
           humanRecovered++;
 
-          logger.info('[SessionRecoveryService] Human session recovered', {
+          this.logger.info('[SessionRecoveryService] Human session recovered', {
             specId: humanSession.specId,
             ms,
           });
         } catch (error) {
-          logger.error('[SessionRecoveryService] Failed to recover human session', {
+          this.logger.error('[SessionRecoveryService] Failed to recover human session', {
             specId: humanSession.specId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -242,7 +244,7 @@ export class SessionRecoveryService {
       // Delete temp file after successful recovery
       await this.deleteTempFile(projectPath);
     } catch (error) {
-      logger.error('[SessionRecoveryService] Recovery failed', {
+      this.logger.error('[SessionRecoveryService] Recovery failed', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -252,20 +254,4 @@ export class SessionRecoveryService {
       humanSessionsRecovered: humanRecovered,
     };
   }
-}
-
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-let defaultSessionRecoveryService: SessionRecoveryService | null = null;
-
-/**
- * Get the default SessionRecoveryService instance
- */
-export function getDefaultSessionRecoveryService(): SessionRecoveryService {
-  if (!defaultSessionRecoveryService) {
-    defaultSessionRecoveryService = new SessionRecoveryService();
-  }
-  return defaultSessionRecoveryService;
 }

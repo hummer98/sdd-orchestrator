@@ -8,7 +8,7 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
-import { projectLogger as logger } from './projectLogger';
+import { type ProjectLoggerService } from './projectLogger';
 import {
   MetricRecordSchema,
   METRICS_FILE_PATH,
@@ -24,6 +24,11 @@ import {
  * Requirements: 7.4
  */
 export class MetricsFileReader {
+  private logger: ProjectLoggerService;
+
+  constructor(logger: ProjectLoggerService) {
+    this.logger = logger;
+  }
   /**
    * Get the full path to the metrics file for a project
    *
@@ -68,14 +73,14 @@ export class MetricsFileReader {
             records.push(result.data);
           } else {
             // Log schema validation error but continue
-            logger.warn('[MetricsFileReader] Skipping invalid record', {
+            this.logger.warn('[MetricsFileReader] Skipping invalid record', {
               line: i + 1,
               errors: result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`),
             });
           }
         } catch (parseError) {
           // Log JSON parse error but continue
-          logger.warn('[MetricsFileReader] Skipping invalid JSON line', {
+          this.logger.warn('[MetricsFileReader] Skipping invalid JSON line', {
             line: i + 1,
             error: parseError instanceof Error ? parseError.message : String(parseError),
           });
@@ -90,7 +95,7 @@ export class MetricsFileReader {
       }
 
       // Log other errors
-      logger.error('[MetricsFileReader] Failed to read metrics file', {
+      this.logger.error('[MetricsFileReader] Failed to read metrics file', {
         path: filePath,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -111,20 +116,4 @@ export class MetricsFileReader {
     const allRecords = await this.readAllRecords(projectPath);
     return allRecords.filter((record) => record.spec === specId);
   }
-}
-
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-let defaultMetricsFileReader: MetricsFileReader | null = null;
-
-/**
- * Get the default MetricsFileReader instance
- */
-export function getDefaultMetricsFileReader(): MetricsFileReader {
-  if (!defaultMetricsFileReader) {
-    defaultMetricsFileReader = new MetricsFileReader();
-  }
-  return defaultMetricsFileReader;
 }

@@ -85,6 +85,11 @@ vi.mock('../helpers/projectSetup', () => ({
     getAllStatuses: vi.fn(), retryFrom: vi.fn(), resetAll: vi.fn(),
     resetImplRetryCount: vi.fn(),
   }),
+  getMetricsService: vi.fn().mockReturnValue({
+    recordHumanSession: vi.fn(),
+    getSpecMetrics: vi.fn(),
+    getProjectMetrics: vi.fn(),
+  }),
 }));
 vi.mock('../helpers/projectFileUtils', () => ({
   listProjectFilesCore: vi.fn(),
@@ -242,14 +247,6 @@ vi.mock('../../services/ssh/sshConnectionService', () => ({
     removeRecentRemoteProject: vi.fn(),
   },
 }));
-vi.mock('../../services/metricsService', () => ({
-  getDefaultMetricsService: vi.fn().mockReturnValue({
-    recordHumanSession: vi.fn(),
-    getSpecMetrics: vi.fn(),
-    getProjectMetrics: vi.fn(),
-  }),
-  initDefaultMetricsService: vi.fn(),
-}));
 vi.mock('../../services/permissionsService', () => ({
   addShellPermissions: vi.fn(),
   addPermissionsToProject: vi.fn(),
@@ -343,12 +340,13 @@ describe('productionServices', () => {
       expect(typeof services).toBe('object');
     });
 
-    it('should return 72 service properties (all except handler.ts injected 3)', () => {
+    it('should return 71 service properties (all except 4 externally injected)', () => {
       const services = createProductionServices();
       const keys = Object.keys(services);
-      // productionServices should wire all ContextServices properties except
-      // eventBus, getInitialSelectResult, clearInitialSelectResult (injected by handler.ts)
-      expect(keys.length).toBeGreaterThanOrEqual(72);
+      // productionServices should wire all ContextServices properties except:
+      // - eventBus, getInitialSelectResult, clearInitialSelectResult (injected by handler.ts)
+      // - createNewWindow (injected by windowFactory.ts via setupTRPCHandler serviceOverrides)
+      expect(keys.length).toBeGreaterThanOrEqual(71);
     });
 
     it('should NOT include handler.ts injected properties (eventBus, getInitialSelectResult, clearInitialSelectResult)', () => {
@@ -361,8 +359,10 @@ describe('productionServices', () => {
   });
 
   describe('wiring completeness - productionServices keys vs mockServices keys', () => {
-    // handler.ts injects these 3 properties directly
-    const HANDLER_INJECTED_KEYS = ['eventBus', 'getInitialSelectResult', 'clearInitialSelectResult'];
+    // These properties are NOT in productionServices — they are injected externally:
+    // - eventBus, getInitialSelectResult, clearInitialSelectResult: injected by handler.ts
+    // - createNewWindow: injected by windowFactory.ts via setupTRPCHandler serviceOverrides
+    const HANDLER_INJECTED_KEYS = ['eventBus', 'getInitialSelectResult', 'clearInitialSelectResult', 'createNewWindow'];
 
     it('should cover all ContextServices properties that mockServices covers (minus handler.ts injected)', () => {
       const productionKeys = new Set(Object.keys(createProductionServices()));
@@ -451,9 +451,10 @@ describe('productionServices', () => {
       expect(typeof services.showOpenDialog).toBe('function');
     });
 
-    it('should wire createNewWindow', () => {
-      expect(services.createNewWindow).toBeDefined();
-      expect(typeof services.createNewWindow).toBe('function');
+    it('should NOT include createNewWindow (injected via windowFactory.ts → setupTRPCHandler)', () => {
+      // createNewWindow is no longer in productionServices — it's injected as a
+      // serviceOverride from windowFactory.ts to eliminate circular dependency.
+      expect(services.createNewWindow).toBeUndefined();
     });
 
     // Bug Domain (Task 1.3)

@@ -6,7 +6,7 @@
  * Requirements: 1.1, 1.2 (vcs-scheme-switching)
  */
 
-import { access } from 'fs/promises';
+import { access, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
@@ -279,7 +279,7 @@ export class SettingsFileManager {
 
     try {
       // Read existing config
-      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const content = await readFile(configPath, 'utf-8');
       const config: SddOrchestratorConfig = JSON.parse(content);
 
       // Ensure settings object exists
@@ -291,7 +291,7 @@ export class SettingsFileManager {
       config.settings.jjInstallIgnored = ignored;
 
       // Write back
-      await import('fs/promises').then(fs => fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8'));
+      await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
 
       return { ok: true, value: undefined };
     } catch (error) {
@@ -317,7 +317,7 @@ export class SettingsFileManager {
 
     try {
       // Read existing config
-      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const content = await readFile(configPath, 'utf-8');
       const config: SddOrchestratorConfig = JSON.parse(content);
 
       // Return jjInstallIgnored (default to false)
@@ -346,7 +346,7 @@ export class SettingsFileManager {
 
     try {
       // Read existing config
-      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const content = await readFile(configPath, 'utf-8');
       const config: SddOrchestratorConfig = JSON.parse(content);
 
       // Return vcsScheme if valid, otherwise default to 'git'
@@ -379,7 +379,7 @@ export class SettingsFileManager {
 
     try {
       // Read existing config
-      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const content = await readFile(configPath, 'utf-8');
       const config: SddOrchestratorConfig = JSON.parse(content);
 
       // Ensure settings object exists
@@ -391,7 +391,7 @@ export class SettingsFileManager {
       config.settings.vcsScheme = scheme;
 
       // Write back
-      await import('fs/promises').then(fs => fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8'));
+      await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
 
       return { ok: true, value: undefined };
     } catch (error) {

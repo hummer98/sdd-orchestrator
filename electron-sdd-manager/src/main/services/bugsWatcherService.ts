@@ -9,7 +9,7 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { access, constants } from 'fs/promises';
+import { access, constants, readdir } from 'fs/promises';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
 import type { BugsChangeEvent } from '../../renderer/types';
@@ -101,7 +101,6 @@ export class BugsWatcherService {
     // Enumerate existing worktrees and add their bug paths
     try {
       await access(this.worktreeBugsBaseDir, constants.F_OK);
-      const { readdir } = await import('fs/promises');
       const worktreeDirs = await readdir(this.worktreeBugsBaseDir, { withFileTypes: true });
 
       for (const dir of worktreeDirs) {

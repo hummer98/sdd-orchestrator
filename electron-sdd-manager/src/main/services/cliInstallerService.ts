@@ -3,7 +3,7 @@
  * Manages installation of the 'sdd' CLI command
  */
 
-import { access, constants, symlink, unlink, stat, readlink, mkdir } from 'fs/promises';
+import { access, constants, symlink, unlink, stat, readlink, mkdir, lstat } from 'fs/promises';
 import { join, dirname } from 'path';
 import { app } from 'electron';
 import { homedir } from 'os';
@@ -85,7 +85,7 @@ async function getSymlinkTarget(symlinkPath: string): Promise<string | null> {
       return await readlink(symlinkPath);
     }
     // It's a regular file, not a symlink - check via lstat
-    const lstats = await import('fs/promises').then(fs => fs.lstat(symlinkPath));
+    const lstats = await lstat(symlinkPath);
     if (lstats.isSymbolicLink()) {
       return await readlink(symlinkPath);
     }
@@ -93,7 +93,7 @@ async function getSymlinkTarget(symlinkPath: string): Promise<string | null> {
   } catch {
     // Try lstat directly
     try {
-      const lstats = await import('fs/promises').then(fs => fs.lstat(symlinkPath));
+      const lstats = await lstat(symlinkPath);
       if (lstats.isSymbolicLink()) {
         return await readlink(symlinkPath);
       }

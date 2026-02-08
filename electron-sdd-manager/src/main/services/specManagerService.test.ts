@@ -17,19 +17,30 @@ vi.mock('electron', () => ({
 }));
 
 import { SpecManagerService, ExecutionGroup, buildClaudeArgs, WORKTREE_LIFECYCLE_PHASES, extractPromptFromArgs } from './specManagerService';
-import { initDefaultMetricsService } from './metricsService';
+import { MetricsService } from './metricsService';
+import { MetricsFileWriter } from './metricsFileWriter';
+import { MetricsFileReader } from './metricsFileReader';
+import { projectLogger } from './projectLogger';
 
 describe('SpecManagerService', () => {
   let testDir: string;
   let pidDir: string;
   let service: SpecManagerService;
+  let metricsService: MetricsService;
 
   beforeEach(async () => {
     // Create temporary directories for testing
     testDir = path.join(os.tmpdir(), `spec-manager-test-${Date.now()}`);
     pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
     await fs.mkdir(pidDir, { recursive: true });
-    service = new SpecManagerService(testDir);
+
+    // Setup metrics services with DI
+    const writer = new MetricsFileWriter(projectLogger);
+    const reader = new MetricsFileReader(projectLogger);
+    metricsService = new MetricsService(projectLogger, writer, reader);
+    metricsService.setProjectPath(testDir);
+
+    service = new SpecManagerService(testDir, { metricsService });
   });
 
   afterEach(async () => {
@@ -3183,9 +3194,14 @@ describe('handleAgentExit with executions (Task 3.1, 3.2, 3.3, 7.2)', () => {
     await fs.mkdir(pidDir, { recursive: true });
     // Also create metrics directory
     await fs.mkdir(path.join(testDir, '.kiro'), { recursive: true });
-    service = new SpecManagerService(testDir);
-    // Initialize metrics service for file-based tracking tests
-    initDefaultMetricsService(testDir);
+
+    // Setup metrics services with DI
+    const writer = new MetricsFileWriter(projectLogger);
+    const reader = new MetricsFileReader(projectLogger);
+    const metricsService = new MetricsService(writer, reader);
+    metricsService.setProjectPath(testDir);
+
+    service = new SpecManagerService(testDir, { metricsService });
   });
 
   afterEach(async () => {

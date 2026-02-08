@@ -1,18 +1,3 @@
-/**
- * Project Setup Helpers
- * trpc-full-migration Task 11.2: handlers.ts のビジネスロジックを移動
- *
- * handlers.ts から抽出された、main/index.ts が直接使用する関数群:
- * - selectProject: 統一プロジェクト選択（バリデーション、スペック/バグ読み込み）
- * - setProjectPath: プロジェクト初期化（サービスセットアップ、ウォッチャー管理）
- * - getCurrentProjectPath: 現在のプロジェクトパス取得
- * - setInitialProjectPath / getInitialProjectPath: CLI引数からの初期パス
- * - setInitialSelectResult / getInitialSelectResult / clearInitialSelectResult: 起動時キャッシュ
- * - registerAutoExecutionEvents: AutoExecutionCoordinator イベントワイヤリング
- * - registerEventCallbacks: Agent出力/ステータス/エラーのコールバック登録
- * - initializeEventWiring: 上記全てのイベントワイヤリングを一括初期化
- */
-
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { access } from 'fs/promises';
@@ -31,12 +16,45 @@ import { getGlobalEventBus } from '../services/globalEventBus';
 import { EVENT_NAMES } from '../services/eventBus';
 import { BugService } from '../../services/bugService';
 import { layoutConfigService } from '../../services/layoutConfigService';
-import { initDefaultMetricsService } from '../../services/metricsService';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../../services/autoExecutionCoordinator';
 import { getBugAutoExecutionCoordinator } from '../../services/bugAutoExecutionCoordinator';
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, setupFileService, getRemoteAccessServer } from '../../services/remoteAccessSetup';
 import { initScheduleTaskCoordinator } from '../../services/scheduleTaskSetup';
-// ProjectFileWatcherService: removed (unused after IPC deletion)
+import { MetricsService } from '../../services/metricsService';
+import { MetricsFileWriter } from '../../services/metricsFileWriter';
+import { MetricsFileReader } from '../../services/metricsFileReader';
+import { SessionRecoveryService } from '../../services/sessionRecoveryService';
+import { initializeAgentLifecycleManager } from '../../services/agentLifecycleSetup';
+import { DocumentReviewService } from '../../services/documentReviewService';
+import {
+  isProjectSelectionInProgress,
+  setProjectSelectionLock,
+  validateProjectPath,
+} from './projectUtils';
+
+// State Management
+import {
+  getSpecManagerService,
+  setSpecManagerService,
+  getAutoExecutionCoordinator,
+  setAutoExecutionCoordinator,
+  setMetricsService,
+  getCurrentProjectPath,
+  setCurrentProjectPath,
+  setInitialSelectResult,
+} from './projectState';
+
+// Project Info Helpers
+export {
+  getSpecManagerService,
+  getAutoExecutionCoordinator,
+  getMetricsService,
+  getCurrentProjectPath,
+  getInitialProjectPath,
+  getInitialSelectResult,
+  setInitialProjectPath,
+  setInitialSelectResult,
+} from './projectState';
 
 import type { SelectProjectResult } from '../../../renderer/types';
 import type { BugWorkflowPhase } from '../../../renderer/types/bug';
@@ -60,28 +78,23 @@ const fileService = new FileService();
 const bugService = new BugService();
 
 // ============================================================
-// Global State
-// ============================================================
-let specManagerService: SpecManagerService | null = null;
-let autoExecutionCoordinator: AutoExecutionCoordinator | null = null;
-let initialProjectPath: string | null = null;
-let currentProjectPath: string | null = null;
-let initialSelectResult: SelectProjectResult | null = null;
-
-// ============================================================
 // Public Functions
 // ============================================================
 
-export function getCurrentProjectPath(): string | null {
-  return currentProjectPath;
+export function clearInitialSelectResult(): void {
+  setInitialSelectResult(null);
+  logger.debug('[projectSetup] clearInitialSelectResult cache cleared');
 }
 
-export function getAutoExecutionCoordinator(): AutoExecutionCoordinator {
-  if (!autoExecutionCoordinator) {
-    autoExecutionCoordinator = new AutoExecutionCoordinator();
+export function getAutoExecutionCoordinatorInternal(): AutoExecutionCoordinator {
+  try {
+    return getAutoExecutionCoordinator();
+  } catch {
+    const coordinator = new AutoExecutionCoordinator();
+    setAutoExecutionCoordinator(coordinator);
     logger.info('[projectSetup] AutoExecutionCoordinator created');
+    return coordinator;
   }
-  return autoExecutionCoordinator;
 }
 
 export function getBugAgentEffectiveCwd(phase: BugWorkflowPhase, worktreeCwd: string, projectPath: string): string {
@@ -90,33 +103,6 @@ export function getBugAgentEffectiveCwd(phase: BugWorkflowPhase, worktreeCwd: st
     return projectPath;
   }
   return worktreeCwd;
-}
-
-export function setInitialProjectPath(p: string | null): void {
-  initialProjectPath = p;
-}
-
-export function getInitialProjectPath(): string | null {
-  return initialProjectPath;
-}
-
-export function setInitialSelectResult(result: SelectProjectResult): void {
-  initialSelectResult = result;
-  logger.debug('[projectSetup] setInitialSelectResult cached result', { projectPath: result.projectPath });
-}
-
-export function getInitialSelectResult(): SelectProjectResult | null {
-  return initialSelectResult;
-}
-
-export function clearInitialSelectResult(): void {
-  initialSelectResult = null;
-  logger.debug('[projectSetup] clearInitialSelectResult cache cleared');
-}
-
-export function getSpecManagerService(): SpecManagerService {
-  if (!specManagerService) throw new Error('SpecManagerService not initialized. Call setProjectPath first.');
-  return specManagerService;
 }
 
 export function validateProjectCommandParams(
@@ -141,9 +127,6 @@ export function validateProjectCommandParams(
 // ============================================================
 
 export async function selectProject(projectPath: string): Promise<SelectProjectResult> {
-  // Import lazily to avoid circular dependency
-  const { isProjectSelectionInProgress, setProjectSelectionLock, validateProjectPath } = await import('./projectUtils');
-
   logger.info('[projectSetup] selectProject called', { projectPath });
 
   if (isProjectSelectionInProgress()) {
@@ -226,10 +209,19 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // startProjectFileWatcher, stopProjectFileWatcher, stopSpecsWatcher etc. are imported at module level
 
   logger.info('[projectSetup] setProjectPath called', { projectPath });
-  currentProjectPath = projectPath;
+  setCurrentProjectPath(projectPath);
   projectLogger.setCurrentProject(projectPath);
 
-  specManagerService = new SpecManagerService(projectPath, { layoutConfigService });
+  // Metrics services setup with DI
+  const metricsFileWriter = new MetricsFileWriter(projectLogger);
+  const metricsFileReader = new MetricsFileReader(projectLogger);
+  const metricsService = new MetricsService(projectLogger, metricsFileWriter, metricsFileReader);
+  metricsService.setProjectPath(projectPath);
+  setMetricsService(metricsService);
+  logger.info('[projectSetup] MetricsService initialized');
+
+  const specManager = new SpecManagerService(projectPath, { layoutConfigService, metricsService });
+  setSpecManagerService(specManager);
 
   setMenuProjectPath(projectPath);
   const projectName = projectPath.split('/').pop() || projectPath;
@@ -238,17 +230,13 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   initDefaultLogFileService(path.join(projectPath, '.kiro', 'runtime', 'agents'));
   logger.info('[projectSetup] LogFileService initialized');
 
-  initDefaultMetricsService(projectPath);
-  logger.info('[projectSetup] MetricsService initialized');
-
   const agentsBasePath = path.join(projectPath, '.kiro', 'runtime', 'agents');
   initDefaultAgentRecordService(agentsBasePath);
   logger.info('[projectSetup] AgentRecordService initialized');
 
   // Session recovery
   try {
-    const { getDefaultSessionRecoveryService } = await import('../../services/sessionRecoveryService');
-    const sessionRecoveryService = getDefaultSessionRecoveryService();
+    const sessionRecoveryService = new SessionRecoveryService(projectLogger, metricsFileWriter);
     const recoveryResult = await sessionRecoveryService.recoverIncompleteSessions(projectPath);
     logger.info('[projectSetup] Session recovery completed', {
       aiSessionsRecovered: recoveryResult.aiSessionsRecovered,
@@ -260,7 +248,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Restore agents
   try {
-    await specManagerService.restoreAgents();
+    await specManager.restoreAgents();
     logger.info('[projectSetup] Agents restored from PID files');
   } catch (error) {
     logger.error('[projectSetup] Failed to restore agents:', error);
@@ -288,7 +276,6 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Initialize Agent Lifecycle Management
   try {
-    const { initializeAgentLifecycleManager } = await import('../../services/agentLifecycleSetup');
     const { lifecycleManager, watchdog } = await initializeAgentLifecycleManager();
     const syncResult = await lifecycleManager.synchronizeOnStartup();
     logger.info('[projectSetup] Agent state synchronized', syncResult);
@@ -349,8 +336,8 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
   };
 
   const getAgentsForRemote = async (): Promise<AgentStateInfo[] | null> => {
-    if (!specManagerService) return null;
-    const allAgentsMap = await specManagerService.getAllAgents();
+    const specManager = getSpecManagerService();
+    const allAgentsMap = await specManager.getAllAgents();
     const agents: AgentStateInfo[] = [];
     for (const agentList of allAgentsMap.values()) {
       for (const agent of agentList) {
@@ -364,7 +351,7 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
   };
 
   setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote, getAgentsForRemote);
-  setupWorkflowController(specManagerService!);
+  setupWorkflowController(getSpecManagerService());
   setupAgentLogsProvider();
   setupSpecDetailProvider(projectPath);
   setupBugDetailProvider(projectPath);
@@ -393,7 +380,7 @@ export function initializeEventWiring(): void {
   // For now, we keep it for backward compatibility during transition
 
   // AutoExecution event handlers
-  const coordinator = getAutoExecutionCoordinator();
+  const coordinator = getAutoExecutionCoordinatorInternal();
   const bugCoordinator = getBugAutoExecutionCoordinator();
   registerBugAutoExecutionEvents(bugCoordinator);
   registerAutoExecutionEvents(coordinator);
@@ -423,11 +410,11 @@ function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBug
       let command = BUG_PHASE_COMMANDS[phase];
       if (!command) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
 
-      const bugDir = await bugService.resolveBugPath(currentProjectPath!, context.bugName);
-      const worktreeCwd = await bugService.getAgentCwd(bugDir, currentProjectPath!);
-      const isWorktreeMode = worktreeCwd !== currentProjectPath;
+      const bugDir = await bugService.resolveBugPath(getCurrentProjectPath()!, context.bugName);
+      const worktreeCwd = await bugService.getAgentCwd(bugDir, getCurrentProjectPath()!);
+      const isWorktreeMode = worktreeCwd !== getCurrentProjectPath();
       if (phase === 'deploy' && isWorktreeMode) command = '/kiro:bug-merge';
-      const effectiveCwd = getBugAgentEffectiveCwd(phase, worktreeCwd, currentProjectPath!);
+      const effectiveCwd = getBugAgentEffectiveCwd(phase, worktreeCwd, getCurrentProjectPath()!);
 
       const result = await service.startAgent({ specId: `bug:${context.bugName}`, phase, args: [`${command} ${context.bugName}`], worktreeCwd: effectiveCwd, engineId: 'claude' });
       if (result.ok) {
@@ -612,8 +599,7 @@ function setupAgentCompletionListenerWithApproval(service: SpecManagerService, a
 
 async function executeDocumentReviewReply(service: SpecManagerService, specPath: string, specId: string, coordinator: AutoExecutionCoordinator): Promise<void> {
   try {
-    const { DocumentReviewService } = await import('../../services/documentReviewService');
-    const docReviewService = new DocumentReviewService(currentProjectPath || '');
+    const docReviewService = new DocumentReviewService(getCurrentProjectPath() || '');
     const roundNumber = await docReviewService.getNextRoundNumber(specPath);
     const currentRound = Math.max(1, roundNumber - 1);
 

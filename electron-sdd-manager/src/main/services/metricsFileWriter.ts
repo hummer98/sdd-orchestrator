@@ -8,7 +8,7 @@
 import { appendFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
-import { projectLogger as logger } from './projectLogger';
+import { type ProjectLoggerService } from './projectLogger';
 import {
   MetricRecordSchema,
   METRICS_FILE_PATH,
@@ -24,6 +24,11 @@ import {
  * Requirements: 4.1, 4.2
  */
 export class MetricsFileWriter {
+  private logger: ProjectLoggerService;
+
+  constructor(logger: ProjectLoggerService) {
+    this.logger = logger;
+  }
   /**
    * Get the full path to the metrics file for a project
    * Requirements: 4.1 - SSOT location
@@ -67,32 +72,16 @@ export class MetricsFileWriter {
       const jsonLine = JSON.stringify(parseResult.data) + '\n';
       await appendFile(filePath, jsonLine, 'utf-8');
 
-      logger.debug('[MetricsFileWriter] Record appended', {
+      this.logger.debug('[MetricsFileWriter] Record appended', {
         type: record.type,
         spec: record.spec,
       });
     } catch (error) {
-      logger.error('[MetricsFileWriter] Failed to append record', {
+      this.logger.error('[MetricsFileWriter] Failed to append record', {
         path: filePath,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
   }
-}
-
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-let defaultMetricsFileWriter: MetricsFileWriter | null = null;
-
-/**
- * Get the default MetricsFileWriter instance
- */
-export function getDefaultMetricsFileWriter(): MetricsFileWriter {
-  if (!defaultMetricsFileWriter) {
-    defaultMetricsFileWriter = new MetricsFileWriter();
-  }
-  return defaultMetricsFileWriter;
 }

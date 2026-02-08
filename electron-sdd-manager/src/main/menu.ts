@@ -6,7 +6,7 @@
 import { Menu, MenuItem, app, BrowserWindow, dialog } from 'electron';
 import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
-import { createWindow } from './index';
+import { createWindow } from './windowFactory';
 import { getGlobalEventBus } from './trpc/services/globalEventBus';
 import { EVENT_NAMES } from './trpc/services/eventBus';
 

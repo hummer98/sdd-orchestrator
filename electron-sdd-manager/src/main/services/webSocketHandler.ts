@@ -6,6 +6,8 @@
 
 import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 import { isPrivateIP } from '../utils/ipValidator';
 import { RateLimiter, defaultRateLimiter } from '../utils/rateLimiter';
 import { LogBuffer, defaultLogBuffer } from './logBuffer';
@@ -17,6 +19,10 @@ import { GitService } from './GitService';
 import { GitFileWatcherService } from './GitFileWatcherService';
 // main-process-log-parser Task 10.8: ParsedLogEntry for broadcastAgentLog
 import type { ParsedLogEntry } from '@shared/utils/parserTypes';
+import { FileService } from './fileService';
+import { WorktreeService } from './worktreeService';
+import { ConvertWorktreeService, getConvertErrorMessage } from './convertWorktreeService';
+import { listProjectFilesCore, readProjectFileCore, writeProjectFileCore } from '../trpc/helpers/projectFileUtils';
 
 /**
  * WebSocket message structure for communication
@@ -2753,13 +2759,10 @@ export class WebSocketHandler {
     }
 
     try {
-      // Import FileService to use updateSpecJson
-      const { FileService } = await import('./fileService');
+      // Use statically imported FileService
       const fileService = new FileService();
 
       // Read current spec.json to preserve existing documentReview fields
-      const { readFile } = await import('fs/promises');
-      const { join } = await import('path');
       const specJsonPath = join(specPath, 'spec.json');
       const content = await readFile(specJsonPath, 'utf-8');
       const specJson = JSON.parse(content);
@@ -2861,7 +2864,6 @@ export class WebSocketHandler {
       }
 
       // Resolve spec path from specId
-      const { join } = await import('path');
       const specPath = join(projectPath, '.kiro', 'specs', specId);
 
       // Update spec.json
@@ -3558,12 +3560,7 @@ export class WebSocketHandler {
     const resolvedSpecPath = specPath || `${projectPath}/.kiro/specs/${specId}`;
 
     try {
-      // Use the ConvertWorktreeService via WorktreeService
-      const { WorktreeService } = await import('./worktreeService');
-      const { FileService } = await import('./fileService');
-      const { getDefaultEventLogService } = await import('./eventLogService');
-      const { ConvertWorktreeService, getConvertErrorMessage } = await import('./convertWorktreeService');
-
+      // Use statically imported services
       const worktreeService = new WorktreeService(projectPath);
       const fileService = new FileService();
       const eventLogService = getDefaultEventLogService();
@@ -3645,8 +3642,7 @@ export class WebSocketHandler {
     }
 
     try {
-      // Use the WorktreeService to execute rebase
-      const { WorktreeService } = await import('./worktreeService');
+      // Use statically imported WorktreeService
       const worktreeService = new WorktreeService(projectPath);
 
       const result = await worktreeService.executeRebaseFromMain(specOrBugPath);
@@ -3792,7 +3788,8 @@ export class WebSocketHandler {
     }
 
     try {
-      const gitService = new GitService();
+      // Use statically imported GitService
+      const gitService = this.getGitService();
       const result = await gitService.getStatus(projectPath);
 
       if (result.success) {
@@ -3850,7 +3847,8 @@ export class WebSocketHandler {
     }
 
     try {
-      const gitService = new GitService();
+      // Use statically imported GitService
+      const gitService = this.getGitService();
       const result = await gitService.getDiff(projectPath, filePath);
 
       if (result.success) {
@@ -3996,8 +3994,7 @@ export class WebSocketHandler {
     }
 
     try {
-      // Import the listProjectFiles function from projectFileUtils
-      const { listProjectFilesCore } = await import('../trpc/helpers/projectFileUtils');
+      // Use statically imported listProjectFilesCore
       const files = await listProjectFilesCore(projectPath);
 
       this.send(client.id, {
@@ -4046,7 +4043,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const { readProjectFileCore } = await import('../trpc/helpers/projectFileUtils');
+      // Use statically imported readProjectFileCore
       const content = await readProjectFileCore(projectPath, filePath);
 
       this.send(client.id, {
@@ -4106,7 +4103,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const { writeProjectFileCore } = await import('../trpc/helpers/projectFileUtils');
+      // Use statically imported writeProjectFileCore
       await writeProjectFileCore(projectPath, filePath, fileContent);
 
       this.send(client.id, {

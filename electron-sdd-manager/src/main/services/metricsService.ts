@@ -6,9 +6,9 @@
  */
 
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
-import { projectLogger as logger } from './projectLogger';
-import { MetricsFileWriter, getDefaultMetricsFileWriter } from './metricsFileWriter';
-import { MetricsFileReader, getDefaultMetricsFileReader } from './metricsFileReader';
+import { type ProjectLoggerService } from './projectLogger';
+import { MetricsFileWriter } from './metricsFileWriter';
+import { MetricsFileReader } from './metricsFileReader';
 import type {
   AgentPhase,
   CoreWorkflowPhase,
@@ -47,13 +47,15 @@ export class MetricsService {
   private projectPath: string | null = null;
   private writer: MetricsFileWriter;
   private reader: MetricsFileReader;
+  private logger: ProjectLoggerService;
 
   // Active session tracking
   private activeLifecycles: Map<string, InternalLifecycle> = new Map();
 
-  constructor(writer?: MetricsFileWriter, reader?: MetricsFileReader) {
-    this.writer = writer ?? getDefaultMetricsFileWriter();
-    this.reader = reader ?? getDefaultMetricsFileReader();
+  constructor(logger: ProjectLoggerService, writer: MetricsFileWriter, reader: MetricsFileReader) {
+    this.logger = logger;
+    this.writer = writer;
+    this.reader = reader;
   }
 
   /**
@@ -98,7 +100,7 @@ export class MetricsService {
     end: string
   ): Promise<void> {
     if (!this.projectPath) {
-      logger.warn('[MetricsService] Cannot record AI session from file: no project path set');
+      this.logger.warn('[MetricsService] Cannot record AI session from file: no project path set');
       return;
     }
 
@@ -116,7 +118,7 @@ export class MetricsService {
     };
 
     await this.writer.appendRecord(this.projectPath, record);
-    logger.debug('[MetricsService] AI session recorded from file', { specId, phase, ms });
+    this.logger.debug('[MetricsService] AI session recorded from file', { specId, phase, ms });
   }
 
   // ===========================================================================
@@ -129,7 +131,7 @@ export class MetricsService {
    */
   async recordHumanSession(session: HumanSessionData): Promise<void> {
     if (!this.projectPath) {
-      logger.warn('[MetricsService] Cannot record human session: no project path set');
+      this.logger.warn('[MetricsService] Cannot record human session: no project path set');
       return;
     }
 
@@ -142,7 +144,7 @@ export class MetricsService {
     };
 
     await this.writer.appendRecord(this.projectPath, record);
-    logger.debug('[MetricsService] Human session recorded', {
+    this.logger.debug('[MetricsService] Human session recorded', {
       specId: session.specId,
       ms: session.ms,
     });
@@ -175,7 +177,7 @@ export class MetricsService {
       };
 
       await this.writer.appendRecord(this.projectPath, record);
-      logger.debug('[MetricsService] Spec lifecycle started', { specId, timestamp });
+      this.logger.debug('[MetricsService] Spec lifecycle started', { specId, timestamp });
     }
   }
 
@@ -187,7 +189,7 @@ export class MetricsService {
     const lifecycle = this.activeLifecycles.get(specId);
 
     if (!lifecycle) {
-      logger.warn('[MetricsService] No active lifecycle to complete', { specId });
+      this.logger.warn('[MetricsService] No active lifecycle to complete', { specId });
       return;
     }
 
@@ -210,7 +212,7 @@ export class MetricsService {
       };
 
       await this.writer.appendRecord(this.projectPath, record);
-      logger.debug('[MetricsService] Spec lifecycle completed', { specId, totalMs });
+      this.logger.debug('[MetricsService] Spec lifecycle completed', { specId, totalMs });
     }
   }
 
@@ -372,29 +374,4 @@ export class MetricsService {
       status: 'in-progress',
     };
   }
-}
-
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-let defaultMetricsService: MetricsService | null = null;
-
-/**
- * Get the default MetricsService instance
- */
-export function getDefaultMetricsService(): MetricsService {
-  if (!defaultMetricsService) {
-    defaultMetricsService = new MetricsService();
-  }
-  return defaultMetricsService;
-}
-
-/**
- * Initialize the default MetricsService with a project path
- */
-export function initDefaultMetricsService(projectPath: string): MetricsService {
-  const service = getDefaultMetricsService();
-  service.setProjectPath(projectPath);
-  return service;
 }

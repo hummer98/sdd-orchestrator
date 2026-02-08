@@ -40,7 +40,7 @@ import { DocumentReviewService } from './documentReviewService';
 import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
 // spec-productivity-metrics: Direct metrics tracking in service
-import { getDefaultMetricsService } from './metricsService';
+import { type MetricsService } from './metricsService';
 // main-process-log-parser Task 10.5: Unified parser for session_id extraction
 import { unifiedParser } from '../utils/unifiedParser';
 // MetricsWorkflowPhase import removed - now using AgentPhase (string) for all phases
@@ -478,6 +478,7 @@ export interface LayoutConfigServiceDependency {
  */
 export interface SpecManagerServiceOptions {
   layoutConfigService?: LayoutConfigServiceDependency;
+  metricsService?: MetricsService;
 }
 
 /**
@@ -538,6 +539,8 @@ export class SpecManagerService {
   // agent-error-notification: Track command for each agent (for error details)
   private agentCommands: Map<string, string> = new Map();
 
+  private metricsService: MetricsService | null = null;
+
   constructor(projectPath: string, options?: SpecManagerServiceOptions) {
     this.projectPath = projectPath;
     // Determine provider type from project path
@@ -554,6 +557,9 @@ export class SpecManagerService {
 
     // skip-permissions-main-process: Accept layoutConfigService via DI
     this.layoutConfigService = options?.layoutConfigService ?? null;
+
+    // Accept metricsService via DI
+    this.metricsService = options?.metricsService ?? null;
 
     // execution-store-consolidation: ImplCompletionAnalyzer initialization REMOVED (Req 6.2)
     // Task completion state is now managed via TaskProgress from tasks.md
@@ -1258,10 +1264,9 @@ export class SpecManagerService {
 
         // Task 3.2, 3.3: Calculate AI time and write to metrics.jsonl
         const lastExecution = updatedExecutions[lastIndex];
-        if (lastExecution.startedAt) {
-          const metricsService = getDefaultMetricsService();
+        if (lastExecution.startedAt && this.metricsService) {
           try {
-            await metricsService.recordAiSessionFromFile(
+            await this.metricsService.recordAiSessionFromFile(
               specId,
               phase,
               lastExecution.startedAt,

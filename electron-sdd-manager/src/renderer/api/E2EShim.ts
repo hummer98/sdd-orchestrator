@@ -121,6 +121,56 @@ export function initializeE2EShim(): void {
       });
       return () => sub.unsubscribe();
     },
+
+    // --- Auto Execution operations ---
+    updateSpecJson: async (specName: string, updates: Record<string, unknown>) => {
+      return await client.spec.updateSpecJson.mutate({ specName, updates });
+    },
+    autoExecutionReset: async () => {
+      return await client.autoExecution.reset.mutate();
+    },
+    setMockEnv: async (key: string, value: string) => {
+      return await client.autoExecution.setMockEnv.mutate({ key, value });
+    },
+
+    // --- Metrics operations ---
+    getSpecMetrics: async (specId: string) => {
+      return await client.misc.getSpecMetrics.query({ specId });
+    },
+    recordHumanSession: async (data: { specId: string; start: string; end: string; ms: number }) => {
+      return await client.misc.recordHumanSession.mutate(data);
+    },
+
+    // --- Cloudflare operations ---
+    getCloudflareSettings: async () => {
+      return await client.cloudflare.getSettings.query();
+    },
+    checkCloudflareBinary: async () => {
+      return await client.cloudflare.checkBinary.query();
+    },
+    setCloudflarePublishToCloudflare: async (enabled: boolean) => {
+      return await client.cloudflare.setPublishToCloudflare.mutate({ enabled });
+    },
+    refreshCloudflareAccessToken: async () => {
+      return await client.cloudflare.refreshAccessToken.mutate();
+    },
+    onCloudflareTunnelStatusChanged: (callback: (status: Record<string, unknown>) => void) => {
+      const sub = client.events.onCloudflareTunnelStatusChanged.subscribe(undefined, {
+        onData: (data: Record<string, unknown>) => {
+          if (!data) return;
+          callback(data);
+        },
+      });
+      return () => sub.unsubscribe();
+    },
+
+    // --- Bug Auto Execution operations ---
+    bugAutoExecutionStatus: async (params: { bugPath: string }) => {
+      return await client.autoExecution.bugGetStatus.query({ bugPath: params.bugPath });
+    },
+    bugAutoExecutionReset: async () => {
+      return await client.autoExecution.bugReset.mutate();
+    },
   };
 
   console.info('[E2EShim] window.electronAPI has been re-exposed for E2E tests');

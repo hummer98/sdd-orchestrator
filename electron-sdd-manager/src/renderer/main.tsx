@@ -9,9 +9,11 @@ import { App } from './App';
 import { TRPCProvider } from '../shared/trpc/provider';
 import './styles/index.css';
 
-// Initialize E2E Shim if in E2E environment
+// Initialize E2E environment
 if ((window as any).isE2E) {
-  initializeE2EShim();
+  initializeE2EShim(); // Legacy shim - will be removed as tests migrate to __TRPC__
+  (window as any).__TRPC__ = getVanillaClient();
+  console.info('[main] window.__TRPC__ exposed for E2E tests');
 }
 import { useProjectStore, useSpecStore, useSharedBugStore, notify } from './stores';
 import { setNotificationHandler } from '@shared/stores/notificationStore';

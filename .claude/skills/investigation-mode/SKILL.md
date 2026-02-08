@@ -48,6 +48,20 @@ task logs:main
 task logs:agent
 ```
 
+### 大きなログファイルの解析 (gemini-cli連携)
+
+Readツールの25Kトークン制限を超えるログファイルは、gemini-cliに解析を委譲する:
+
+```bash
+# ログ全体をgeminiに渡して解析
+gemini -p "次のログを分析してエラーの原因を特定して: @{ログファイルパス}" -y -o text 2>&1
+
+# 前処理で絞り込んでからgeminiに渡す
+grep -B5 -A10 "ERROR\|FATAL" {ログファイルパス} > /tmp/filtered.log && gemini -p "このエラーログの根本原因を特定して: @/tmp/filtered.log" -y -o text 2>&1
+```
+
+**判断基準**: ログファイルが2000行を超える場合、またはReadで全体を把握できない場合にgemini-cliを使う。
+
 ---
 
 ## サービス状態の確認

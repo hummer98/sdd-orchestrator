@@ -158,3 +158,14 @@ Electronアプリの操作には`task`コマンドを使用する。
 | spec-manager   | Electron UI統合用コマンド          | SDD Orchestrator UIと連携する環境  |
 
 **詳細**: 各プロファイルの動作仕様は `.kiro/steering/skill-reference.md` を参照。
+
+## Web Research
+
+- WebFetch/WebSearchが失敗・制限される場合、gemini-cli Skill（`~/.claude/skills/gemini-cli/`）を使用してウェブ調査を代行する
+- 基本コマンド: `gemini -p "質問" -y -o text 2>&1`
+- WebFetchを1回試して失敗した場合、リトライせずgemini-cliに切り替えること
+
+## Discord Integration
+
+- デフォルトDiscordサーバー (guildId): `1240905723555086336`
+- Discord MCP操作で guildId が必要な場合、ユーザーが明示的に別のサーバーを指定しない限り、上記のIDを使用すること

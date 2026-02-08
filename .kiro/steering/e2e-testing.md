@@ -4,6 +4,46 @@ E2Eテスト（WebdriverIO + wdio-electron-service）のアーキテクチャと
 
 ---
 
+## テスト設計原則
+
+### E2Eテストの目的
+
+E2Eテストは**ユーザーが実際に行う操作とその結果を検証する**テストである。Electronバイナリを起動するのは、ユーザーと同じ環境で画面を操作するためであり、内部APIを呼び出すためではない。
+
+### テスト種別の使い分け
+
+| テスト種別 | 検証対象 | 手段 | ツール |
+|-----------|---------|------|-------|
+| **E2E** | ユーザーが見る画面・操作した結果 | UI操作（クリック、入力、待機） | WebdriverIO / Playwright |
+| **Integration** | APIルートの存在・入出力・内部ロジック | 関数/ルーターの直接呼び出し | vitest |
+| **Unit** | 個別関数・コンポーネントの振る舞い | 関数呼び出し・レンダリング | vitest |
+
+### E2Eテストで行うこと
+
+- **UI要素の操作**: クリック、テキスト入力、スクロール
+- **UI要素の検証**: 表示されている、テキストが正しい、無効化されている
+- **ユーザーフローの通し検証**: Spec選択 → フェーズ実行 → 結果表示
+- **Electron固有の検証**: セキュリティ設定（`browser.electron.execute`経由）
+
+### E2Eテストで行わないこと
+
+- **API存在確認**: `typeof window.electronAPI.xxx === 'function'` → integration testで行う
+- **API直接呼び出し**: `window.electronAPI.xxx()` や `window.__TRPC__.xxx.query()` → integration testで行う
+- **内部ステート検証を主アサーションにする**: store状態の直接チェックはデバッグ用。アサーションはUIで行う
+
+### セットアップとアサーションの区別
+
+| 用途 | 許可される手段 | 例 |
+|------|--------------|-----|
+| **プロジェクト選択** | `SDD_PROJECT_PATH` 環境変数 | wdio.conf.tsのappEnv |
+| **Spec選択** | UIクリック (`selectSpecViaUI`) | spec-list-itemをクリック |
+| **テスト状態の読み取り** | `__STORES__.xxx.getState()` (補助的) | デバッグログ、条件分岐 |
+| **アサーション** | **UI要素の状態のみ** | `expect(element.isExisting()).toBe(true)` |
+
+> **原則**: テストのセットアップにプログラマティックな手段を使うのは許容される。しかし、**アサーション対象は常にユーザーが見る画面**でなければならない。
+
+---
+
 ## フレームワークアーキテクチャ
 
 ### 技術スタック
@@ -670,8 +710,9 @@ import {
 | 関数 | 説明 |
 |-----|------|
 | `selectProjectViaStore(path)` | **deprecated** - `SDD_PROJECT_PATH` 環境変数を使用すること |
-| `selectSpecViaStore(specId)` | Zustand store経由でSpecを選択 |
-| `setAutoExecutionPermissions(permissions)` | 自動実行許可設定を更新 |
+| `selectSpecViaUI(specName)` | **推奨** - UIクリックでSpecを選択 |
+| `selectSpecViaStore(specId)` | **非推奨** - tRPC IPC完了しない問題あり。`selectSpecViaUI` を使用 |
+| `setAutoExecutionPermissions(permissions)` | 自動実行許可設定を更新（セットアップ用） |
 | `getAutoExecutionStatus()` | 現在選択中のSpecの自動実行状態を取得 |
 | `waitForCondition(condition, timeout, interval, label)` | 条件が満たされるまで待機 |
 | `refreshSpecStore()` | Specストアを更新 |
@@ -808,15 +849,6 @@ if (await element.isExisting()) {
   await element.click();
   // ... アサーション
 }
-```
-
-### Browser APIアクセス（Renderer）
-
-```typescript
-// Rendererプロセスで実行
-const hasAPI = await browser.execute(() => {
-  return typeof window.electronAPI !== 'undefined';
-});
 ```
 
 ### プレビュー領域のスクロール
@@ -1103,54 +1135,38 @@ UIクリックは `SpecListItem` の `onClick` → `selectSpec()` を通常のRe
 
 ### 総合評価
 
-**現状: 「統合テストレベル - Mock Claudeによる実ワークフローテストを追加」**
-
-```
-UIコンポーネント存在確認: ████████░░ 80%
-セキュリティ/安定性:     ██████████ 100%
-実ワークフロー動作:      █████░░░░░ 50%
-エラーハンドリング:      ███░░░░░░░ 30%
-```
-
-### 十分にカバーされている領域
-
-- ✅ 基本動作・セキュリティ設定
-- ✅ UIコンポーネント存在確認
-- ✅ メニュー構成
-- ✅ IPC API存在確認
-- ✅ セキュリティ検証（contextIsolation, nodeIntegration）
-- ✅ アプリケーション安定性（クラッシュ検知）
-- ✅ SSH接続ダイアログ（SSHConnectDialog, SSHAuthDialog）
-- ✅ レイアウト永続化（ResizeHandle, レイアウト保存/復元）
-- ✅ インストールダイアログ（CliInstallDialog, ClaudeMdInstallDialog）
-- ✅ マルチウィンドウ機能（ウィンドウ管理、状態取得）
-- ✅ **ワークフロー統合テスト（Mock Claude使用）**
-- ✅ Git差分表示（GitView, GitDiffViewer）
+**現状の課題**: 多くのテストがAPI直接呼び出しやコンポーネント存在確認に留まっており、ユーザー操作ベースのE2Eテストとして不十分。
 
 ### 改善が必要な領域
 
 | 領域 | 問題点 | 優先度 |
 |-----|--------|-------|
-| ~~実ワークフロー実行~~ | ~~フェーズ実行、Agent起動が「インフラ確認」のみ~~ | ~~高~~ → 対応済み |
-| ~~プロジェクト選択後の動作~~ | ~~多くのテストがプロジェクト未選択状態~~ | ~~高~~ → 対応済み |
+| **API直接呼び出しの排除** | `window.electronAPI` / `window.__TRPC__` を使ったテストはintegration testに移行 | 高 |
+| **UI操作ベースへの移行** | コンポーネント存在確認だけでなく、ユーザーフローを通しで検証 | 高 |
 | エラーケース | エラー発生時のUI動作テストが少ない | 中 |
 | 複数フェーズ連続実行 | requirements→design→tasks の連続実行テスト | 中 |
 
-### 推奨改善アクション
+### 既にカバーされているE2Eテスト
 
-1. **中優先度**
-   - エラー発生時のUI表示・リカバリーテスト
-   - 複数フェーズの連続実行テスト
-   - 自動実行（Auto Execution）の完全なフローテスト
+- ✅ セキュリティ設定（contextIsolation, nodeIntegration）
+- ✅ アプリケーション安定性（クラッシュ検知）
+- ✅ ワークフロー統合テスト（Mock Claude使用、UI操作ベース）
+- ✅ Git差分表示（UI操作ベース）
+- ✅ マルチウィンドウ機能
+
+### integration testに移行すべきテスト
+
+以下はE2Eテストとして不適切であり、vitestによるintegration testに移行すべき:
+
+- API存在確認（`typeof window.electronAPI.xxx === 'function'`）
+- API直接呼び出しによるデータ取得/更新
+- IPC通信チャネルの確認
 
 ### 結論
 
-Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずにワークフローの動作検証**が可能になった。
-これにより：
-- CI/CDでのE2Eテスト実行が可能
-- テストの再現性が向上
-- API課金なしでのテスト実行
+Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずにワークフローのUI動作検証**が可能。
+テストの品質向上には、API直接呼び出しからUI操作ベースへの移行が最優先課題。
 
 ---
 
-_更新日: 2026-02-05_
+_更新日: 2026-02-09_

@@ -14,6 +14,29 @@ E2Eテスト記述支援Skill。Electron E2E（WebdriverIO）とWeb E2E（Playwr
 
 ---
 
+## テスト設計原則
+
+E2Eテストは**ユーザーが実際に行う操作とその結果を検証する**テスト。
+
+### E2Eテストで行うこと
+
+- UI要素の操作（クリック、テキスト入力、スクロール）
+- UI要素の検証（表示されている、テキストが正しい、無効化されている）
+- ユーザーフローの通し検証（Spec選択 → フェーズ実行 → 結果表示）
+
+### E2Eテストで行わないこと
+
+- API存在確認（`typeof window.electronAPI.xxx === 'function'`）→ integration test
+- API直接呼び出し（`window.electronAPI.xxx()`, `window.__TRPC__.xxx.query()`）→ integration test
+- 内部ステートの直接検証を主アサーションにする → デバッグ用途のみ
+
+### セットアップとアサーションの区別
+
+- **セットアップ**: プログラマティックな手段OK（環境変数、fixture、store setState）
+- **アサーション**: **UI要素の状態のみ**（表示、テキスト、有効/無効）
+
+---
+
 ## フレームワーク選択
 
 | テスト対象 | フレームワーク | ディレクトリ |
@@ -25,7 +48,6 @@ E2Eテスト記述支援Skill。Electron E2E（WebdriverIO）とWeb E2E（Playwr
 
 **WebdriverIO（Electron E2E）を使う場合**:
 - Electronメニュー操作
-- IPC通信テスト
 - ネイティブダイアログ
 - セキュリティ設定確認（contextIsolation, nodeIntegration）
 
@@ -64,26 +86,26 @@ ls electron-sdd-manager/e2e-playwright/*.spec.ts
 ### 基本構造
 
 ```typescript
-import path from 'node:path';
-
-const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
+import { selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 describe('Feature Name', () => {
-  // Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
-
-  describe('機能固有のテスト', () => {
+  describe('ユーザーフローのテスト', () => {
     before(async () => {
-      // プロジェクト選択（Zustand store経由推奨）
-      await browser.execute((projectPath) => {
-        const stores = (window as any).__STORES__;
-        return stores.project.getState().selectProject(projectPath);
-      }, FIXTURE_PROJECT_PATH);
+      // プロジェクト選択は SDD_PROJECT_PATH 環境変数で行う（wdio.conf.ts設定済み）
+      // Spec選択はUIクリックで行う
+      await selectSpecViaUI('test-feature');
     });
 
-    it('should do something', async () => {
-      const element = await $('[data-testid="target-element"]');
-      await element.waitForExist({ timeout: 3000 });
-      expect(await element.isExisting()).toBe(true);
+    it('should show workflow view after selecting a spec', async () => {
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+      expect(await workflowView.isExisting()).toBe(true);
+    });
+
+    it('should display phase buttons', async () => {
+      const reqButton = await $('[data-testid="phase-button-requirements"]');
+      expect(await reqButton.isExisting()).toBe(true);
+      expect(await reqButton.getText()).toContain('Requirements');
     });
   });
 });
@@ -93,20 +115,36 @@ describe('Feature Name', () => {
 
 ```typescript
 import {
-  selectProjectViaStore,
-  selectSpecViaStore,
+  selectSpecViaUI,
+  ensureProjectSelected,
   setAutoExecutionPermissions,
   waitForCondition,
-  resetAutoExecutionService,
 } from './helpers/auto-execution.helpers';
 ```
 
 | 関数 | 説明 |
 |-----|------|
-| `selectProjectViaStore(path)` | Store経由でプロジェクト選択（推奨） |
-| `selectSpecViaStore(specId)` | Store経由でSpec選択 |
-| `setAutoExecutionPermissions(perms)` | 自動実行許可設定 |
+| `ensureProjectSelected(path)` | プロジェクトが選択済みか確認（セットアップ用） |
+| `selectSpecViaUI(specName)` | **推奨** - UIクリックでSpec選択 |
+| `setAutoExecutionPermissions(perms)` | 自動実行許可設定（セットアップ用） |
 | `waitForCondition(fn, timeout, interval, label)` | 条件待機 |
+
+**非推奨**:
+| 関数 | 理由 |
+|-----|------|
+| `selectProjectViaStore(path)` | deprecated - `SDD_PROJECT_PATH` 環境変数を使用 |
+| `selectSpecViaStore(specId)` | tRPC IPC完了しない問題あり - `selectSpecViaUI` を使用 |
+
+### Electron固有の検証
+
+```typescript
+// セキュリティ設定（browser.electron.execute経由 - これはE2Eとして妥当）
+const contextIsolation = await browser.electron.execute((electron) => {
+  return electron.BrowserWindow.getAllWindows()[0]?.webContents
+    ?.getLastWebPreferences?.()?.contextIsolation;
+});
+expect(contextIsolation).toBe(true);
+```
 
 ### セレクタリファレンス
 
@@ -118,20 +156,6 @@ import {
 | フェーズボタン | `phase-button-{phase}` |
 | 自動実行 | `auto-execute-button` |
 | レビューパネル | `document-review-panel` |
-
-### Electron APIアクセス
-
-```typescript
-// メインプロセスで実行
-const isPackaged = await browser.electron.execute((electron) => {
-  return electron.app.isPackaged;
-});
-
-// Rendererプロセスで実行
-const hasAPI = await browser.execute(() => {
-  return typeof window.electronAPI !== 'undefined';
-});
-```
 
 ---
 
@@ -191,12 +215,6 @@ const bugsTab = bottomTabBar.locator('[data-testid="remote-tab-bugs"]');
 
 実際のClaude APIを呼び出さずにワークフローをテスト。
 
-### 対応フェーズ
-
-- `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`, `/kiro:spec-impl`
-- `/kiro:validate-gap`, `/kiro:validate-design`, `/kiro:validate-impl`
-- `/kiro:document-review`, `/kiro:document-review-reply`
-
 ### 生成されるファイル
 
 | フェーズ | 生成ファイル | spec.json更新 |
@@ -209,18 +227,22 @@ const bugsTab = bottomTabBar.locator('[data-testid="remote-tab-bugs"]');
 
 ## ベストプラクティス
 
-### DO ✓
+### DO
 
 - `data-testid`属性でセレクタ指定
-- Zustand store経由でプロジェクト/Spec選択
+- UI操作でテスト（クリック、入力、待機）
+- アサーションはUI要素の状態で行う
+- `SDD_PROJECT_PATH` でプロジェクト選択、`selectSpecViaUI` でSpec選択
 - 共通ヘルパー関数を使用
 - `waitForExist`/`waitForCondition`で非同期待機
 
-### DON'T ✗
+### DON'T
 
-- UIダイアログやメニューバー経由のプロジェクト選択（不安定）
+- `window.electronAPI.xxx()` や `window.__TRPC__.xxx.query()` でAPI直接呼び出し
+- `typeof window.electronAPI.xxx === 'function'` でAPI存在確認
 - `expect(true).toBe(true)` のような意味のないアサーション
 - 各ファイルでセキュリティ/安定性テストを重複定義（`app-launch.spec.ts`に統合済み）
+- UIダイアログやメニューバー経由のプロジェクト選択（不安定）
 
 ---
 
@@ -244,5 +266,4 @@ npx playwright test smoke.spec.ts
 
 - **詳細ガイド（Electron）**: `.kiro/steering/e2e-testing.md`
 - **詳細ガイド（Web）**: `.kiro/steering/web-e2e-testing.md`
-- **テスト一覧・分析**: `docs/memo/e2e-tests-inventory.md`
 - **既存テスト**: `electron-sdd-manager/e2e-wdio/`, `electron-sdd-manager/e2e-playwright/`

@@ -953,6 +953,51 @@ expect(windows[0].isResizable()).toBe(true);
 
 ---
 
+## アンチパターン: Zustandストア経由のSpec選択
+
+### 問題
+
+`selectSpecViaStore()` を使用してE2Eテスト内でSpecを選択すると、`specDetail` が `null` のまま完了し、`workflow-view` が描画されない問題がある。
+
+**根本原因**: `browser.executeAsync` 内で `specStore.selectSpec(spec)` を呼び出すと、内部のtRPC IPCコールが正常に完了しない。`selectSpec` は成功を返すが、`specDetail` は `null`、`isDetailLoading` は `false`、`error` は `null` のままになる。
+
+### 診断結果
+
+```json
+{"error":null,"isDetailLoading":false,"specDetail":null,"success":true}
+```
+
+### 推奨パターン
+
+```typescript
+// ❌ アンチパターン: ストア直接操作
+import { selectSpecViaStore } from './helpers/auto-execution.helpers';
+await selectSpecViaStore(SPEC_NAME);  // specDetail が null のまま
+
+// ✅ 推奨: UIクリックによるSpec選択
+import { selectSpecViaUI } from './helpers/auto-execution.helpers';
+await selectSpecViaUI(SPEC_NAME);  // React の正常なレンダリングパイプラインで処理
+```
+
+### なぜUIクリックが安定するか
+
+UIクリックは `SpecListItem` の `onClick` → `selectSpec()` を通常のReactコンポーネントライフサイクル内で実行する。tRPCレスポンスはReactの正常なレンダリングパイプラインで処理されるため、`specDetail` が正しく設定される。
+
+一方、`browser.executeAsync` 内での `selectSpec()` はRendererプロセス内の非同期IPC処理が正常に完了しないため、レスポンスが失われる。
+
+### 適用範囲
+
+**ストア直接操作がアンチパターンになるケース**:
+- `selectSpec()` - tRPC IPCを内部で使用する非同期操作
+- `selectProject()` - 同様にIPC経由の非同期操作（`selectProjectViaStore` は deprecated）
+
+**ストア直接操作が安全なケース**:
+- `getState()` による状態読み取り（同期操作）
+- `setState()` による直接的な状態設定（IPC不要）
+- `clearAgentStore()` など純粋なローカル状態操作
+
+---
+
 ## 既知の制限事項
 
 1. **メニュー操作**: MCP electronツールではネイティブメニューを直接操作できない

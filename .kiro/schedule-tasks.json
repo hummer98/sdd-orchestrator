@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "32eea290-0427-4f71-b126-af1a3c9fbbf0",
+      "name": "test-fix",
+      "enabled": false,
+      "schedule": {
+        "type": "interval",
+        "hoursInterval": 12,
+        "waitForIdle": true
+      },
+      "prompts": [
+        {
+          "order": 0,
+          "content": "/test-fix --report"
+        }
+      ],
+      "avoidance": {
+        "targets": [],
+        "behavior": "skip"
+      },
+      "workflow": {
+        "enabled": false,
+        "suffixMode": "auto"
+      },
+      "behavior": "wait",
+      "lastExecutedAt": 1770365057524,
+      "createdAt": 1769805018996,
+      "updatedAt": 1770368953920
+    }
+  ]
+}

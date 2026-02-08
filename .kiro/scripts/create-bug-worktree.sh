@@ -2,7 +2,7 @@
 # create-bug-worktree.sh
 # Bug用worktree作成スクリプト: bugfix/ブランチとworktreeを同時作成
 # Requirements: 1.3, 1.4, 1.5, 1.6
-# vcs-scheme-switching: Task 5.2 - VCSスキーム対応
+# vcs-scheme-switching: Task 5.3 - VCSスキーム対応
 # Requirements: 4.6 (vcs-scheme-switching)
 #
 # Usage: create-bug-worktree.sh <bug-name> [git|jj]

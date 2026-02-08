@@ -2,7 +2,7 @@
 # create-spec-worktree.sh
 # Spec用worktree作成スクリプト: feature/<feature-name>ブランチを作成し、worktreeを配置
 # Requirements: 1.1, 1.2, 1.5, 1.6 (git-worktree-support)
-# vcs-scheme-switching: Task 5.1 - VCSスキーム対応
+# vcs-scheme-switching: Task 5.3 - VCSスキーム対応
 # Requirements: 4.1, 4.2, 4.3, 4.4, 4.5 (vcs-scheme-switching)
 #
 # Usage: create-spec-worktree.sh <feature-name> [git|jj]

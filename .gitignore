@@ -6,8 +6,10 @@
 # worktree-internal-path: worktreeディレクトリ除外（git管理対象外）
 .kiro/worktrees/
 node_modules
+*.tsbuildinfo
 
 # Security sensitive files
+.envrc
 .mcp.json
 .electron-dev.pid
 logs/

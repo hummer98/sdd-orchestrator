@@ -2,7 +2,7 @@
   "version": 3,
   "profile": {
     "name": "cc-sdd-agent",
-    "installedAt": "2026-01-23T22:02:49.010Z"
+    "installedAt": "2026-02-06T00:58:00.452Z"
   },
   "layout": {
     "leftPaneWidth": 320,
@@ -14,18 +14,19 @@
   "commandsets": {
     "cc-sdd-agent": {
       "version": "0.0.0",
-      "installedAt": "2026-01-23T22:02:49.008Z"
+      "installedAt": "2026-02-06T00:58:00.450Z"
     },
     "bug": {
       "version": "1.0.0",
-      "installedAt": "2026-01-23T22:02:49.008Z"
+      "installedAt": "2026-02-06T00:58:00.450Z"
     },
     "document-review": {
       "version": "0.0.0",
-      "installedAt": "2026-01-23T22:02:49.008Z"
+      "installedAt": "2026-02-06T00:58:00.450Z"
     }
   },
   "settings": {
-    "skipPermissions": true
+    "skipPermissions": true,
+    "remoteUiAutoStart": true
   }
 }

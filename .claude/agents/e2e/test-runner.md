@@ -45,6 +45,7 @@ WebdriverIO (Electron) / Playwright (Remote UI) のE2Eテストを実行し、�
 1. **プロジェクト選択の独自実装禁止**: `selectProjectViaStore()` は deprecated。`SDD_PROJECT_PATH` 環境変数を使用すること（wdio.conf.ts で設定済み）
 2. **ヘルパー関数のローカル再実装禁止**: `e2e-wdio/helpers/` の既存関数を使うこと
 3. **テスト実行コマンドの改変禁止**: ステアリングに記載のコマンドをそのまま使用
+4. **既存Electronプロセスのkill禁止**: 開発用Electronアプリを `kill`/`pkill`/`task electron:stop` 等で停止してはならない。ポート競合がある場合はエラーレポートに記載してスキップすること
 
 ## Execution Steps
 
@@ -53,19 +54,17 @@ WebdriverIO (Electron) / Playwright (Remote UI) のE2Eテストを実行し、�
 テスト実行環境を確認する。
 
 **Electron テスト時**:
-1. Electron アプリが停止していること:
-   ```bash
-   pgrep -f "SDD Orchestrator" || echo "stopped"
-   ```
-2. Port 9222 が空いていること:
+1. Port 9222 が空いていること（E2Eテストが使用するデバッグポート）:
    ```bash
    lsof -i :9222 | grep LISTEN || echo "available"
    ```
-3. ビルドが存在すること:
+   - ポートが使用中の場合: エラーレポートに記載してElectronスコープのテストをスキップ
+   - **注意**: 既存のElectronプロセスを kill してはならない（禁止事項 #4 参照）
+2. ビルドが存在すること:
    ```bash
    test -d electron-sdd-manager/dist && echo "built"
    ```
-4. ビルドが存在しない場合、ビルドを実行:
+3. ビルドが存在しない場合、ビルドを実行:
    ```bash
    cd electron-sdd-manager && npm run build
    ```
@@ -76,7 +75,7 @@ WebdriverIO (Electron) / Playwright (Remote UI) のE2Eテストを実行し、�
    cd electron-sdd-manager && npx playwright --version
    ```
 
-**環境チェック失敗時**: エラー内容をレポートに記載し、該当スコープのテストをスキップ。
+**環境チェック失敗時**: エラー内容をレポートに記載し、該当スコープのテストをスキップ。**既存プロセスのkillで解決しようとしないこと。**
 
 ### Step 2: runTests
 

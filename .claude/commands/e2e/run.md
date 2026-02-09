@@ -58,6 +58,7 @@ E2Eテストを実行し、結果レポートを `docs/e2e-report/` に保存し
 - **プロジェクト選択の独自実装禁止**: `selectProjectViaStore()` は deprecated。`SDD_PROJECT_PATH` 環境変数を使用（wdio.conf.ts で設定済み）
 - **ヘルパー関数のローカル再実装禁止**: `e2e-wdio/helpers/` の既存関数を使うこと
 - **テスト実行コマンドの改変禁止**: ステアリングに記載のコマンドをそのまま使用
+- **既存Electronプロセスのkill禁止**: 開発用Electronアプリを `kill`/`pkill`/`task electron:stop` 等で停止してはならない。ポート競合時はスキップしてレポートに記載
 
 ### 2. テスト実行 (e2e-test-runner エージェント)
 

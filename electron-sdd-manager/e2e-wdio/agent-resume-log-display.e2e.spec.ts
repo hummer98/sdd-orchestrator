@@ -21,7 +21,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -124,7 +124,7 @@ describe('Agent Resume Log Display E2E Test', () => {
     await refreshSpecStore();
     await browser.pause(500);
 
-    const specSuccess = await selectSpecViaStore(SPEC_NAME);
+    const specSuccess = await selectSpecViaUI(SPEC_NAME);
     expect(specSuccess).toBe(true);
     await browser.pause(500);
 

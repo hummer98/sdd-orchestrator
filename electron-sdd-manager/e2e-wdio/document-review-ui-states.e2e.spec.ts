@@ -20,7 +20,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   refreshSpecStore,
   clearAgentStore,
   resetAutoExecutionService,
@@ -359,7 +359,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -427,7 +427,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -478,7 +478,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -512,7 +512,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -558,7 +558,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -592,7 +592,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -642,7 +642,7 @@ describe('Document Review UI States E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)

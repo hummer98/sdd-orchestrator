@@ -1,11 +1,16 @@
 /**
  * Impl Start Worktree E2E Tests
- * Task 15.2: E2E tests for "Worktreeで実装" button
- * Requirements: 9.5, 9.6, 9.7 (git-worktree-support)
+ * Task 15.2: E2E tests for worktree mode in ImplPhasePanel
+ *
+ * Current implementation:
+ * - Single impl-execute-button (data-testid="impl-execute-button")
+ * - Worktree mode indicated by violet color and git-branch icon
+ * - Normal mode indicated by blue color and play icon
+ * - "Worktreeに変更" button in SpecWorkflowFooter (data-testid="convert-to-worktree-button")
  *
  * These tests verify:
- * - mainブランチでのworktree作成フロー
- * - 非mainブランチでのエラー表示
+ * - ImplPhasePanel表示とモード別スタイリング
+ * - 非mainブランチでのconvert-to-worktreeボタン非表示
  *
  * Prerequisites:
  * - Run with: npm run test:e2e
@@ -16,41 +21,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { ensureProjectSelected } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const WORKTREE_SPEC_NAME = 'worktree-test-feature';
-
-/**
- * Helper: Select spec using Zustand specStore action
- */
-async function selectSpecViaStore(specId: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.spec?.getState) {
-          const specStore = stores.spec.getState();
-          const spec = specStore.specs.find((s: any) => s.name === id);
-          if (spec) {
-            specStore.selectSpec(spec);
-            done(true);
-          } else {
-            console.error('[E2E] Spec not found:', id);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] __STORES__.specStore not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectSpec error:', e);
-        done(false);
-      }
-    }, specId).then(resolve);
-  });
-}
 
 /**
  * Helper: Create test spec with approved tasks phase
@@ -63,17 +38,31 @@ function createTestSpec(specName: string): void {
     fs.mkdirSync(specDir, { recursive: true });
   }
 
-  // Create spec.json with approved tasks
+  // Create spec.json with tasks-generated phase (all approved + document review approved)
   const specJson = {
     feature_name: specName,
+    name: specName,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     language: 'ja',
-    phase: 'tasks-approved',
+    phase: 'tasks-generated',
     approvals: {
       requirements: { generated: true, approved: true },
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
+    },
+    documentReview: {
+      status: 'approved',
+      currentRound: 1,
+      roundDetails: [
+        {
+          roundNumber: 1,
+          status: 'reply_complete',
+          fixRequired: 0,
+          needsDiscussion: 0,
+          fixStatus: 'not_required',
+        },
+      ],
     },
   };
   fs.writeFileSync(path.join(specDir, 'spec.json'), JSON.stringify(specJson, null, 2));
@@ -210,11 +199,12 @@ describe('Impl Start Worktree E2E', () => {
   });
 
   // ============================================================
-  // Task 15.2: ImplStartButtons UI Tests
-  // Requirements: 9.1, 9.2, 9.3
+  // Task 15.2: ImplPhasePanel UI Tests
+  // Current implementation: Single impl-execute-button with
+  // worktree mode indicated by color (violet) and icon (git-branch)
   // ============================================================
-  describe('ImplStartButtons UI', () => {
-    it('should display both impl start buttons when no worktree exists', async () => {
+  describe('ImplPhasePanel UI', () => {
+    it('should display impl execute button with normal mode styling when no worktree exists', async () => {
       // Create test spec
       createTestSpec(WORKTREE_SPEC_NAME);
 
@@ -226,21 +216,31 @@ describe('Impl Start Worktree E2E', () => {
       await browser.pause(1000);
 
       // Select the test spec
-      const specSelected = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       // Wait for spec detail to load
       await browser.pause(500);
 
-      // Check for both impl start buttons
-      const currentBranchButton = await $('[data-testid="impl-start-current-branch"]');
-      const worktreeButton = await $('[data-testid="impl-start-worktree"]');
+      // Check for impl phase panel and execute button
+      const implPhasePanel = await $('[data-testid="impl-phase-panel"]');
+      expect(await implPhasePanel.isExisting()).toBe(true);
 
-      expect(await currentBranchButton.isExisting()).toBe(true);
-      expect(await worktreeButton.isExisting()).toBe(true);
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      expect(await executeButton.isExisting()).toBe(true);
+
+      // Normal mode: should show play icon (not git-branch icon)
+      const playIcon = await executeButton.$('[data-testid="icon-play"]');
+      const gitBranchIcon = await executeButton.$('[data-testid="icon-git-branch"]');
+
+      console.log(`[E2E] play icon exists: ${await playIcon.isExisting()}`);
+      console.log(`[E2E] git-branch icon exists: ${await gitBranchIcon.isExisting()}`);
+
+      expect(await playIcon.isExisting()).toBe(true);
+      expect(await gitBranchIcon.isExisting()).toBe(false);
     });
 
-    it('should show only continue button when worktree exists in spec.json', async () => {
+    it('should display worktree mode styling when worktree exists in spec.json', async () => {
       // Create test spec with worktree field
       createTestSpec(WORKTREE_SPEC_NAME);
 
@@ -261,28 +261,33 @@ describe('Impl Start Worktree E2E', () => {
 
       await browser.pause(1000);
 
-      const specSelected = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       await browser.pause(500);
 
-      // Check that only continue button exists
-      const continueButton = await $('[data-testid="impl-start-worktree-continue"]');
-      const currentBranchButton = await $('[data-testid="impl-start-current-branch"]');
-      const worktreeButton = await $('[data-testid="impl-start-worktree"]');
+      // Single execute button exists (no separate current-branch/worktree buttons)
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      expect(await executeButton.isExisting()).toBe(true);
 
-      expect(await continueButton.isExisting()).toBe(true);
-      expect(await currentBranchButton.isExisting()).toBe(false);
-      expect(await worktreeButton.isExisting()).toBe(false);
+      // Worktree mode: should show git-branch icon (not play icon)
+      const gitBranchIcon = await executeButton.$('[data-testid="icon-git-branch"]');
+      const playIcon = await executeButton.$('[data-testid="icon-play"]');
+
+      console.log(`[E2E] git-branch icon exists: ${await gitBranchIcon.isExisting()}`);
+      console.log(`[E2E] play icon exists: ${await playIcon.isExisting()}`);
+
+      expect(await gitBranchIcon.isExisting()).toBe(true);
+      expect(await playIcon.isExisting()).toBe(false);
     });
   });
 
   // ============================================================
-  // Task 15.2: Worktree creation flow tests
-  // Requirements: 9.5, 9.6, 9.7
+  // Task 15.2: Convert to Worktree flow tests
+  // Current implementation: "Worktreeに変更" button in SpecWorkflowFooter
   // ============================================================
-  describe('Worktree Creation Flow', () => {
-    it('should show error when not on main branch and worktree button clicked', async () => {
+  describe('Convert to Worktree Flow', () => {
+    it('should hide convert-to-worktree button when not on main branch', async () => {
       // Create test spec
       createTestSpec(WORKTREE_SPEC_NAME);
 
@@ -297,27 +302,20 @@ describe('Impl Start Worktree E2E', () => {
 
         await browser.pause(1000);
 
-        const specSelected = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+        const specSelected = await selectSpecViaUI(WORKTREE_SPEC_NAME);
         expect(specSelected).toBe(true);
 
         await browser.pause(500);
 
-        // Click worktree button
-        const worktreeButton = await $('[data-testid="impl-start-worktree"]');
-        if (await worktreeButton.isExisting()) {
-          await worktreeButton.click();
+        // Convert-to-worktree button should NOT be shown on non-main branch
+        const convertButton = await $('[data-testid="convert-to-worktree-button"]');
+        const convertExists = await convertButton.isExisting();
+        console.log(`[E2E] convert-to-worktree-button exists on non-main: ${convertExists}`);
+        expect(convertExists).toBe(false);
 
-          // Wait for notification/error
-          await browser.pause(1000);
-
-          // Check for error notification - typically shows as toast
-          // Note: The exact implementation depends on the notification system
-          // This test verifies the button is clickable and triggers the flow
-
-          // The current branch should still be the test branch (no worktree created)
-          const currentBranch = getCurrentBranch();
-          expect(currentBranch).toBe(testBranch);
-        }
+        // The current branch should still be the test branch
+        const currentBranch = getCurrentBranch();
+        expect(currentBranch).toBe(testBranch);
       } finally {
         // Clean up test branch
         deleteBranch(testBranch);
@@ -329,7 +327,7 @@ describe('Impl Start Worktree E2E', () => {
     // 2. Having the worktree service actually create a worktree
     // 3. Verifying the spec.json is updated
     // This is a more complex integration test that may require additional setup
-    it.skip('should create worktree when on main branch and worktree button clicked', async () => {
+    it.skip('should convert to worktree when on main branch and convert button clicked', async () => {
       // This test is skipped as it requires full git worktree setup
       // and would modify the test repository state
 
@@ -345,15 +343,15 @@ describe('Impl Start Worktree E2E', () => {
 
       await browser.pause(1000);
 
-      const specSelected = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       await browser.pause(500);
 
-      // Click worktree button
-      const worktreeButton = await $('[data-testid="impl-start-worktree"]');
-      if (await worktreeButton.isExisting()) {
-        await worktreeButton.click();
+      // Click convert-to-worktree button
+      const convertButton = await $('[data-testid="convert-to-worktree-button"]');
+      if (await convertButton.isExisting()) {
+        await convertButton.click();
 
         // Wait for worktree creation
         await browser.pause(2000);

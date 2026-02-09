@@ -22,40 +22,10 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { ensureProjectSelected } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/permission-control-test');
-
-/**
- * Helper: Select spec using Zustand store
- */
-async function selectSpecViaStore(specId: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.spec?.getState) {
-          const specStore = stores.spec.getState();
-          const spec = specStore.specs.find((s: any) => s.name === id);
-          if (spec) {
-            specStore.selectSpec(spec);
-            done(true);
-          } else {
-            console.error('[E2E] Spec not found:', id);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] __STORES__.specStore not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectSpec error:', e);
-        done(false);
-      }
-    }, specId).then(resolve);
-  });
-}
 
 /**
  * Helper: Get AgentStore skipPermissions value

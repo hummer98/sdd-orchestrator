@@ -4,11 +4,11 @@
  * Tests the worktree execution workflow for specs.
  * Starting from document-review-completed state.
  *
- * Test Scenarios (Updated for worktree-execution-ui FIX-4):
- * 1. ImplFlowFrame display (no worktree): Checkbox unchecked, button shows "実装開始"
- * 2. ImplFlowFrame display (with worktree): Checkbox checked & locked, button shows "実装継続" (color indicates worktree mode)
+ * Test Scenarios (Updated for current implementation):
+ * 1. ImplPhasePanel display (no worktree): Execute button with normal mode (blue) styling
+ * 2. ImplPhasePanel display (with worktree): Execute button with worktree mode (violet) styling
  * 3. Worktree badge display in spec list
- * 4. Error on non-main branch when worktree mode selected
+ * 4. Convert-to-worktree button hidden on non-main branch
  * 5. spec.json worktree field verification
  * 6. Document Review panel visibility
  *
@@ -23,7 +23,7 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   refreshSpecStore,
   clearAgentStore,
   resetAutoExecutionService,
@@ -409,9 +409,9 @@ describe('Worktree Execution E2E', () => {
   });
 
   // ============================================================
-  // Scenario 1: ImplFlowFrame display - no worktree (FIX-4)
+  // Scenario 1: ImplPhasePanel display - no worktree
   // ============================================================
-  describe('Scenario 1: ImplFlowFrame display (no worktree)', () => {
+  describe('Scenario 1: ImplPhasePanel display (no worktree)', () => {
     beforeEach(async () => {
       // Reset fixture to initial state
       resetFixtureToInitial();
@@ -432,7 +432,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -444,80 +444,74 @@ describe('Worktree Execution E2E', () => {
       await browser.pause(500);
     });
 
-    it('should display ImplFlowFrame with checkbox and start button', async () => {
+    it('should display ImplPhasePanel with execute button', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // Check for ImplFlowFrame
-      const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
-      const frameExists = await implFlowFrame.isExisting();
+      // Check for ImplPhasePanel
+      const implPhasePanel = await $('[data-testid="impl-phase-panel"]');
+      const panelExists = await implPhasePanel.isExisting();
 
-      console.log(`[E2E] impl-flow-frame exists: ${frameExists}`);
-      expect(frameExists).toBe(true);
+      console.log(`[E2E] impl-phase-panel exists: ${panelExists}`);
+      expect(panelExists).toBe(true);
 
-      // Check for worktree mode checkbox
-      const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-      const checkboxExists = await checkbox.isExisting();
+      // Check for execute button
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      const buttonExists = await executeButton.isExisting();
 
-      console.log(`[E2E] worktree-mode-checkbox exists: ${checkboxExists}`);
-      expect(checkboxExists).toBe(true);
-
-      // Check for unified start button
-      const startButton = await $('[data-testid="impl-start-button"]');
-      const buttonExists = await startButton.isExisting();
-
-      console.log(`[E2E] impl-start-button exists: ${buttonExists}`);
+      console.log(`[E2E] impl-execute-button exists: ${buttonExists}`);
       expect(buttonExists).toBe(true);
 
-      // Verify start button is enabled (document review is approved)
+      // Verify execute button is enabled (document review is approved)
       if (buttonExists) {
-        const isEnabled = await startButton.isEnabled();
-        console.log(`[E2E] impl-start-button enabled: ${isEnabled}`);
+        const isEnabled = await executeButton.isEnabled();
+        console.log(`[E2E] impl-execute-button enabled: ${isEnabled}`);
         expect(isEnabled).toBe(true);
       }
     });
 
-    it('should show checkbox unchecked and editable when no worktree', async () => {
+    it('should show normal mode styling when no worktree in spec.json', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // Check checkbox state
-      const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-      if (await checkbox.isExisting()) {
-        // Checkbox should not be checked by default
-        const isChecked = await checkbox.isSelected();
-        console.log(`[E2E] worktree-mode-checkbox checked: ${isChecked}`);
-        // Default state depends on implementation - typically unchecked
-
-        // Checkbox should be enabled (editable)
-        const isEnabled = await checkbox.isEnabled();
-        console.log(`[E2E] worktree-mode-checkbox enabled: ${isEnabled}`);
+      // Worktree mode is determined by spec.json (no checkbox in UI)
+      // When no worktree field, button should use blue (normal mode) styling
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      if (await executeButton.isExisting()) {
+        // Verify button is enabled
+        const isEnabled = await executeButton.isEnabled();
+        console.log(`[E2E] impl-execute-button enabled (no worktree): ${isEnabled}`);
         expect(isEnabled).toBe(true);
+
+        // Verify normal mode icon (play icon, not git-branch icon)
+        const playIcon = await executeButton.$('[data-testid="icon-play"]');
+        const playIconExists = await playIcon.isExisting();
+        console.log(`[E2E] Normal mode play icon exists: ${playIconExists}`);
+        expect(playIconExists).toBe(true);
       }
     });
 
-    it('should show normal mode start button label', async () => {
+    it('should show execute button label', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // Check start button text (normal mode)
-      const startButton = await $('[data-testid="impl-start-button"]');
-      if (await startButton.isExisting()) {
-        const buttonText = await startButton.getText();
-        console.log(`[E2E] Start button text: "${buttonText}"`);
-        expect(buttonText).toContain('実装開始');
-        // Should not contain Worktree in label when checkbox is unchecked
+      // Check execute button text (button label is always "実装")
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      if (await executeButton.isExisting()) {
+        const buttonText = await executeButton.getText();
+        console.log(`[E2E] Execute button text: "${buttonText}"`);
+        expect(buttonText).toContain('実装');
       }
     });
   });
 
   // ============================================================
-  // Scenario 2: ImplFlowFrame display - with worktree (FIX-4)
+  // Scenario 2: ImplPhasePanel display - with worktree
   // ============================================================
-  describe('Scenario 2: ImplFlowFrame display (with worktree)', () => {
+  describe('Scenario 2: ImplPhasePanel display (with worktree)', () => {
     beforeEach(async () => {
       // Reset fixture with worktree configuration
       resetFixtureWithWorktree();
@@ -537,7 +531,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -549,45 +543,42 @@ describe('Worktree Execution E2E', () => {
       await browser.pause(500);
     });
 
-    it('should display checkbox checked and locked when worktree exists', async () => {
+    it('should display worktree mode styling when worktree exists in spec.json', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // Check for ImplFlowFrame
-      const implFlowFrame = await $('[data-testid="impl-flow-frame"]');
-      const frameExists = await implFlowFrame.isExisting();
+      // Check for ImplPhasePanel
+      const implPhasePanel = await $('[data-testid="impl-phase-panel"]');
+      const panelExists = await implPhasePanel.isExisting();
 
-      console.log(`[E2E] impl-flow-frame exists: ${frameExists}`);
-      expect(frameExists).toBe(true);
+      console.log(`[E2E] impl-phase-panel exists: ${panelExists}`);
+      expect(panelExists).toBe(true);
 
-      // Check checkbox state - should be checked and locked
-      const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-      if (await checkbox.isExisting()) {
-        // Checkbox should be checked (worktree exists)
-        const isChecked = await checkbox.isSelected();
-        console.log(`[E2E] worktree-mode-checkbox checked: ${isChecked}`);
-        expect(isChecked).toBe(true);
-
-        // Checkbox should be disabled (locked)
-        const isEnabled = await checkbox.isEnabled();
-        console.log(`[E2E] worktree-mode-checkbox enabled: ${isEnabled}`);
-        expect(isEnabled).toBe(false);
+      // Worktree mode is determined by spec.json.worktree field (no checkbox in UI)
+      // When worktree exists, button should use violet (worktree mode) styling
+      // and show git-branch icon instead of play icon
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      if (await executeButton.isExisting()) {
+        const gitBranchIcon = await executeButton.$('[data-testid="icon-git-branch"]');
+        const gitBranchExists = await gitBranchIcon.isExisting();
+        console.log(`[E2E] Worktree mode git-branch icon exists: ${gitBranchExists}`);
+        expect(gitBranchExists).toBe(true);
       }
     });
 
-    it('should display continue button (color indicates worktree mode)', async () => {
+    it('should display execute button with worktree mode label', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // Check start button text (worktree mode, impl started)
-      // Note: Worktree mode is indicated by color (violet) only, not label
-      const startButton = await $('[data-testid="impl-start-button"]');
-      if (await startButton.isExisting()) {
-        const buttonText = await startButton.getText();
-        console.log(`[E2E] Start button text (worktree): "${buttonText}"`);
-        expect(buttonText).toContain('継続');
+      // Check execute button text (worktree mode)
+      // Button label is always "実装" - worktree mode is indicated by color (violet) only
+      const executeButton = await $('[data-testid="impl-execute-button"]');
+      if (await executeButton.isExisting()) {
+        const buttonText = await executeButton.getText();
+        console.log(`[E2E] Execute button text (worktree): "${buttonText}"`);
+        expect(buttonText).toContain('実装');
       }
     });
   });
@@ -615,7 +606,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -647,7 +638,7 @@ describe('Worktree Execution E2E', () => {
       await browser.pause(500);
 
       // Re-select spec to trigger reload
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();
@@ -664,9 +655,9 @@ describe('Worktree Execution E2E', () => {
   });
 
   // ============================================================
-  // Scenario 4: Worktree creation error on non-main branch (FIX-4)
+  // Scenario 4: Convert-to-worktree button hidden on non-main branch
   // ============================================================
-  describe('Scenario 4: Worktree creation error on non-main branch', () => {
+  describe('Scenario 4: Convert-to-worktree button hidden on non-main branch', () => {
     const testBranch = 'test-branch-for-worktree-e2e';
 
     beforeEach(async () => {
@@ -689,7 +680,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -723,36 +714,25 @@ describe('Worktree Execution E2E', () => {
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 10000 });
 
-      // FIX-4: First enable worktree mode by checking the checkbox
-      const checkbox = await $('[data-testid="worktree-mode-checkbox"]');
-      if (await checkbox.isExisting()) {
-        const isChecked = await checkbox.isSelected();
-        if (!isChecked) {
-          await checkbox.click();
-          await browser.pause(500);
-        }
-      }
+      // Worktree mode is determined by spec.json (no checkbox in UI)
+      // The convert-to-worktree button in SpecWorkflowFooter should not be shown
+      // when not on main branch (canShowConvertButton returns false)
+      const convertButton = await $('[data-testid="convert-to-worktree-button"]');
+      const convertButtonExists = await convertButton.isExisting();
+      console.log(`[E2E] convert-to-worktree-button exists on non-main branch: ${convertButtonExists}`);
 
-      // Click start button (now in worktree mode)
-      const startButton = await $('[data-testid="impl-start-button"]');
-      if (await startButton.isExisting()) {
-        await startButton.click();
+      // Convert button should NOT be shown on non-main branch
+      expect(convertButtonExists).toBe(false);
 
-        // Wait for notification/error
-        await browser.pause(2000);
+      // Verify spec.json still has no worktree field
+      const specJson = readSpecJson();
+      console.log(`[E2E] spec.json.worktree: ${JSON.stringify(specJson.worktree)}`);
+      expect(specJson.worktree).toBeUndefined();
 
-        // Verify worktree was NOT created (spec.json should not have worktree field)
-        const specJson = readSpecJson();
-        console.log(`[E2E] spec.json.worktree after error: ${JSON.stringify(specJson.worktree)}`);
-
-        // Worktree should NOT be created (error on non-main branch)
-        expect(specJson.worktree).toBeUndefined();
-
-        // Check current branch is still the test branch
-        const currentBranch = getCurrentBranch();
-        console.log(`[E2E] Current branch after error: ${currentBranch}`);
-        expect(currentBranch).toBe(testBranch);
-      }
+      // Check current branch is still the test branch
+      const currentBranch = getCurrentBranch();
+      console.log(`[E2E] Current branch: ${currentBranch}`);
+      expect(currentBranch).toBe(testBranch);
     });
   });
 
@@ -779,7 +759,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -860,7 +840,7 @@ describe('Worktree Execution E2E', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready
@@ -896,17 +876,18 @@ describe('Worktree Execution E2E', () => {
 
       await browser.pause(1000);
 
-      // Check for approved indicator
-      const approvedIndicator = await $('[data-testid="review-approved-indicator"]');
-      const approvedExists = await approvedIndicator.isExisting();
+      // Check for progress indicator (checked = approved state)
+      // DocumentReviewPanel uses progress-indicator-checked for approved status
+      const checkedIndicator = await $('[data-testid="progress-indicator-checked"]');
+      const checkedExists = await checkedIndicator.isExisting();
 
-      console.log(`[E2E] Review approved indicator exists: ${approvedExists}`);
+      console.log(`[E2E] Progress indicator checked exists: ${checkedExists}`);
 
-      // The specific UI depends on implementation
-      // If there's an approved indicator, it should be visible
-      if (approvedExists) {
-        const isDisplayed = await approvedIndicator.isDisplayed();
-        console.log(`[E2E] Review approved indicator displayed: ${isDisplayed}`);
+      // If approved, the checked indicator should be visible
+      if (checkedExists) {
+        const isDisplayed = await checkedIndicator.isDisplayed();
+        console.log(`[E2E] Progress indicator checked displayed: ${isDisplayed}`);
+        expect(isDisplayed).toBe(true);
       }
     });
   });

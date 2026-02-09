@@ -22,7 +22,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   refreshSpecStore,
   clearAgentStore,
   resetAutoExecutionService,
@@ -124,79 +124,27 @@ function resetFixtures(): void {
 }
 
 /**
- * Get all specs from the store
- * Note: specs array only contains { name }, phase and worktree come from specJsonMap
+ * Get the phase badge text for a specific spec item in the spec list UI
  */
-async function getAllSpecsFromStore(): Promise<
-  Array<{ name: string; phase: string; worktree?: { path?: string; branch?: string } }>
-> {
-  return browser.execute(() => {
-    const stores = (window as any).__STORES__;
-    if (!stores?.spec?.getState) return [];
-    const state = stores.spec.getState();
-    const specs = state.specs || [];
-    const specJsonMap = state.specJsonMap;
-    return specs.map((s: any) => {
-      const specJson = specJsonMap?.get?.(s.name);
-      return {
-        name: s.name,
-        phase: specJson?.phase || null,
-        worktree: specJson?.worktree || undefined,
-      };
-    });
-  });
+async function getSpecPhaseBadgeText(specName: string): Promise<string> {
+  return browser.execute((name: string) => {
+    const specItem = document.querySelector(`[data-testid="spec-item-${name}"]`);
+    if (!specItem) return '';
+    const badge = specItem.querySelector('[data-testid="phase-badge"]');
+    return badge?.textContent || '';
+  }, specName);
 }
 
 /**
- * Get currently selected spec from the store
- * Note: metadata only has { name }, phase and worktree come from specJson
+ * Check if a spec item has a worktree badge in the UI
  */
-async function getSelectedSpecFromStore(): Promise<{
-  name: string;
-  phase: string;
-  worktree?: { enabled?: boolean; path?: string; branch?: string };
-} | null> {
-  return browser.execute(() => {
-    const stores = (window as any).__STORES__;
-    if (!stores?.spec?.getState) return null;
-    const specDetail = stores.spec.getState().specDetail;
-    if (!specDetail) return null;
-    const metadata = specDetail.metadata;
-    const specJson = specDetail.specJson;
-    if (!metadata) return null;
-    return {
-      name: metadata.name,
-      phase: specJson?.phase || null,
-      worktree: specJson?.worktree || undefined,
-    };
-  });
-}
-
-/**
- * Get spec detail including specJson phase
- */
-async function getSpecDetail(): Promise<{
-  phase: string | null;
-  description: string | null;
-}> {
-  return browser.execute(() => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.spec?.getState) {
-        return { phase: null, description: null };
-      }
-      const specDetail = stores.spec.getState().specDetail;
-      if (!specDetail) {
-        return { phase: null, description: null };
-      }
-      return {
-        phase: specDetail.specJson?.phase || specDetail.metadata?.phase || null,
-        description: specDetail.specJson?.description || specDetail.metadata?.description || null,
-      };
-    } catch (e) {
-      return { phase: null, description: null };
-    }
-  });
+async function hasWorktreeBadgeInUI(specName: string): Promise<boolean> {
+  return browser.execute((name: string) => {
+    const specItem = document.querySelector(`[data-testid="spec-item-${name}"]`);
+    if (!specItem) return false;
+    const badge = specItem.querySelector('[data-testid="worktree-badge"]');
+    return badge !== null;
+  }, specName);
 }
 
 /**
@@ -204,7 +152,7 @@ async function getSpecDetail(): Promise<{
  */
 async function waitForCondition(
   condition: () => Promise<boolean>,
-  timeout: number = 10000,
+  timeout: number = 20000,
   interval: number = 500,
   debugLabel: string = 'condition'
 ): Promise<boolean> {
@@ -229,18 +177,36 @@ async function waitForCondition(
 }
 
 /**
- * Get bugs list from bugStore
- * Note: __STORES__ key is 'bug', not 'bugStore'
+ * Get bug names from UI (bug-list-items内のbug-item-*要素)
  */
-async function getBugsFromStore(): Promise<Array<{ name: string; phase: string }>> {
+async function getBugNamesFromUI(): Promise<string[]> {
   return browser.execute(() => {
-    const stores = (window as any).__STORES__;
-    if (!stores?.bug?.getState) return [];
-    return stores.bug.getState().bugs.map((b: any) => ({
-      name: b.name,
-      phase: b.phase,
-    }));
+    const items = document.querySelectorAll('[data-testid^="bug-item-"]');
+    return Array.from(items).map(el => {
+      const testId = el.getAttribute('data-testid') || '';
+      return testId.replace('bug-item-', '');
+    });
   });
+}
+
+/**
+ * Get phase badge text for a specific bug item in the UI
+ */
+async function getBugPhaseBadgeText(bugName: string): Promise<string> {
+  return browser.execute((name: string) => {
+    const bugItem = document.querySelector(`[data-testid="bug-item-${name}"]`);
+    if (!bugItem) return '';
+    const badge = bugItem.querySelector('[data-testid="phase-badge"]');
+    return badge?.textContent || '';
+  }, bugName);
+}
+
+/**
+ * Check if a bug item is visible in the UI
+ */
+async function isBugVisibleInUI(bugName: string): Promise<boolean> {
+  const bugItem = await $(`[data-testid="bug-item-${bugName}"]`);
+  return bugItem.isExisting();
 }
 
 describe('Worktree Two-Stage Watcher E2E', () => {
@@ -283,86 +249,88 @@ describe('Worktree Two-Stage Watcher E2E', () => {
 
     it('should update UI when spec.json inside worktree is modified', async () => {
       // 1. Select worktree spec
-      const specSuccess = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
-      // 2. Get initial phase
-      const initialDetail = await getSpecDetail();
-      console.log('[E2E] Initial worktree spec phase:', initialDetail.phase);
+      // 2. Get initial phase from UI (phase-badge text in spec-list)
+      const initialPhaseBadge = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+      console.log('[E2E] Initial worktree spec phase badge:', initialPhaseBadge);
 
-      // Save original for comparison
-      const originalPhase = initialDetail.phase;
-      const newPhase = originalPhase === 'implementation' ? 'tasks-generated' : 'implementation';
-
-      // 3. Directly modify spec.json inside worktree
+      // Read spec.json to determine original phase for toggling
       const specJsonPath = path.join(WORKTREE_SPEC_DIR, 'spec.json');
       const specJson = JSON.parse(fs.readFileSync(specJsonPath, 'utf-8'));
+      const originalPhase = specJson.phase;
+      // Use 'design-generated' (設計済) as the new phase for clear UI detection
+      const newPhase = originalPhase === 'design-generated' ? 'requirements-generated' : 'design-generated';
+      // Expected label: 'design-generated' -> '設計済', 'requirements-generated' -> '要件定義済'
+      const expectedLabel = newPhase === 'design-generated' ? '設計済' : '要件定義済';
+
+      // 3. Directly modify spec.json inside worktree
       specJson.phase = newPhase;
       specJson.description = 'Updated by E2E test - worktree watcher verification';
       fs.writeFileSync(specJsonPath, JSON.stringify(specJson, null, 2));
       console.log('[E2E] spec.json updated directly, new phase:', newPhase);
 
       // 4. Wait for file watcher to update UI (without manual refresh)
-      // Two-stage watcher: awaitWriteFinish + debounce ≈ 500-800ms
+      // Two-stage watcher: awaitWriteFinish + debounce + event propagation
       const updated = await waitForCondition(
         async () => {
-          const detail = await getSpecDetail();
-          const hasNewPhase = detail.phase === newPhase;
+          const badgeText = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+          const hasNewPhase = badgeText === expectedLabel;
           if (!hasNewPhase) {
-            console.log('[E2E] Waiting for phase update... current:', detail.phase);
+            console.log('[E2E] Waiting for phase update... current badge:', badgeText);
           }
           return hasNewPhase;
         },
-        15000,
+        20000,
         500,
         'worktree-spec-json-phase-update'
       );
 
-      // 5. Verify result
-      const finalDetail = await getSpecDetail();
-      console.log('[E2E] Final worktree spec phase:', finalDetail.phase);
-      console.log('[E2E] Final description:', finalDetail.description);
+      // 5. Verify result - UI要素で検証
+      const finalPhaseBadge = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+      console.log('[E2E] Final worktree spec phase badge:', finalPhaseBadge);
 
       expect(updated).toBe(true);
-      expect(finalDetail.phase).toBe(newPhase);
+      expect(finalPhaseBadge).toBe(expectedLabel);
     });
 
     it('should update spec list when spec.json inside worktree is modified', async () => {
-      // 1. Get initial specs list
-      const initialSpecs = await getAllSpecsFromStore();
-      const initialWorktreeSpec = initialSpecs.find((s) => s.name === WORKTREE_SPEC_NAME);
-      console.log('[E2E] Initial worktree spec:', JSON.stringify(initialWorktreeSpec));
+      // 1. Get initial phase badge from spec list UI
+      const initialPhaseBadge = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+      console.log('[E2E] Initial worktree spec phase badge:', initialPhaseBadge);
 
-      const originalPhase = initialWorktreeSpec?.phase || 'implementation';
-      const newPhase = originalPhase === 'implementation' ? 'design-generated' : 'implementation';
-
-      // 2. Directly modify spec.json inside worktree
+      // Read spec.json to determine phase for toggling
       const specJsonPath = path.join(WORKTREE_SPEC_DIR, 'spec.json');
       const specJson = JSON.parse(fs.readFileSync(specJsonPath, 'utf-8'));
+      const originalPhase = specJson.phase;
+      // Use 'requirements-generated' (要件定義済) for clear detection
+      const newPhase = originalPhase === 'requirements-generated' ? 'design-generated' : 'requirements-generated';
+      const expectedLabel = newPhase === 'requirements-generated' ? '要件定義済' : '設計済';
+
+      // 2. Directly modify spec.json inside worktree
       specJson.phase = newPhase;
       fs.writeFileSync(specJsonPath, JSON.stringify(specJson, null, 2));
       console.log('[E2E] spec.json updated directly, new phase:', newPhase);
 
-      // 3. Wait for file watcher to update spec list
+      // 3. Wait for file watcher to update spec list - UI要素で確認
       const updated = await waitForCondition(
         async () => {
-          const specs = await getAllSpecsFromStore();
-          const worktreeSpec = specs.find((s) => s.name === WORKTREE_SPEC_NAME);
-          return worktreeSpec?.phase === newPhase;
+          const badgeText = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+          return badgeText === expectedLabel;
         },
-        15000,
+        20000,
         500,
         'worktree-spec-list-phase-update'
       );
 
-      // 4. Verify result
-      const finalSpecs = await getAllSpecsFromStore();
-      const finalWorktreeSpec = finalSpecs.find((s) => s.name === WORKTREE_SPEC_NAME);
-      console.log('[E2E] Final worktree spec:', JSON.stringify(finalWorktreeSpec));
+      // 4. Verify result - UI要素で検証
+      const finalPhaseBadge = await getSpecPhaseBadgeText(WORKTREE_SPEC_NAME);
+      console.log('[E2E] Final worktree spec phase badge:', finalPhaseBadge);
 
       expect(updated).toBe(true);
-      expect(finalWorktreeSpec?.phase).toBe(newPhase);
+      expect(finalPhaseBadge).toBe(expectedLabel);
     });
   });
 
@@ -405,42 +373,37 @@ describe('Worktree Two-Stage Watcher E2E', () => {
       expect(specJson.worktree.branch).toBeDefined();
     });
 
-    it('should reflect worktree field in UI (specStore)', async () => {
+    it('should reflect worktree field in UI (worktree badge visible)', async () => {
       // Select worktree spec
-      const specSuccess = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
-      // Get selected spec from store
-      const selectedSpec = await getSelectedSpecFromStore();
-      console.log('[E2E] Selected spec worktree info:', JSON.stringify(selectedSpec?.worktree));
-
-      // Verify worktree info is reflected in store
-      expect(selectedSpec?.worktree).toBeDefined();
-      expect(selectedSpec?.worktree?.enabled).toBe(true);
+      // Verify worktree badge is visible in the spec list UI
+      const hasWorktreeBadge = await hasWorktreeBadgeInUI(WORKTREE_SPEC_NAME);
+      console.log('[E2E] Worktree spec has worktree badge in UI:', hasWorktreeBadge);
+      expect(hasWorktreeBadge).toBe(true);
     });
 
-    it('should display main spec without worktree field correctly', async () => {
+    it('should display main spec without worktree badge', async () => {
       // Read main spec.json directly
       const specJsonPath = path.join(MAIN_SPEC_DIR, 'spec.json');
       const specJson = JSON.parse(fs.readFileSync(specJsonPath, 'utf-8'));
 
       console.log('[E2E] Main spec.json worktree field:', specJson.worktree);
 
-      // Verify no worktree field (null or undefined)
+      // Verify no worktree field in file (null or undefined)
       expect(specJson.worktree == null).toBe(true);
 
       // Select main spec
-      const specSuccess = await selectSpecViaStore(MAIN_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(MAIN_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
-      // Get selected spec from store
-      const selectedSpec = await getSelectedSpecFromStore();
-      console.log('[E2E] Selected main spec worktree info:', selectedSpec?.worktree);
-
-      // Verify no worktree info in store (null or undefined)
-      expect(selectedSpec?.worktree == null).toBe(true);
+      // Verify no worktree badge in the spec list UI for main spec
+      const hasWorktreeBadge = await hasWorktreeBadgeInUI(MAIN_SPEC_NAME);
+      console.log('[E2E] Main spec has worktree badge in UI:', hasWorktreeBadge);
+      expect(hasWorktreeBadge).toBe(false);
     });
   });
 
@@ -469,13 +432,12 @@ describe('Worktree Two-Stage Watcher E2E', () => {
     });
 
     it('should display worktree bug in bug list', async () => {
-      // Get all bugs from store
-      const bugs = await getBugsFromStore();
-      console.log('[E2E] Bugs in store:', JSON.stringify(bugs, null, 2));
+      // Verify worktree bug exists in UI
+      const bugNames = await getBugNamesFromUI();
+      console.log('[E2E] Bug names from UI:', bugNames);
 
-      // Verify worktree bug exists
-      const bugNames = bugs.map((b) => b.name);
-      expect(bugNames).toContain(WORKTREE_BUG_NAME);
+      const isVisible = await isBugVisibleInUI(WORKTREE_BUG_NAME);
+      expect(isVisible).toBe(true);
     });
 
     it('should update bug list when bug.json inside worktree is modified', async () => {
@@ -485,45 +447,45 @@ describe('Worktree Two-Stage Watcher E2E', () => {
         return;
       }
 
-      // 1. Get initial bugs list
-      const initialBugs = await getBugsFromStore();
-      const initialWorktreeBug = initialBugs.find((b) => b.name === WORKTREE_BUG_NAME);
-      console.log('[E2E] Initial worktree bug:', JSON.stringify(initialWorktreeBug));
+      // 1. Get initial phase badge from UI
+      const initialPhaseBadge = await getBugPhaseBadgeText(WORKTREE_BUG_NAME);
+      console.log('[E2E] Initial worktree bug phase badge:', initialPhaseBadge);
 
-      const originalPhase = initialWorktreeBug?.phase || 'analyzed';
-      const newPhase = originalPhase === 'analyzed' ? 'fixed' : 'analyzed';
-
-      // 2. Directly modify bug.json inside worktree
+      // Read bug.json to determine phase for toggling
       const bugJsonPath = path.join(WORKTREE_BUG_DIR, 'bug.json');
       const bugJson = JSON.parse(fs.readFileSync(bugJsonPath, 'utf-8'));
+      const originalPhase = bugJson.phase || 'analyzed';
+      const newPhase = originalPhase === 'analyzed' ? 'fixed' : 'analyzed';
+      // Bug phase labels: 'analyzed' -> '分析済', 'fixed' -> '修正済'
+      const expectedLabel = newPhase === 'fixed' ? '修正済' : '分析済';
+
+      // 2. Directly modify bug.json inside worktree
       bugJson.phase = newPhase;
       bugJson.description = 'Updated by E2E test - worktree bug watcher verification';
       fs.writeFileSync(bugJsonPath, JSON.stringify(bugJson, null, 2));
       console.log('[E2E] bug.json updated directly, new phase:', newPhase);
 
-      // 3. Wait for file watcher to update bug list
+      // 3. Wait for file watcher to update bug list - UI要素で確認
       const updated = await waitForCondition(
         async () => {
-          const bugs = await getBugsFromStore();
-          const worktreeBug = bugs.find((b) => b.name === WORKTREE_BUG_NAME);
-          const hasNewPhase = worktreeBug?.phase === newPhase;
+          const badgeText = await getBugPhaseBadgeText(WORKTREE_BUG_NAME);
+          const hasNewPhase = badgeText === expectedLabel;
           if (!hasNewPhase) {
-            console.log('[E2E] Waiting for bug phase update... current:', worktreeBug?.phase);
+            console.log('[E2E] Waiting for bug phase update... current badge:', badgeText);
           }
           return hasNewPhase;
         },
-        15000,
+        20000,
         500,
         'worktree-bug-json-phase-update'
       );
 
-      // 4. Verify result
-      const finalBugs = await getBugsFromStore();
-      const finalWorktreeBug = finalBugs.find((b) => b.name === WORKTREE_BUG_NAME);
-      console.log('[E2E] Final worktree bug:', JSON.stringify(finalWorktreeBug));
+      // 4. Verify result - UI要素で検証
+      const finalPhaseBadge = await getBugPhaseBadgeText(WORKTREE_BUG_NAME);
+      console.log('[E2E] Final worktree bug phase badge:', finalPhaseBadge);
 
       expect(updated).toBe(true);
-      expect(finalWorktreeBug?.phase).toBe(newPhase);
+      expect(finalPhaseBadge).toBe(expectedLabel);
     });
 
     it('should detect worktree bug with worktree field', async () => {

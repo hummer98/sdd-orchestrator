@@ -15,7 +15,7 @@ import { browser, expect } from '@wdio/globals';
 import * as path from 'node:path';
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import {
-  selectSpecViaStore,
+  selectSpecViaUI,
   waitForCondition,
   waitForProjectUIReady,
   waitForSpecDetailReady,
@@ -264,8 +264,8 @@ describe('Mermaid Preview E2E', () => {
     await browser.pause(500);
 
     // Select spec via store (more reliable than UI click)
-    const specSelected = await selectSpecViaStore(SPEC_NAME);
-    console.log('[E2E] selectSpecViaStore result:', specSelected);
+    const specSelected = await selectSpecViaUI(SPEC_NAME);
+    console.log('[E2E] selectSpecViaUI result:', specSelected);
 
     // Wait for spec detail to load
     const specReady = await waitForSpecDetailReady(SPEC_NAME, 15000);

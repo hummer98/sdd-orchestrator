@@ -95,13 +95,18 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
  * @returns true if project is selected
  */
 export async function ensureProjectSelected(projectPath: string): Promise<boolean> {
-  // Check if project is already selected (via SDD_PROJECT_PATH at startup)
-  const currentProject = await browser.execute(() => {
+  // Check if project is already selected and valid
+  const state = await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    return stores?.project?.getState()?.currentProject;
+    return {
+      currentProject: stores?.project?.getState()?.currentProject,
+      kiroValidation: stores?.project?.getState()?.kiroValidation
+    };
   });
 
-  if (currentProject) {
+  // Strict check: Must match the requested path AND have valid .kiro directory
+  // This prevents tests from running against the wrong project or a stale/invalid state
+  if (state.currentProject === projectPath && state.kiroValidation?.exists) {
     return true;
   }
 
@@ -330,18 +335,21 @@ export async function setAutoExecutionPermissions(
         normalizedPerms[normalizedKey] = value;
       }
 
-      // Update spec.json via electronAPI (SSOT)
-      const electronAPI = (window as any).electronAPI;
-      if (!electronAPI?.updateSpecJson) {
-        console.error('[E2E] setAutoExecutionPermissions: electronAPI.updateSpecJson not available');
+      // Update spec.json via tRPC (SSOT)
+      const trpc = (window as any).__TRPC__;
+      if (!trpc?.spec?.updateSpecJson?.mutate) {
+        console.error('[E2E] setAutoExecutionPermissions: __TRPC__.spec.updateSpecJson not available');
         done(false);
         return;
       }
 
-      await electronAPI.updateSpecJson(specDetail.metadata.name, {
-        autoExecution: {
-          enabled: true,
-          permissions: normalizedPerms,
+      await trpc.spec.updateSpecJson.mutate({
+        specName: specDetail.metadata.name,
+        updates: {
+          autoExecution: {
+            enabled: true,
+            permissions: normalizedPerms,
+          },
         },
       });
 
@@ -765,7 +773,12 @@ export async function stopAutoExecution(): Promise<void> {
 export async function resetAutoExecutionCoordinator(): Promise<void> {
   await browser.execute(async () => {
     try {
-      await (window as any).electronAPI.autoExecutionReset();
+      const trpc = (window as any).__TRPC__;
+      if (trpc?.autoExecution?.reset?.mutate) {
+        await trpc.autoExecution.reset.mutate();
+      } else {
+        console.warn('[E2E] resetAutoExecutionCoordinator: __TRPC__.autoExecution.reset not available');
+      }
     } catch (e) {
       console.error('[E2E] resetAutoExecutionCoordinator error:', e);
     }
@@ -832,10 +845,10 @@ export async function standardE2ESetup(
     console.warn('[E2E] standardE2ESetup: UI not ready, continuing anyway');
   }
 
-  // 4. Select spec
-  const specSelected = await selectSpecViaStore(specName);
+  // 4. Select spec via UI click (recommended approach)
+  const specSelected = await selectSpecViaUI(specName);
   if (!specSelected) {
-    console.error('[E2E] standardE2ESetup: Failed to select spec');
+    console.error('[E2E] standardE2ESetup: Failed to select spec via UI');
     return false;
   }
 
@@ -885,7 +898,12 @@ export async function setDocumentReviewFlag(_flag: 'run' | 'pause'): Promise<boo
 export async function setMockEnv(key: string, value: string): Promise<void> {
   await browser.execute(async (k, v) => {
     try {
-      await (window as any).electronAPI.setMockEnv(k, v);
+      const trpc = (window as any).__TRPC__;
+      if (trpc?.autoExecution?.setMockEnv?.mutate) {
+        await trpc.autoExecution.setMockEnv.mutate({ key: k, value: v });
+      } else {
+        console.warn('[E2E] setMockEnv: __TRPC__.autoExecution.setMockEnv not available');
+      }
     } catch (e) {
       console.error('[E2E] setMockEnv error:', e);
     }

@@ -18,7 +18,7 @@
 import * as path from 'path';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   waitForCondition,
   fullAutoExecutionCleanup,
 } from './helpers/auto-execution.helpers';
@@ -53,7 +53,7 @@ describe('Gemini Document Review - engineId Propagation', function () {
     await browser.pause(500);
 
     // Select the spec
-    const specSelected = await selectSpecViaStore(SPEC_NAME);
+    const specSelected = await selectSpecViaUI(SPEC_NAME);
     if (!specSelected) {
       console.log('[E2E] Failed to select spec, test may fail');
     }

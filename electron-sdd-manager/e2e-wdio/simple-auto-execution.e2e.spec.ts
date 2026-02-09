@@ -13,7 +13,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -129,7 +129,7 @@ describe('Simple Auto Execution E2E Test', () => {
     }
 
     // Specを選択
-    const specSuccess = await selectSpecViaStore(SPEC_NAME);
+    const specSuccess = await selectSpecViaUI(SPEC_NAME);
     expect(specSuccess).toBe(true);
 
     // E2E-fix: Spec詳細がロードされるまで待機（Zustand store状態を直接確認）

@@ -28,7 +28,7 @@ import {
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 
 /**
- * Helper: Execute project command via IPC
+ * Helper: Execute project command via tRPC
  * Returns { success: boolean, agentId?: string, error?: string }
  */
 async function executeProjectCommand(
@@ -44,7 +44,16 @@ async function executeProjectCommand(
           return { success: false, error: 'No project selected' };
         }
 
-        const result = await (window as any).electronAPI.executeProjectCommand(projectPath, cmd, ttl);
+        const trpc = (window as any).__TRPC__;
+        if (!trpc?.spec?.executeProjectCommand?.mutate) {
+          return { success: false, error: '__TRPC__ spec.executeProjectCommand not available' };
+        }
+
+        const result = await trpc.spec.executeProjectCommand.mutate({
+          specId: '',
+          command: cmd,
+          title: ttl,
+        });
         if (result && result.agentId) {
           return { success: true, agentId: result.agentId };
         }
@@ -80,11 +89,16 @@ async function stopAllAgents(): Promise<void> {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return;
 
+    const trpc = (window as any).__TRPC__;
+    if (!trpc?.agent?.stop?.mutate) return;
+
     const agents = stores.agent.getState().agents;
     for (const agent of Object.values(agents) as any[]) {
       if (agent.status === 'running') {
         try {
-          await (window as any).electronAPI.stopAgent(agent.specId, agent.agentId);
+          await trpc.agent.stop.mutate({
+            agentId: agent.agentId,
+          });
         } catch {
           // Ignore errors when stopping agents
         }

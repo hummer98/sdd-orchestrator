@@ -262,6 +262,7 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   // bugs-view-unification Task 2.2: handleBugsChanged
   // Requirements: 3.3, 3.4, 3.5, 3.6
   handleBugsChanged: async (apiClient: ApiClient, event: BugsChangeEvent) => {
+    if (!event) return; // Guard against undefined event
     const { type, bugName } = event;
     const { selectedBugId, bugs } = get();
 

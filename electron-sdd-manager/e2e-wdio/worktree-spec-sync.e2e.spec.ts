@@ -22,7 +22,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   refreshSpecStore,
   clearAgentStore,
   resetAutoExecutionService,
@@ -344,7 +344,7 @@ describe('Worktree Spec Sync E2E', () => {
 
     it('should display worktree badge for worktree spec in UI', async () => {
       // Select the worktree spec
-      const specSuccess = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
@@ -363,7 +363,7 @@ describe('Worktree Spec Sync E2E', () => {
 
     it('should NOT display worktree badge for main spec in UI', async () => {
       // Select the main spec
-      const specSuccess = await selectSpecViaStore(MAIN_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(MAIN_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
@@ -407,7 +407,7 @@ describe('Worktree Spec Sync E2E', () => {
 
     it('should show correct worktree info when worktree spec is selected', async () => {
       // Select the worktree spec
-      const specSuccess = await selectSpecViaStore(WORKTREE_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(WORKTREE_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();
@@ -426,7 +426,7 @@ describe('Worktree Spec Sync E2E', () => {
 
     it('should show no worktree info when main spec is selected', async () => {
       // Select the main spec
-      const specSuccess = await selectSpecViaStore(MAIN_SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(MAIN_SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
       await refreshSpecStore();

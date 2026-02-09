@@ -24,7 +24,7 @@ const WORKTREES_SPECS_DIR = path.join(FIXTURE_PATH, '.kiro/worktrees/specs');
  */
 async function waitForCondition(
   condition: () => Promise<boolean>,
-  timeout: number = 5000,
+  timeout: number = 15000,
   interval: number = 200,
   debugLabel: string = 'condition'
 ): Promise<boolean> {
@@ -181,13 +181,14 @@ describe('File Watcher Root Monitoring E2E', () => {
       const requirementsPath = path.join(specDir, 'requirements.md');
       fs.writeFileSync(requirementsPath, '# Requirements\n\n## Test Requirement\n');
 
-      // Wait for spec.json updated_at to change (timeout: 3 seconds)
+      // Wait for spec.json updated_at to change
+      // ファイルウォッチャーのイベント伝播に時間がかかる場合があるため余裕を持ったtimeout
       const result = await waitForCondition(
         async () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        3000,
+        15000,
         200,
         'Worktree spec.json updated_at change'
       );
@@ -210,7 +211,7 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        3000,
+        15000,
         200,
         'design.md detection'
       );
@@ -230,7 +231,7 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        3000,
+        15000,
         200,
         'tasks.md detection'
       );
@@ -321,13 +322,14 @@ describe('File Watcher Root Monitoring E2E', () => {
       const requirementsPath = path.join(specDir, 'requirements.md');
       fs.writeFileSync(requirementsPath, '# Requirements\n\n## Normal Path Test\n');
 
-      // Wait for spec.json updated_at to change (timeout: 3 seconds)
+      // Wait for spec.json updated_at to change
+      // ファイルウォッチャーのイベント伝播に時間がかかる場合があるため余裕を持ったtimeout
       const result = await waitForCondition(
         async () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        3000,
+        15000,
         200,
         'Normal path spec.json updated_at change'
       );

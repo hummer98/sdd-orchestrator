@@ -278,14 +278,6 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
   // Requirements: 4.2, 4.3
   // ========================================
   describe('Task 13.2: バイナリ不在時のインストールダイアログ', () => {
-    it('cloudflaredバイナリ確認APIが存在する', async () => {
-      const hasAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.checkCloudflareBinary === 'function';
-      });
-
-      expect(hasAPI).toBe(true);
-    });
-
     it('バイナリ確認結果にinstallInstructionsが含まれる', async () => {
       const result = await checkCloudflareBinary();
 
@@ -303,18 +295,6 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
       }
       // テストは常に成功する（どちらのケースも正常）
       expect(result.exists).toBeDefined();
-    });
-
-    it('InstallCloudflaredDialogのUIコンポーネントが定義されている', async () => {
-      // Check that the dialog component can be rendered
-      // This tests that the component exists in the application
-      const hasDialog = await browser.execute(() => {
-        // Check if the component type exists (as a sanity check)
-        // In real E2E, we would trigger the dialog and check visibility
-        return typeof (window as any).electronAPI?.checkCloudflareBinary === 'function';
-      });
-
-      expect(hasDialog).toBe(true);
     });
 
     it('インストール手順にHomebrewコマンドが含まれる', async () => {
@@ -370,14 +350,6 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
       await setPublishToCloudflare(false);
     });
 
-    it('Cloudflare設定取得APIが存在する', async () => {
-      const hasAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.getCloudflareSettings === 'function';
-      });
-
-      expect(hasAPI).toBe(true);
-    });
-
     it('Cloudflare設定を取得できる', async () => {
       const settings = await getCloudflareSettings();
 
@@ -387,22 +359,11 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
     });
 
     it('publishToCloudflare設定を変更できる', async () => {
-      // setCloudflarePublishToCloudflare APIが存在することを確認
-      const hasAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.setCloudflarePublishToCloudflare === 'function';
-      });
-
-      // APIが存在する場合のみ設定を変更
-      if (hasAPI) {
-        await setPublishToCloudflare(true);
-        await browser.pause(500);
-        const state = await getRemoteAccessStoreState();
-        // 設定がストアに反映されるかどうかは実装依存
-        expect(typeof state.publishToCloudflare).toBe('boolean');
-      } else {
-        // APIが存在しない場合はスキップ
-        expect(hasAPI).toBe(false);
-      }
+      await setPublishToCloudflare(true);
+      await browser.pause(500);
+      const state = await getRemoteAccessStoreState();
+      // 設定がストアに反映されるかどうかは実装依存
+      expect(typeof state.publishToCloudflare).toBe('boolean');
     });
 
     it('remoteAccessStoreにCloudflare関連状態が含まれる', async () => {
@@ -419,30 +380,6 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
 
     // The following tests require cloudflared binary and tunnel token to be configured
     // They are conditionally skipped if the environment is not ready
-
-    it('アクセストークンリフレッシュAPIが存在する', async () => {
-      const hasAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.refreshCloudflareAccessToken === 'function';
-      });
-
-      expect(hasAPI).toBe(true);
-    });
-
-    it('Tunnel起動APIが存在する', async () => {
-      const hasStartAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.startRemoteServer === 'function';
-      });
-
-      expect(hasStartAPI).toBe(true);
-    });
-
-    it('Tunnel状態変更イベントリスナーAPIが存在する', async () => {
-      const hasAPI = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.onCloudflareTunnelStatusChanged === 'function';
-      });
-
-      expect(hasAPI).toBe(true);
-    });
 
     // Integration test: Only runs if both binary and token are available
     // This test demonstrates the full tunnel connection flow

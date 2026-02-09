@@ -16,41 +16,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { ensureProjectSelected } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 const CONVERT_TEST_SPEC_NAME = 'convert-worktree-test';
-
-/**
- * Helper: Select spec using Zustand specStore action
- */
-async function selectSpecViaStore(specId: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.spec?.getState) {
-          const specStore = stores.spec.getState();
-          const spec = specStore.specs.find((s: any) => s.name === id);
-          if (spec) {
-            specStore.selectSpec(spec);
-            done(true);
-          } else {
-            console.error('[E2E] Spec not found:', id);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] __STORES__.specStore not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectSpec error:', e);
-        done(false);
-      }
-    }, specId).then(resolve);
-  });
-}
 
 /**
  * Helper: Create test spec with tasks-generated phase (not yet impl started)
@@ -271,7 +241,7 @@ describe('Convert Spec to Worktree E2E', () => {
       await browser.pause(1000);
 
       // Select the test spec
-      const specSelected = await selectSpecViaStore(CONVERT_TEST_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(CONVERT_TEST_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       // Wait for spec detail to load
@@ -295,7 +265,7 @@ describe('Convert Spec to Worktree E2E', () => {
 
       await browser.pause(1000);
 
-      const specSelected = await selectSpecViaStore(CONVERT_TEST_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(CONVERT_TEST_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       await browser.pause(500);
@@ -315,7 +285,7 @@ describe('Convert Spec to Worktree E2E', () => {
 
       await browser.pause(1000);
 
-      const specSelected = await selectSpecViaStore(CONVERT_TEST_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(CONVERT_TEST_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       await browser.pause(500);
@@ -346,7 +316,7 @@ describe('Convert Spec to Worktree E2E', () => {
 
         await browser.pause(1000);
 
-        const specSelected = await selectSpecViaStore(CONVERT_TEST_SPEC_NAME);
+        const specSelected = await selectSpecViaUI(CONVERT_TEST_SPEC_NAME);
         expect(specSelected).toBe(true);
 
         await browser.pause(500);
@@ -392,7 +362,7 @@ describe('Convert Spec to Worktree E2E', () => {
 
       await browser.pause(1000);
 
-      const specSelected = await selectSpecViaStore(CONVERT_TEST_SPEC_NAME);
+      const specSelected = await selectSpecViaUI(CONVERT_TEST_SPEC_NAME);
       expect(specSelected).toBe(true);
 
       await browser.pause(500);

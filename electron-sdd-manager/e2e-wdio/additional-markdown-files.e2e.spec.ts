@@ -12,7 +12,7 @@
 import * as path from 'path';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   waitForCondition,
   waitForSpecDetailReady,
   waitForProjectUIReady,
@@ -34,7 +34,7 @@ describe('Additional Markdown Files E2E', () => {
     await waitForProjectUIReady(10000);
 
     // Select the test spec
-    const specSuccess = await selectSpecViaStore(TEST_SPEC_ID);
+    const specSuccess = await selectSpecViaUI(TEST_SPEC_ID);
     if (!specSuccess) {
       console.error('[E2E] Failed to select spec');
       return;

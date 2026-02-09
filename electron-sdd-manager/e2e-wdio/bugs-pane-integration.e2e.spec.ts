@@ -11,53 +11,32 @@
  */
 
 import * as path from 'path';
-import { ensureProjectSelected } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
 
 /**
- * Helper: Select bug using Zustand bugStore action
- * This sets the selected bug directly without UI click
- * Note: Uses setState directly since selectBug requires apiClient
- * Also sets bugDetail to enable proper artifact filtering and phase status
+ * Helper: Select bug via UI click (recommended approach)
+ * Clicks the bug item in the BugList to trigger React's normal rendering pipeline.
+ * This ensures tRPC IPC calls complete properly and bugDetail is loaded.
  */
-async function selectBugViaStore(bugName: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.bug?.getState) {
-          const bugStore = stores.bug.getState();
-          const bug = bugStore.bugs.find((b: any) => b.name === name);
-          if (bug) {
-            // Create bugDetail based on fixture data (test-bug has report.md and analysis.md only)
-            const bugDetail = {
-              metadata: bug,
-              artifacts: {
-                report: { exists: true, path: '', updatedAt: null },
-                analysis: { exists: true, path: '', updatedAt: null },
-                fix: { exists: false, path: '', updatedAt: null },
-                verification: { exists: false, path: '', updatedAt: null },
-              },
-            };
-            // Use setState directly (selectBug requires apiClient)
-            stores.bug.setState({ selectedBugId: name, bugDetail });
-            done(true);
-          } else {
-            console.error('[E2E] Bug not found:', name);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] __STORES__.bug not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectBug error:', e);
-        done(false);
-      }
-    }, bugName).then(resolve);
-  });
+async function selectBugViaUI(bugName: string): Promise<boolean> {
+  try {
+    // First switch to bugs tab
+    const tabSwitched = await switchToBugsTab();
+    if (!tabSwitched) return false;
+
+    // Click the specific bug item
+    const bugItem = await $(`[data-testid="bug-item-${bugName}"]`);
+    await bugItem.waitForExist({ timeout: 5000 });
+    await bugItem.click();
+    await browser.pause(500);
+    return true;
+  } catch (e) {
+    console.log(`[E2E] selectBugViaUI failed for ${bugName}:`, e);
+    return false;
+  }
 }
 
 /**
@@ -81,36 +60,6 @@ async function clearSelectedBugViaStore(): Promise<boolean> {
         done(false);
       }
     }).then(resolve);
-  });
-}
-
-/**
- * Helper: Select spec using Zustand specStore action
- */
-async function selectSpecViaStore(specName: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.spec?.getState) {
-          const specStore = stores.spec.getState();
-          const spec = specStore.specs.find((s: any) => s.name === name);
-          if (spec) {
-            await specStore.selectSpec(spec);
-            done(true);
-          } else {
-            console.error('[E2E] Spec not found:', name);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] __STORES__.specStore not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectSpec error:', e);
-        done(false);
-      }
-    }, specName).then(resolve);
   });
 }
 
@@ -258,20 +207,15 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bug未選択時にメインペインが空状態を表示', async () => {
-      // Bug未選択を維持、プレースホルダーが表示されることを確認
-      // Store経由で確認
-      const hasNoBugSelected = await browser.execute(() => {
-        const stores = (window as any).__STORES__;
-        const bugStore = stores?.bug?.getState();
-        return bugStore?.selectedBugId === null;
-      });
-      expect(hasNoBugSelected).toBe(true);
-
+      // Bug未選択を維持、プレースホルダーが表示されることをUIで確認
       // メインペインはプロジェクト選択済み・Bug/Spec未選択時のプレースホルダー
       const placeholder = await $('*=仕様またはバグを選択');
       if (await placeholder.isExisting()) {
         expect(await placeholder.isDisplayed()).toBe(true);
       }
+      // Bug選択時のUIコンポーネントが表示されていないことを確認
+      const bugArtifactEditor = await $('[data-testid="bug-artifact-editor"]');
+      expect(await bugArtifactEditor.isExisting()).toBe(false);
     });
 
     it('Bug未選択時に右ペインが表示されない', async () => {
@@ -303,8 +247,8 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bugを選択するとBugArtifactEditorが表示される', async () => {
-      // Store経由でBugを選択（UIタブクリックなし）
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(1000); // Extended wait for component rendering
 
@@ -331,8 +275,8 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bugを選択するとBugWorkflowViewが表示される', async () => {
-      // Store経由でBugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(500);
 
@@ -343,8 +287,8 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bugを選択するとAgentListPanelが表示される', async () => {
-      // Store経由でBugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -379,8 +323,8 @@ describe('Bugs Pane Integration E2E', () => {
       await clearSelectedSpecViaStore();
       await browser.pause(300);
 
-      // Store経由でBugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(500);
     });
@@ -500,8 +444,8 @@ describe('Bugs Pane Integration E2E', () => {
       await clearSelectedSpecViaStore();
       await browser.pause(300);
 
-      // Store経由でBugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(500);
     });
@@ -551,12 +495,12 @@ describe('Bugs Pane Integration E2E', () => {
 
     it('Spec選択状態がStore経由で維持される', async () => {
       // Specを選択
-      const specSuccess = await selectSpecViaStore('test-feature');
+      const specSuccess = await selectSpecViaUI('test-feature');
       expect(specSuccess).toBe(true);
       await browser.pause(300);
 
-      // Store経由でBugを選択（Spec選択は解除されない）
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択（Spec選択は解除されない）
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(300);
 
@@ -574,12 +518,12 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(300);
 
       // Bugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(300);
 
       // Specを選択（Bug選択は解除されない）
-      const specSuccess = await selectSpecViaStore('test-feature');
+      const specSuccess = await selectSpecViaUI('test-feature');
       expect(specSuccess).toBe(true);
       await browser.pause(300);
 
@@ -594,12 +538,12 @@ describe('Bugs Pane Integration E2E', () => {
 
     it('SpecとBugの選択状態は独立して維持される', async () => {
       // Specを選択
-      const specSuccess = await selectSpecViaStore('test-feature');
+      const specSuccess = await selectSpecViaUI('test-feature');
       expect(specSuccess).toBe(true);
       await browser.pause(300);
 
       // Bugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(300);
 
@@ -634,7 +578,7 @@ describe('Bugs Pane Integration E2E', () => {
       await switchToSpecsTab();
 
       // まずSpecを選択してレイアウトを確認
-      const specSuccess = await selectSpecViaStore('test-feature');
+      const specSuccess = await selectSpecViaUI('test-feature');
       expect(specSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -648,7 +592,7 @@ describe('Bugs Pane Integration E2E', () => {
       await clearSelectedSpecViaStore();
       await browser.pause(500);
 
-      const bugSuccess = await selectBugViaStore('test-bug');
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(1000);
 
@@ -678,8 +622,8 @@ describe('Bugs Pane Integration E2E', () => {
       await clearSelectedSpecViaStore();
       await browser.pause(300);
 
-      // Store経由でBugを選択
-      const bugSuccess = await selectBugViaStore('test-bug');
+      // UIクリックでBugを選択
+      const bugSuccess = await selectBugViaUI('test-bug');
       expect(bugSuccess).toBe(true);
       await browser.pause(500);
     });

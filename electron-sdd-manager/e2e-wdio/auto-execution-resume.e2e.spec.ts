@@ -14,7 +14,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
   ensureProjectSelected,
-  selectSpecViaStore,
+  selectSpecViaUI,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -368,7 +368,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -542,7 +542,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
@@ -650,7 +650,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       // E2E-fix: Wait for project UI to be ready
       await waitForProjectUIReady(10000);
 
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
 
       // E2E-fix: Wait for spec detail to be ready (Zustand store state check)

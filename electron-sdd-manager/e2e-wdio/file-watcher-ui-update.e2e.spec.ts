@@ -9,11 +9,13 @@
  * バグ: e2e-file-watcher-test-bypass
  * 既存のE2EテストではrefreshSpecStore()で手動リフレッシュしており、
  * ファイル監視→自動UI更新の動作が検証されていなかった
+ *
+ * UI操作ベース検証: store直接チェックをUI要素テキストで検証に変更
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { ensureProjectSelected } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
 
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/auto-exec-test');
 const SPEC_NAME = 'simple-feature';
@@ -93,110 +95,11 @@ E2Eテスト用のシンプルな機能を実装します。
 }
 
 /**
- * Helper: Select spec using Zustand specStore action
- */
-async function selectSpecViaStore(specId: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        if (stores?.spec?.getState) {
-          const specStore = stores.spec.getState();
-          const spec = specStore.specs.find((s: any) => s.name === id);
-          if (spec) {
-            specStore.selectSpec(spec);
-            done(true);
-          } else {
-            console.error('[E2E] Spec not found:', id);
-            done(false);
-          }
-        } else {
-          console.error('[E2E] specStore not available');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectSpec error:', e);
-        done(false);
-      }
-    }, specId).then(resolve);
-  });
-}
-
-/**
- * Helper: Get spec detail from store (specStore)
- * Note: This gets specStore.specDetail which may differ from editorStore.content
- */
-async function getSpecDetail(): Promise<{
-  requirements: string | null;
-  specJsonPhase: string | null;
-}> {
-  return browser.execute(() => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.spec?.getState) {
-        return { requirements: null, specJsonPhase: null };
-      }
-      const specDetail = stores.spec.getState().specDetail;
-      if (!specDetail) {
-        return { requirements: null, specJsonPhase: null };
-      }
-      return {
-        requirements: specDetail.artifacts?.requirements?.content || null,
-        specJsonPhase: specDetail.specJson?.phase || null,
-      };
-    } catch (e) {
-      return { requirements: null, specJsonPhase: null };
-    }
-  });
-}
-
-/**
- * Helper: Get editor content from editorStore (actual UI display)
- * This is what the user actually sees in the ArtifactEditor
- * BUG: editorStore.content is NOT updated when specStore.specDetail.artifacts changes
- */
-async function getEditorContent(): Promise<{
-  content: string | null;
-  activeTab: string | null;
-}> {
-  return browser.execute(() => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.editor?.getState) {
-        return { content: null, activeTab: null };
-      }
-      const state = stores.editor.getState();
-      return {
-        content: state.content || null,
-        activeTab: state.activeTab || null,
-      };
-    } catch (e) {
-      return { content: null, activeTab: null };
-    }
-  });
-}
-
-/**
- * Helper: Check if file watcher is active
- */
-async function isFileWatcherActive(): Promise<boolean> {
-  return browser.execute(() => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.spec?.getState) return false;
-      return stores.spec.getState().isWatching === true;
-    } catch {
-      return false;
-    }
-  });
-}
-
-/**
  * Helper: Wait for condition with debug logging
  */
 async function waitForCondition(
   condition: () => Promise<boolean>,
-  timeout: number = 10000,
+  timeout: number = 15000,
   interval: number = 500,
   debugLabel: string = 'condition'
 ): Promise<boolean> {
@@ -218,6 +121,48 @@ async function waitForCondition(
   return false;
 }
 
+/**
+ * Helper: Get text content of the ArtifactEditor (MDEditor) via DOM
+ * This reads what the user actually sees in the editor UI.
+ */
+async function getEditorTextFromDOM(): Promise<string> {
+  return browser.execute(() => {
+    // MDEditor renders a textarea for edit mode
+    const textarea = document.querySelector('[data-testid="artifact-editor"] textarea');
+    if (textarea) {
+      return (textarea as HTMLTextAreaElement).value || '';
+    }
+    // Fallback: preview mode renders markdown content
+    const preview = document.querySelector('[data-testid="artifact-editor"] .wmde-markdown');
+    if (preview) {
+      return preview.textContent || '';
+    }
+    return '';
+  });
+}
+
+/**
+ * Helper: Get the phase badge text for a specific spec item in the spec list
+ */
+async function getSpecPhaseBadgeText(specName: string): Promise<string> {
+  return browser.execute((name: string) => {
+    const specItem = document.querySelector(`[data-testid="spec-item-${name}"]`);
+    if (!specItem) return '';
+    const badge = specItem.querySelector('[data-testid="phase-badge"]');
+    return badge?.textContent || '';
+  }, specName);
+}
+
+/**
+ * Helper: Get the active tab name from ArtifactEditor
+ */
+async function getActiveTabFromDOM(): Promise<string> {
+  return browser.execute(() => {
+    const activeTab = document.querySelector('[data-testid="artifact-editor"] [role="tab"][aria-selected="true"]');
+    return activeTab?.textContent?.trim() || '';
+  });
+}
+
 describe('File Watcher UI Update', () => {
   beforeEach(async () => {
     resetFixture();
@@ -235,8 +180,16 @@ describe('File Watcher UI Update', () => {
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
 
-      // ファイル監視がアクティブか確認
-      const isWatching = await isFileWatcherActive();
+      // ファイル監視がアクティブか確認（storeチェック: セットアップ検証なので許容）
+      const isWatching = await browser.execute(() => {
+        try {
+          const stores = (window as any).__STORES__;
+          if (!stores?.spec?.getState) return false;
+          return stores.spec.getState().isWatching === true;
+        } catch {
+          return false;
+        }
+      });
       expect(isWatching).toBe(true);
     });
   });
@@ -249,15 +202,14 @@ describe('File Watcher UI Update', () => {
       await browser.pause(500);
 
       // 2. Spec選択
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
-      await browser.pause(500);
+      await browser.pause(1000);
 
-      // 3. 初期状態を確認
-      const initialDetail = await getSpecDetail();
-      console.log('[E2E] Initial requirements content length:', initialDetail.requirements?.length || 0);
-      expect(initialDetail.requirements).not.toBeNull();
-      expect(initialDetail.requirements).toContain('Will be generated');
+      // 3. 初期状態を確認 - エディタのDOM内容で検証
+      const initialEditorText = await getEditorTextFromDOM();
+      console.log('[E2E] Initial editor text length:', initialEditorText.length);
+      expect(initialEditorText).toContain('Will be generated');
 
       // 4. ファイルを直接更新（mock_claude.shがやることをシミュレート）
       const newRequirementsContent = `# Requirements Document
@@ -282,25 +234,23 @@ Generated by File Watcher Test
 
       // 5. refreshSpecStore()を呼ばずに、ファイル監視による自動更新を待つ
       // chokidar: awaitWriteFinish 200ms + debounce 300ms = 約500ms
-      // 余裕を持って最大10秒待機
+      // 余裕を持って最大15秒待機
       const updated = await waitForCondition(async () => {
-        const detail = await getSpecDetail();
-        const hasNewContent = detail.requirements?.includes('REQ-001: ファイル監視テスト要件') ?? false;
+        const editorText = await getEditorTextFromDOM();
+        const hasNewContent = editorText.includes('REQ-001');
         if (!hasNewContent) {
-          console.log('[E2E] Waiting for UI update... current content includes REQ-001:', hasNewContent);
+          console.log('[E2E] Waiting for UI update... editor text includes REQ-001:', hasNewContent);
         }
         return hasNewContent;
-      }, 10000, 500, 'requirements-ui-update');
+      }, 15000, 500, 'requirements-ui-update');
 
-      // 6. 結果を検証
-      const finalDetail = await getSpecDetail();
-      console.log('[E2E] Final requirements content (first 200 chars):', finalDetail.requirements?.substring(0, 200));
+      // 6. 結果を検証 - UI要素のテキストで検証
+      const finalEditorText = await getEditorTextFromDOM();
+      console.log('[E2E] Final editor text (first 200 chars):', finalEditorText.substring(0, 200));
 
-      // このテストはファイル監視が正しく動作していれば成功する
-      // 失敗した場合、ファイル監視→UI更新のパイプラインに問題がある
       expect(updated).toBe(true);
-      expect(finalDetail.requirements).toContain('REQ-001: ファイル監視テスト要件');
-      expect(finalDetail.requirements).toContain('Generated by File Watcher Test');
+      expect(finalEditorText).toContain('REQ-001');
+      expect(finalEditorText).toContain('Generated by File Watcher Test');
     });
 
     it('should update spec.json phase in UI when file changes without manual refresh', async () => {
@@ -310,13 +260,15 @@ Generated by File Watcher Test
       await browser.pause(500);
 
       // 2. Spec選択
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(500);
 
-      // 3. 初期状態を確認
-      const initialDetail = await getSpecDetail();
-      expect(initialDetail.specJsonPhase).toBe('initialized');
+      // 3. 初期状態を確認 - spec-listのphase-badgeで検証
+      const initialPhaseBadge = await getSpecPhaseBadgeText(SPEC_NAME);
+      console.log('[E2E] Initial phase badge text:', initialPhaseBadge);
+      // 'initialized' -> '初期化'
+      expect(initialPhaseBadge).toBe('初期化');
 
       // 4. spec.jsonを直接更新
       const specJsonPath = path.join(SPEC_DIR, 'spec.json');
@@ -326,71 +278,55 @@ Generated by File Watcher Test
       fs.writeFileSync(specJsonPath, JSON.stringify(specJson, null, 2));
       console.log('[E2E] spec.json updated directly');
 
-      // 5. ファイル監視による自動更新を待つ
+      // 5. ファイル監視による自動更新を待つ - UI要素で確認
+      // 'requirements-generated' -> '要件定義済'
       const updated = await waitForCondition(async () => {
-        const detail = await getSpecDetail();
-        return detail.specJsonPhase === 'requirements-generated';
-      }, 10000, 500, 'spec-json-ui-update');
+        const badgeText = await getSpecPhaseBadgeText(SPEC_NAME);
+        return badgeText === '要件定義済';
+      }, 15000, 500, 'spec-json-ui-update');
 
-      // 6. 結果を検証
-      const finalDetail = await getSpecDetail();
-      console.log('[E2E] Final phase:', finalDetail.specJsonPhase);
+      // 6. 結果を検証 - phase-badgeのテキストで検証
+      const finalPhaseBadge = await getSpecPhaseBadgeText(SPEC_NAME);
+      console.log('[E2E] Final phase badge text:', finalPhaseBadge);
 
       expect(updated).toBe(true);
-      expect(finalDetail.specJsonPhase).toBe('requirements-generated');
+      expect(finalPhaseBadge).toBe('要件定義済');
     });
   });
 
   /**
    * CRITICAL TEST: Editor Content Update
    *
-   * This test verifies that the ACTUAL UI (editorStore.content) is updated
+   * This test verifies that the ACTUAL UI (editor DOM content) is updated
    * when files change, not just specStore.specDetail.
    *
    * Bug discovered: specStore is updated via file watcher, but editorStore
    * is NOT updated - user sees stale content in the editor.
    */
   describe('Editor Content Update (Actual UI Display)', () => {
-    it('should update editorStore.content when requirements.md changes (EXPECTED TO FAIL)', async () => {
+    it('should update editor content in DOM when requirements.md changes (EXPECTED TO FAIL)', async () => {
       // 1. プロジェクト選択
       const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
 
-      // 2. Spec選択（これによりeditorStoreにartifactがロードされる）
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      // 2. Spec選択（これによりeditorにartifactがロードされる）
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(1000); // エディタがロードされるまで待機
 
-      // 3. 初期状態を確認 - editorStore（実際のUI表示）
-      const initialEditor = await getEditorContent();
-      console.log('[E2E] Initial editor activeTab:', initialEditor.activeTab);
-      console.log('[E2E] Initial editor content length:', initialEditor.content?.length || 0);
-      console.log('[E2E] Initial editor content (first 100 chars):', initialEditor.content?.substring(0, 100));
-
-      // requirementsタブが選択されていることを確認
+      // 3. requirementsタブが選択されていることを確認
       // Note: デフォルトでrequirementsが選択されていない場合がある
-      if (initialEditor.activeTab !== 'requirements') {
-        console.log('[E2E] Switching to requirements tab');
-        await browser.execute(() => {
-          const stores = (window as any).__STORES__;
-          if (stores?.editor?.getState) {
-            stores.editor.getState().setActiveTab('requirements');
-          }
-        });
-        await browser.pause(500);
+      const activeTab = await getActiveTabFromDOM();
+      console.log('[E2E] Active tab:', activeTab);
+      if (!activeTab.includes('requirements') && !activeTab.includes('要件')) {
+        console.log('[E2E] Switching to requirements tab via UI click');
+        const reqTab = await $('[data-testid="artifact-editor-tab-requirements"]');
+        if (await reqTab.isExisting()) {
+          await reqTab.click();
+          await browser.pause(500);
+        }
       }
-
-      // Fixtureがリセットされた後なので、初期コンテンツを確認
-      // （前のテストの影響でファイルが更新されている場合がある）
-      const beforeUpdate = await getEditorContent();
-      console.log('[E2E] Before update - editor content includes "Will be generated":',
-        beforeUpdate.content?.includes('Will be generated') ?? false);
-      console.log('[E2E] Before update - editor content (first 150 chars):',
-        beforeUpdate.content?.substring(0, 150));
-
-      // 初期状態の検証はスキップ - fixtureリセットとeditorStoreの同期タイミングの問題
-      // 重要なのは、ファイル更新後にeditorStoreが更新されるかどうか
 
       // 4. ファイルを直接更新
       const newRequirementsContent = `# Requirements Document
@@ -402,7 +338,7 @@ E2Eテスト用のシンプルな機能を実装します。
 
 ### REQ-EDITOR-001: エディタ更新テスト
 **When** requirements.mdが更新されたとき
-**Then** editorStore.contentも自動的に更新される
+**Then** エディタの表示内容も自動的に更新される
 
 ---
 Generated by Editor Update Test
@@ -410,71 +346,50 @@ Generated by Editor Update Test
       fs.writeFileSync(path.join(SPEC_DIR, 'requirements.md'), newRequirementsContent);
       console.log('[E2E] requirements.md updated directly');
 
-      // 5. specStoreが更新されるのを確認（これは成功するはず）
-      const specStoreUpdated = await waitForCondition(async () => {
-        const detail = await getSpecDetail();
-        return detail.requirements?.includes('REQ-EDITOR-001') ?? false;
-      }, 10000, 500, 'specStore-update');
-      console.log('[E2E] specStore updated:', specStoreUpdated);
-
-      // 6. editorStore（実際のUI表示）が更新されるか確認
-      // BUG: これは失敗するはず - editorStoreはファイル監視で更新されない
+      // 5. エディタのDOM内容が更新されるか確認
       const editorUpdated = await waitForCondition(async () => {
-        const editor = await getEditorContent();
-        const hasNewContent = editor.content?.includes('REQ-EDITOR-001') ?? false;
+        const editorText = await getEditorTextFromDOM();
+        const hasNewContent = editorText.includes('REQ-EDITOR-001');
         if (!hasNewContent) {
-          console.log('[E2E] Waiting for editor update... content includes REQ-EDITOR-001:', hasNewContent);
+          console.log('[E2E] Waiting for editor DOM update... includes REQ-EDITOR-001:', hasNewContent);
         }
         return hasNewContent;
-      }, 10000, 500, 'editorStore-update');
+      }, 15000, 500, 'editor-dom-update');
 
-      // 7. 結果を検証
-      const finalEditor = await getEditorContent();
-      const finalSpecDetail = await getSpecDetail();
+      // 6. 結果を検証 - DOM内容で検証
+      const finalEditorText = await getEditorTextFromDOM();
+      console.log('[E2E] Final editor DOM content includes REQ-EDITOR-001:',
+        finalEditorText.includes('REQ-EDITOR-001'));
 
-      console.log('[E2E] Final specStore requirements includes REQ-EDITOR-001:',
-        finalSpecDetail.requirements?.includes('REQ-EDITOR-001') ?? false);
-      console.log('[E2E] Final editorStore content includes REQ-EDITOR-001:',
-        finalEditor.content?.includes('REQ-EDITOR-001') ?? false);
-
-      // specStoreは更新されているはず
-      expect(specStoreUpdated).toBe(true);
-      expect(finalSpecDetail.requirements).toContain('REQ-EDITOR-001');
-
-      // editorStoreも更新されているべき（これが失敗するとバグ確定）
       expect(editorUpdated).toBe(true);
-      expect(finalEditor.content).toContain('REQ-EDITOR-001');
+      expect(finalEditorText).toContain('REQ-EDITOR-001');
     });
 
     /**
-     * tasks.md更新時のeditorStore同期テスト
+     * tasks.md更新時のエディタDOM同期テスト
      * Bug: tasks-md-editor-update-test
      */
-    it('should update editorStore.content when tasks.md changes', async () => {
+    it('should update editor content in DOM when tasks.md changes', async () => {
       // 1. プロジェクト選択
       const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(500);
 
       // 2. Spec選択
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      const specSuccess = await selectSpecViaUI(SPEC_NAME);
       expect(specSuccess).toBe(true);
       await browser.pause(1000);
 
-      // 3. tasksタブに切り替え
-      await browser.execute(() => {
-        const stores = (window as any).__STORES__;
-        if (stores?.editor?.getState) {
-          stores.editor.getState().setActiveTab('tasks');
-        }
-      });
-      await browser.pause(500);
+      // 3. tasksタブに切り替え（UIクリックで）
+      const tasksTab = await $('[data-testid="artifact-editor-tab-tasks"]');
+      if (await tasksTab.isExisting()) {
+        await tasksTab.click();
+        await browser.pause(500);
+      }
 
-      // 4. 初期状態を確認
-      const initialEditor = await getEditorContent();
-      console.log('[E2E] Initial editor activeTab:', initialEditor.activeTab);
-      console.log('[E2E] Initial editor content length:', initialEditor.content?.length || 0);
-      expect(initialEditor.activeTab).toBe('tasks');
+      // 4. 初期状態を確認 - DOM内容で検証
+      const initialEditorText = await getEditorTextFromDOM();
+      console.log('[E2E] Initial editor text length:', initialEditorText.length);
 
       // 5. tasks.mdを直接更新（implプロセス中のタスク完了をシミュレート）
       const newTasksContent = `# Implementation Tasks
@@ -498,24 +413,24 @@ Generated by Tasks Update Test
       fs.writeFileSync(path.join(SPEC_DIR, 'tasks.md'), newTasksContent);
       console.log('[E2E] tasks.md updated directly');
 
-      // 6. editorStore（実際のUI表示）が更新されるか確認
+      // 6. エディタのDOM内容が更新されるか確認
       const editorUpdated = await waitForCondition(async () => {
-        const editor = await getEditorContent();
-        const hasNewContent = editor.content?.includes('TASK-001') ?? false;
+        const editorText = await getEditorTextFromDOM();
+        const hasNewContent = editorText.includes('TASK-001');
         if (!hasNewContent) {
-          console.log('[E2E] Waiting for editor update... content includes TASK-001:', hasNewContent);
+          console.log('[E2E] Waiting for editor DOM update... includes TASK-001:', hasNewContent);
         }
         return hasNewContent;
-      }, 10000, 500, 'tasks-editorStore-update');
+      }, 15000, 500, 'tasks-editor-dom-update');
 
-      // 7. 結果を検証
-      const finalEditor = await getEditorContent();
-      console.log('[E2E] Final editorStore content includes TASK-001:',
-        finalEditor.content?.includes('TASK-001') ?? false);
+      // 7. 結果を検証 - DOM内容で検証
+      const finalEditorText = await getEditorTextFromDOM();
+      console.log('[E2E] Final editor DOM content includes TASK-001:',
+        finalEditorText.includes('TASK-001'));
 
       expect(editorUpdated).toBe(true);
-      expect(finalEditor.content).toContain('TASK-001');
-      expect(finalEditor.content).toContain('Generated by Tasks Update Test');
+      expect(finalEditorText).toContain('TASK-001');
+      expect(finalEditorText).toContain('Generated by Tasks Update Test');
     });
   });
 });

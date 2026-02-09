@@ -78,7 +78,7 @@ describe('SpecListItem', () => {
       const spec = createMockSpec();
       render(<SpecListItem spec={spec} isSelected={false} onSelect={onSelect} />);
       // Get the main clickable area (the div with role="button")
-      const listItem = screen.getByTestId(`spec-item-${spec.name}`).querySelector('[role="button"]');
+      const listItem = screen.getByTestId(`spec-item-${spec.name}`);
       fireEvent.click(listItem!);
       expect(onSelect).toHaveBeenCalledTimes(1);
     });
@@ -86,7 +86,7 @@ describe('SpecListItem', () => {
     it('should have selected styling when isSelected is true', () => {
       const spec = createMockSpec();
       render(<SpecListItem spec={spec} isSelected={true} onSelect={() => {}} />);
-      const listItem = screen.getByTestId(`spec-item-${spec.name}`).querySelector('[role="button"]');
+      const listItem = screen.getByTestId(`spec-item-${spec.name}`);
       expect(listItem?.className).toContain('bg-blue');
     });
 
@@ -94,7 +94,7 @@ describe('SpecListItem', () => {
       const onSelect = vi.fn();
       const spec = createMockSpec();
       render(<SpecListItem spec={spec} isSelected={false} onSelect={onSelect} />);
-      const listItem = screen.getByTestId(`spec-item-${spec.name}`).querySelector('[role="button"]');
+      const listItem = screen.getByTestId(`spec-item-${spec.name}`);
       fireEvent.keyDown(listItem!, { key: 'Enter' });
       expect(onSelect).toHaveBeenCalledTimes(1);
     });
@@ -103,7 +103,7 @@ describe('SpecListItem', () => {
       const onSelect = vi.fn();
       const spec = createMockSpec();
       render(<SpecListItem spec={spec} isSelected={false} onSelect={onSelect} />);
-      const listItem = screen.getByTestId(`spec-item-${spec.name}`).querySelector('[role="button"]');
+      const listItem = screen.getByTestId(`spec-item-${spec.name}`);
       fireEvent.keyDown(listItem!, { key: ' ' });
       expect(onSelect).toHaveBeenCalledTimes(1);
     });
@@ -169,7 +169,7 @@ describe('SpecListItem', () => {
     it('should be focusable', () => {
       const spec = createMockSpec();
       render(<SpecListItem spec={spec} isSelected={false} onSelect={() => {}} />);
-      const listItem = screen.getByTestId(`spec-item-${spec.name}`).querySelector('[role="button"]');
+      const listItem = screen.getByTestId(`spec-item-${spec.name}`);
       expect(listItem).toHaveAttribute('tabIndex', '0');
     });
   });

@@ -12,8 +12,7 @@ import { useCallback, useMemo, useEffect, useRef } from 'react';
 // trpc-full-migration Task 6.2: Use tRPC vanilla client for agent operations
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import { ArrowDown } from 'lucide-react';
-// bugs-view-unification Task 6.1: Import useApi for ApiClient access
-import { useApi } from '../../shared/api/ApiClientProvider';
+// trpc-bug-migration: Removed useApi - Electron uses tRPC via bugStore (apiClient=null)
 // bugs-workflow-footer Task 6.1, 6.2: Removed Play, Square, GitBranch - moved to footer
 // bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
@@ -76,8 +75,7 @@ function calculatePhaseStatus(
 }
 
 export function BugWorkflowView() {
-  // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
-  const apiClient = useApi();
+  // trpc-bug-migration: Electron uses tRPC via bugStore (apiClient=null)
   // Compute selectedBug from bugs + selectedBugId
   const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
   const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
@@ -361,15 +359,15 @@ export function BugWorkflowView() {
   }, [isAutoExecuting, handleStartAutoExecution, handleStopAutoExecution]);
 
   // bugs-workflow-footer Task 6.4: Convert to worktree handler
-  // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
+  // trpc-bug-migration: pass null for Electron tRPC path
   const handleConvertToWorktree = useCallback(async () => {
     if (!bugName) return;
     const success = await handleConvert(bugName);
     if (success) {
       // Refresh bug detail to get updated worktree info
-      await useSharedBugStore.getState().selectBug(apiClient, bugName);
+      await useSharedBugStore.getState().selectBug(null, bugName);
     }
-  }, [bugName, handleConvert, apiClient]);
+  }, [bugName, handleConvert]);
 
   // worktree-rebase-from-main: Task 8.1c - Rebase from main handler
   // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
@@ -400,7 +398,7 @@ export function BugWorkflowView() {
         }
 
         // Refresh bug detail after rebase
-        await bugStore.selectBug(apiClient, bugName);
+        await bugStore.selectBug(null, bugName);
       } else {
         // Error: display error message
         notify.error(result.error.message || 'Rebaseに失敗しました');
@@ -409,7 +407,7 @@ export function BugWorkflowView() {
       bugStore.setIsRebasing(false);
       notify.error(error instanceof Error ? error.message : 'Rebaseに失敗しました');
     }
-  }, [bugName, bugDetail, apiClient]);
+  }, [bugName, bugDetail]);
 
   // If no bug is selected, show placeholder
   if (!selectedBug) {

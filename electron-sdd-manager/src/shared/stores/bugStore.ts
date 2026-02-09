@@ -12,6 +12,8 @@
 import { create } from 'zustand';
 import type { ApiClient, BugMetadata, BugDetail, BugsChangeEvent } from '../api/types';
 import { useNotificationStore } from './notificationStore';
+// trpc-bug-migration: tRPC vanilla client for Electron renderer (null apiClient path)
+import { getVanillaClient } from '../trpc/vanillaClient';
 
 // =============================================================================
 // Types
@@ -69,18 +71,27 @@ export interface SharedBugState {
    * Requirements: 7.1 (Task 6.2)
    */
   isRebasing: boolean;
+  /**
+   * Current project path for tRPC calls (Electron path)
+   * trpc-bug-migration: Set by projectStore when project is selected
+   */
+  _projectPath: string | null;
 }
 
 export interface SharedBugActions {
-  /** ApiClient経由でbugsを読み込む */
-  loadBugs: (apiClient: ApiClient) => Promise<void>;
+  /**
+   * bugsを読み込む
+   * trpc-bug-migration: apiClient=null時はtRPC経由（Electron）
+   */
+  loadBugs: (apiClient: ApiClient | null) => Promise<void>;
   /**
    * Bugを選択し詳細を取得する (bugs-view-unification Task 2.1)
-   * @param apiClient - ApiClient instance
+   * trpc-bug-migration: apiClient=null時はtRPC経由（Electron）
+   * @param apiClient - ApiClient instance or null for tRPC path
    * @param bugId - Bug ID (name) or null to clear selection
    * Requirements: 3.1, 3.2, 3.8
    */
-  selectBug: (apiClient: ApiClient, bugId: string | null) => Promise<void>;
+  selectBug: (apiClient: ApiClient | null, bugId: string | null) => Promise<void>;
   /** IDでBugを取得する */
   getBugById: (bugId: string) => BugMetadata | undefined;
   /** Bugs配列を更新する（イベント購読用） */
@@ -93,34 +104,39 @@ export interface SharedBugActions {
    */
   setUseWorktree: (useWorktree: boolean) => void;
   /**
-   * ApiClient経由でBugを作成
+   * Bugを作成
+   * trpc-bug-migration: apiClient=null時はtRPC経由（Electron）
    * Requirements: 5.3 (remote-ui-bug-advanced-features Task 3.1)
    */
-  createBug: (apiClient: ApiClient, name: string, description: string) => Promise<boolean>;
+  createBug: (apiClient: ApiClient | null, name: string, description: string) => Promise<boolean>;
   /**
    * 選択解除 (bugs-view-unification Task 2.1)
    */
   clearSelectedBug: () => void;
   /**
    * 選択中Bugの詳細を再取得する (bugs-view-unification Task 2.1)
+   * trpc-bug-migration: apiClient=null時はtRPC経由（Electron）
    * Requirements: 3.2
    */
-  refreshBugDetail: (apiClient: ApiClient) => Promise<void>;
+  refreshBugDetail: (apiClient: ApiClient | null) => Promise<void>;
   /**
    * Bug変更イベントを処理する（差分更新）(bugs-view-unification Task 2.2)
+   * trpc-bug-migration: apiClient=null時はtRPC経由（Electron）
    * Requirements: 3.3, 3.4, 3.5, 3.6
    */
-  handleBugsChanged: (apiClient: ApiClient, event: BugsChangeEvent) => Promise<void>;
+  handleBugsChanged: (apiClient: ApiClient | null, event: BugsChangeEvent) => Promise<void>;
   /**
    * ファイル監視を開始する (bugs-view-unification Task 2.3)
+   * trpc-bug-migration: apiClient=null時はtRPC subscription経由（Electron）
    * Requirements: 3.7
    */
-  startWatching: (apiClient: ApiClient) => void;
+  startWatching: (apiClient: ApiClient | null) => void;
   /**
    * ファイル監視を停止する (bugs-view-unification Task 2.3)
+   * trpc-bug-migration: apiClient=null時はnoop（Electron、Main processが管理）
    * Requirements: 3.7
    */
-  stopWatching: (apiClient: ApiClient) => void;
+  stopWatching: (apiClient: ApiClient | null) => void;
   /**
    * Rebase処理中状態を設定
    * Requirements: 7.1, 7.2 (Task 6.2)
@@ -131,6 +147,10 @@ export interface SharedBugActions {
    * Requirements: 7.3, 7.4, 7.5 (Task 6.2)
    */
   handleRebaseResult: (result: RebaseFromMainResponse) => void;
+  /**
+   * trpc-bug-migration: Set project path for tRPC calls
+   */
+  setProjectPath: (path: string | null) => void;
 }
 
 export type SharedBugStore = SharedBugState & SharedBugActions;
@@ -153,24 +173,42 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   isCreating: false,
   isWatching: false,
   isRebasing: false,
+  _projectPath: null,
 
   // Actions
-  loadBugs: async (apiClient: ApiClient) => {
+  // trpc-bug-migration: apiClient=null時はtRPC経由
+  loadBugs: async (apiClient: ApiClient | null) => {
     set({ isLoading: true, error: null });
 
-    const result = await apiClient.getBugs();
-
-    if (result.ok) {
-      set({ bugs: result.value, isLoading: false });
-    } else {
-      set({ error: result.error.message, isLoading: false });
+    try {
+      if (apiClient) {
+        // Remote UI path: use ApiClient
+        const result = await apiClient.getBugs();
+        if (result.ok) {
+          set({ bugs: result.value, isLoading: false });
+        } else {
+          set({ error: result.error.message, isLoading: false });
+        }
+      } else {
+        // Electron path: use tRPC
+        const projectPath = get()._projectPath;
+        if (!projectPath) {
+          set({ error: 'Project path not set', isLoading: false });
+          return;
+        }
+        const result = await getVanillaClient().bug.readBugs.query({ projectPath });
+        set({ bugs: result.bugs as BugMetadata[], isLoading: false });
+      }
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to load bugs', isLoading: false });
     }
   },
 
   // bugs-view-unification Task 2.1: selectBug with bugDetail fetch
+  // trpc-bug-migration: apiClient=null時はtRPC経由
   // Requirements: 3.1, 3.2
   // remove-redundant-agent-watchers: No need to call switchAgentWatchScope - projectAgentWatcher handles all
-  selectBug: async (apiClient: ApiClient, bugId: string | null) => {
+  selectBug: async (apiClient: ApiClient | null, bugId: string | null) => {
     // Handle null selection
     if (bugId === null) {
       set({ selectedBugId: null, bugDetail: null });
@@ -180,13 +218,18 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
     set({ selectedBugId: bugId, isLoading: true, error: null });
 
     try {
-      // Fetch bug detail (Requirements: 3.1, 3.2)
-      const result = await apiClient.getBugDetail(bugId);
-
-      if (result.ok) {
-        set({ bugDetail: result.value, isLoading: false });
+      if (apiClient) {
+        // Remote UI path: use ApiClient
+        const result = await apiClient.getBugDetail(bugId);
+        if (result.ok) {
+          set({ bugDetail: result.value, isLoading: false });
+        } else {
+          set({ error: result.error.message, bugDetail: null, isLoading: false });
+        }
       } else {
-        set({ error: result.error.message, bugDetail: null, isLoading: false });
+        // Electron path: use tRPC
+        const bugDetail = await getVanillaClient().bug.readBugDetail.query({ bugName: bugId });
+        set({ bugDetail: bugDetail as BugDetail, isLoading: false });
       }
     } catch (error) {
       set({
@@ -213,23 +256,41 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
     set({ useWorktree });
   },
 
-  createBug: async (apiClient: ApiClient, name: string, description: string) => {
+  // trpc-bug-migration: apiClient=null時はtRPC経由
+  createBug: async (apiClient: ApiClient | null, name: string, description: string) => {
     set({ isCreating: true, error: null });
 
-    // Check if createBug is available on the ApiClient
-    if (!apiClient.createBug) {
-      set({ error: 'Bug creation not supported', isCreating: false });
-      return false;
-    }
-
-    const result = await apiClient.createBug(name, description);
-
-    if (result.ok) {
-      set({ isCreating: false });
-      // Bug list will be updated via onBugsUpdated event subscription
-      return true;
-    } else {
-      set({ error: result.error.message, isCreating: false });
+    try {
+      if (apiClient) {
+        // Remote UI path: use ApiClient
+        if (!apiClient.createBug) {
+          set({ error: 'Bug creation not supported', isCreating: false });
+          return false;
+        }
+        const result = await apiClient.createBug(name, description);
+        if (result.ok) {
+          set({ isCreating: false });
+          return true;
+        } else {
+          set({ error: result.error.message, isCreating: false });
+          return false;
+        }
+      } else {
+        // Electron path: use tRPC
+        const projectPath = get()._projectPath;
+        if (!projectPath) {
+          set({ error: 'Project path not set', isCreating: false });
+          return false;
+        }
+        await getVanillaClient().bug.executeBugCreate.mutate({
+          projectPath,
+          description: `${name}: ${description}`,
+        });
+        set({ isCreating: false });
+        return true;
+      }
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to create bug', isCreating: false });
       return false;
     }
   },
@@ -240,8 +301,9 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   },
 
   // bugs-view-unification Task 2.1: refreshBugDetail
+  // trpc-bug-migration: apiClient=null時はtRPC経由
   // Requirements: 3.2
-  refreshBugDetail: async (apiClient: ApiClient) => {
+  refreshBugDetail: async (apiClient: ApiClient | null) => {
     const { selectedBugId } = get();
 
     if (!selectedBugId) {
@@ -249,10 +311,16 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
     }
 
     try {
-      const result = await apiClient.getBugDetail(selectedBugId);
-
-      if (result.ok) {
-        set({ bugDetail: result.value });
+      if (apiClient) {
+        // Remote UI path: use ApiClient
+        const result = await apiClient.getBugDetail(selectedBugId);
+        if (result.ok) {
+          set({ bugDetail: result.value });
+        }
+      } else {
+        // Electron path: use tRPC
+        const bugDetail = await getVanillaClient().bug.readBugDetail.query({ bugName: selectedBugId });
+        set({ bugDetail: bugDetail as BugDetail });
       }
     } catch (error) {
       console.error('[useSharedBugStore] Failed to refresh bug detail:', error);
@@ -260,22 +328,36 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   },
 
   // bugs-view-unification Task 2.2: handleBugsChanged
+  // trpc-bug-migration: apiClient=null時はtRPC経由
   // Requirements: 3.3, 3.4, 3.5, 3.6
-  handleBugsChanged: async (apiClient: ApiClient, event: BugsChangeEvent) => {
+  handleBugsChanged: async (apiClient: ApiClient | null, event: BugsChangeEvent) => {
     if (!event) return; // Guard against undefined event
     const { type, bugName } = event;
     const { selectedBugId, bugs } = get();
 
     console.log('[useSharedBugStore] Handling bugs change event:', { type, bugName, selectedBugId });
 
+    // Helper to reload full bug list
+    const reloadBugs = async (): Promise<BugMetadata[] | null> => {
+      if (apiClient) {
+        const result = await apiClient.getBugs();
+        return result.ok ? result.value : null;
+      } else {
+        const projectPath = get()._projectPath;
+        if (!projectPath) return null;
+        const result = await getVanillaClient().bug.readBugs.query({ projectPath });
+        return result.bugs as BugMetadata[];
+      }
+    };
+
     switch (type) {
       case 'add':
       case 'addDir':
         // New bug added - refresh bug list (Requirements: 3.4)
         if (bugName) {
-          const result = await apiClient.getBugs();
-          if (result.ok) {
-            set({ bugs: result.value });
+          const updatedBugs = await reloadBugs();
+          if (updatedBugs) {
+            set({ bugs: updatedBugs });
           }
         }
         break;
@@ -283,9 +365,9 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
       case 'change':
         // Bug file changed - update metadata and possibly detail (Requirements: 3.5)
         if (bugName) {
-          const result = await apiClient.getBugs();
-          if (result.ok) {
-            set({ bugs: result.value });
+          const updatedBugs = await reloadBugs();
+          if (updatedBugs) {
+            set({ bugs: updatedBugs });
           }
           // If the changed bug is currently selected, refresh its detail
           if (selectedBugId === bugName) {
@@ -299,9 +381,9 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
         if (bugName) {
           const bugExists = bugs.some((b) => b.name === bugName);
           if (bugExists) {
-            const result = await apiClient.getBugs();
-            if (result.ok) {
-              set({ bugs: result.value });
+            const updatedBugs = await reloadBugs();
+            if (updatedBugs) {
+              set({ bugs: updatedBugs });
             }
             // If selected bug was affected, refresh detail
             if (selectedBugId === bugName) {
@@ -314,10 +396,10 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
       case 'unlinkDir':
         // Directory deleted - remove bug from list (Requirements: 3.6)
         if (bugName) {
-          const updatedBugs = bugs.filter((b) => b.name !== bugName);
+          const filteredBugs = bugs.filter((b) => b.name !== bugName);
 
-          if (updatedBugs.length !== bugs.length) {
-            set({ bugs: updatedBugs });
+          if (filteredBugs.length !== bugs.length) {
+            set({ bugs: filteredBugs });
             console.log('[useSharedBugStore] Removed bug from list:', bugName);
 
             // Clear selection if the deleted bug was selected
@@ -332,38 +414,53 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   },
 
   // bugs-view-unification Task 2.3: startWatching
+  // trpc-bug-migration: apiClient=null時はtRPC subscription経由（Electron）
   // Requirements: 3.7
   // Note: Watcher is started by Main Process in SELECT_PROJECT IPC handler
   // Here we only register the event listener on Renderer side (same pattern as specWatcherService)
-  startWatching: (apiClient: ApiClient) => {
+  startWatching: (apiClient: ApiClient | null) => {
     // Clean up existing subscription
     if (watcherUnsubscribe) {
       watcherUnsubscribe();
       watcherUnsubscribe = null;
     }
 
-    // Subscribe to bug change events
-    // Note: Main Process watcher is already started in SELECT_PROJECT handler
-    watcherUnsubscribe = apiClient.onBugsChanged((event: BugsChangeEvent) => {
-      console.log('[useSharedBugStore] Bugs changed:', event);
-      get().handleBugsChanged(apiClient, event);
-    });
+    if (apiClient) {
+      // Remote UI path: use ApiClient
+      watcherUnsubscribe = apiClient.onBugsChanged((event: BugsChangeEvent) => {
+        console.log('[useSharedBugStore] Bugs changed:', event);
+        get().handleBugsChanged(apiClient, event);
+      });
+    } else {
+      // Electron path: use tRPC subscription
+      const sub = getVanillaClient().events.onBugsChanged.subscribe(undefined, {
+        onData: (data: unknown) => {
+          const event = data as BugsChangeEvent;
+          console.log('[useSharedBugStore] Bugs changed (tRPC):', event);
+          get().handleBugsChanged(null, event);
+        },
+      });
+      watcherUnsubscribe = () => sub.unsubscribe();
+    }
 
     set({ isWatching: true });
     console.log('[useSharedBugStore] Bugs watcher started');
   },
 
   // bugs-view-unification Task 2.3: stopWatching
+  // trpc-bug-migration: apiClient=null時はnoop（Electron、Main processが管理）
   // Requirements: 3.7
-  stopWatching: (apiClient: ApiClient) => {
+  stopWatching: (apiClient: ApiClient | null) => {
     // Unsubscribe from events
     if (watcherUnsubscribe) {
       watcherUnsubscribe();
       watcherUnsubscribe = null;
     }
 
-    // Stop bugs watcher
-    apiClient.stopBugsWatcher();
+    // Stop bugs watcher (Remote UI only; Electron watcher lifecycle managed by Main process)
+    if (apiClient) {
+      apiClient.stopBugsWatcher();
+    }
 
     set({ isWatching: false });
     console.log('[useSharedBugStore] Bugs watcher stopped');
@@ -373,6 +470,11 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   // Requirements: 7.1, 7.2
   setIsRebasing: (isRebasing: boolean) => {
     set({ isRebasing });
+  },
+
+  // trpc-bug-migration: Set project path for tRPC calls
+  setProjectPath: (path: string | null) => {
+    set({ _projectPath: path });
   },
 
   // Task 6.2, Task 12.3: Rebase result handler with notification
@@ -452,6 +554,7 @@ export function resetSharedBugStore(): void {
     isCreating: false,
     isWatching: false,
     isRebasing: false,
+    _projectPath: null,
   });
 }
 

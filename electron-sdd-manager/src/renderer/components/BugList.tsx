@@ -6,12 +6,12 @@
  * bugs-view-unification Task 4.1: 共有コンポーネントを使用するよう更新
  */
 
-// bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
+// bugs-view-unification Task 6.1: Use shared bugStore
+// trpc-bug-migration: Removed useApi - Electron uses tRPC via bugStore (apiClient=null)
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useSharedAgentStore } from '../../shared/stores/agentStore';
 import { BugListContainer } from '@shared/components/bug/BugListContainer';
 import { useBugListLogic } from '@shared/hooks/useBugListLogic';
-import { useApi } from '../../shared/api/ApiClientProvider';
 import type { BugMetadata } from '../types';
 
 /**
@@ -24,8 +24,7 @@ import type { BugMetadata } from '../types';
  * bugs-view-unification: Refactored to use BugListContainer and useBugListLogic
  */
 export function BugList(): React.ReactElement {
-  // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
-  const apiClient = useApi();
+  // trpc-bug-migration: Electron uses tRPC via bugStore (apiClient=null)
   const {
     bugs,
     selectedBugId,
@@ -60,9 +59,9 @@ export function BugList(): React.ReactElement {
   };
 
   // Handle bug selection
-  // bugs-view-unification Task 6.1: selectBug takes (apiClient, bugId)
+  // trpc-bug-migration: pass null for Electron tRPC path
   const handleSelectBug = (bug: BugMetadata): void => {
-    selectBug(apiClient, bug.name);
+    selectBug(null, bug.name);
   };
 
   return (

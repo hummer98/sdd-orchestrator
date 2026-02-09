@@ -219,6 +219,13 @@ export async function waitForProjectUIReady(timeout: number = 10000): Promise<bo
  */
 export async function selectSpecViaUI(specName: string, timeout: number = 10000): Promise<boolean> {
   try {
+    // Ensure Specs tab is active (spec-list is only rendered when activeTab === 'specs')
+    const specsTab = await $('[data-testid="tab-specs"]');
+    if (await specsTab.isExisting()) {
+      await browser.execute((el: HTMLElement) => el.click(), specsTab);
+      await browser.pause(500);
+    }
+
     // Wait for spec list to be visible
     const specList = await $('[data-testid="spec-list"]');
     await specList.waitForExist({ timeout });

@@ -216,8 +216,8 @@ describe('BugList', () => {
 
       fireEvent.click(screen.getByTestId('bug-item-bug-1'));
 
-      // bugs-view-unification Task 6.1: selectBug now takes (apiClient, bugName)
-      expect(mockSelectBug).toHaveBeenCalledWith(mockApiClient, 'bug-1');
+      // trpc-bug-migration: Electron passes null instead of apiClient
+      expect(mockSelectBug).toHaveBeenCalledWith(null, 'bug-1');
     });
 
     it('should mark selected bug as selected', () => {

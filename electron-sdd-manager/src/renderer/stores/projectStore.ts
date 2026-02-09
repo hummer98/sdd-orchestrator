@@ -11,7 +11,7 @@ import { useSpecStore } from './specStore';
 // bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 // trpc-full-migration Task 11.4: tRPC vanilla client replaces IpcApiClient
-import type { BugsChangeEvent } from '../../shared/api/types';
+// trpc-bug-migration: BugsChangeEvent import removed (adapter eliminated)
 import { useAgentStore, type AgentInfo } from './agentStore';
 // jj-merge-support Task 12.5: Import ToolCheck type
 import type { ToolCheck } from '../../shared/types';
@@ -241,23 +241,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler
       // Here we only register the event listeners on Renderer side
       await useSpecStore.getState().startWatching();
-      // bugs-view-unification Task 6.1: Use shared bugStore
-      // trpc-full-migration Task 11.4: tRPC vanilla client replaces IpcApiClient
-      const bugWatcherApiClient = {
-        onBugsChanged: (listener: (event: BugsChangeEvent) => void): (() => void) => {
-          const sub = getVanillaClient().events.onBugsChanged.subscribe(undefined, {
-            onData: (data: unknown) => {
-              listener(data as BugsChangeEvent);
-            },
-          });
-          return () => sub.unsubscribe();
-        },
-        stopBugsWatcher: async () => {
-          // Watcher lifecycle managed by Main process; noop on Renderer
-          return { ok: true as const, value: undefined };
-        },
-      };
-      useSharedBugStore.getState().startWatching(bugWatcherApiClient as any);
+      // trpc-bug-migration: Set project path and start watching via tRPC (apiClient=null)
+      useSharedBugStore.getState().setProjectPath(path);
+      useSharedBugStore.getState().startWatching(null);
 
       // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();

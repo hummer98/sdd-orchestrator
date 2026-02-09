@@ -105,6 +105,7 @@ Report → Analyze → Fix → Verify
 | 動作確認・MCP操作 | `operations.md`, `debugging.md` |
 | デバッグ・ログ調査 | `debugging.md` |
 | E2Eテスト作成 | `e2e-testing.md` |
+| 統合テスト実行、E2Eテスト実行 | `e2e-testing.md` |
 | Web E2Eテスト | `web-e2e-testing.md` |
 | 用語・ドメイン確認 | `symbol-semantic-map.md` |
 | プロファイル仕様確認 | `skill-reference.md` |
@@ -112,6 +113,14 @@ Report → Analyze → Fix → Verify
 | 検証コマンド確認 | `verification-commands.md` |
 
 Custom files are supported (managed via `/kiro:steering-custom`)
+
+### Skills
+
+| Skill | 場所 | トリガー |
+|-------|------|----------|
+| `investigation-mode` | `.claude/skills/` | 「調査して」「デバッグして」「エラーの原因は？」等 |
+| `e2e-test-writer` | `.claude/skills/` | 「E2Eテストを書いて」「テストシナリオを作成」等 |
+| `gemini-cli` | `~/.claude/skills/` | WebFetch/WebSearch失敗時のウェブ調査代行 |
 
 ## Development Commands
 
@@ -130,6 +139,17 @@ Electronアプリの操作には`task`コマンドを使用する。
 
 **プロジェクト選択**: アプリ起動後、プロジェクト未選択時のメインパネルから「フォルダを選択」ボタンまたはパス入力で選択
 
+### E2Eテスト
+
+| コマンド                          | 説明                                |
+| --------------------------------- | ----------------------------------- |
+| `/e2e:run`                        | 全E2Eテスト実行 + レポート生成      |
+| `/e2e:run --electron`             | Electron E2E (WebdriverIO) のみ     |
+| `/e2e:run --remoteui`             | Remote UI E2E (Playwright) のみ     |
+| `/e2e:run --fix`                  | テスト実行 + 失敗テストの自動修正   |
+
+レポート出力先: `docs/e2e-report/`
+
 ### その他
 
 | コマンド                 | 説明                   |
@@ -146,3 +166,14 @@ Electronアプリの操作には`task`コマンドを使用する。
 | spec-manager   | Electron UI統合用コマンド          | SDD Orchestrator UIと連携する環境  |
 
 **詳細**: 各プロファイルの動作仕様は `.kiro/steering/skill-reference.md` を参照。
+
+## Web Research
+
+- WebFetch/WebSearchが失敗・制限される場合、gemini-cli Skillでウェブ調査を代行する
+- 基本コマンド: `gemini -p "質問" -y -o text 2>&1`
+- WebFetchを1回試して失敗した場合、リトライせずgemini-cliに切り替えること
+
+## Discord Integration
+
+- デフォルトDiscordサーバー (guildId): `1240905723555086336`
+- Discord MCP操作で guildId が必要な場合、ユーザーが明示的に別のサーバーを指定しない限り、上記のIDを使用すること

@@ -2,7 +2,7 @@
   "feature_name": "inspection-feature",
   "name": "inspection-feature",
   "description": "E2Eテスト用：Inspectionワークフローテスト",
-  "phase": "impl",
+  "phase": "implementation-complete",
   "language": "ja",
   "approvals": {
     "requirements": {

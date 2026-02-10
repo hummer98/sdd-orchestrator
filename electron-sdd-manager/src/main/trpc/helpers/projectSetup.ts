@@ -68,8 +68,8 @@ import { startProjectFileWatcher, stopProjectFileWatcher, initProjectFileWatcher
 export { startProjectFileWatcher, stopProjectFileWatcher, initProjectFileWatcher } from './projectFileUtils';
 
 // Import watcher utilities for local use and re-export
-import { stopSpecsWatcher, stopBugsWatcher, stopAgentRecordWatcher } from './watcherUtils';
-export { stopSpecsWatcher, stopBugsWatcher, stopAgentRecordWatcher } from './watcherUtils';
+import { startSpecsWatcher, stopSpecsWatcher, startBugsWatcher, stopBugsWatcher, startAgentRecordWatcher, stopAgentRecordWatcher } from './watcherUtils';
+export { startSpecsWatcher, stopSpecsWatcher, startBugsWatcher, stopBugsWatcher, startAgentRecordWatcher, stopAgentRecordWatcher } from './watcherUtils';
 
 // ============================================================
 // Service Instances (DI)
@@ -262,6 +262,13 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Start project file watcher
   await startProjectFileWatcher(projectPath);
+
+  // Start entity watchers (specs, bugs, agent records)
+  // These monitor .kiro/specs/ and .kiro/bugs/ for file changes and emit events via EventBus
+  await startSpecsWatcher(null, fileService, getCurrentProjectPath);
+  await startBugsWatcher(getCurrentProjectPath);
+  startAgentRecordWatcher(null, getCurrentProjectPath);
+  logger.info('[projectSetup] Entity watchers started (specs, bugs, agentRecord)');
 
   // Setup Remote Access
   setupRemoteAccessProviders(projectPath);

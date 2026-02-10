@@ -57,7 +57,7 @@ import { FileService } from '../services/fileService';
 import { BugService } from '../services/bugService';
 
 // Bug Domain
-import { BugsWatcherService } from '../services/bugsWatcherService';
+// BugsWatcherService: now managed via watcherUtils.startBugsWatcher
 import { BugWorkflowService } from '../services/bugWorkflowService';
 import { ConvertBugWorktreeService } from '../services/convertBugWorktreeService';
 
@@ -93,7 +93,7 @@ import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { projectLogger } from '../services/projectLogger';
 import { sshUriParser } from '../services/ssh/sshUriParser';
 import { readParsedLogs } from '../services/logFileService';
-import { stopBugsWatcher } from './helpers/watcherUtils';
+import { startBugsWatcher, stopBugsWatcher } from './helpers/watcherUtils';
 
 // AutoExecution / Cloudflare / MCP / Schedule
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
@@ -201,10 +201,7 @@ export function createProductionServices(): Partial<ContextServices> {
     // DD-004: Closure pattern for project-path-dependent services
     // ============================================================
     bugsWatcherStart: async () => {
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) return;
-      const watcher = new BugsWatcherService(projectPath);
-      await watcher.start();
+      await startBugsWatcher(getCurrentProjectPath);
     },
     bugsWatcherStop: async () => {
       // Stop is handled at application level via watcherUtils

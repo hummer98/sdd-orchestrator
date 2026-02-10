@@ -342,6 +342,10 @@ export function App() {
 
   trpc.events.onMenuSetCommandPrefix.useSubscription(undefined, {
     onData: (data) => {
+      if (!data?.prefix) {
+        console.warn(`[App] onMenuSetCommandPrefix received empty data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       console.log(`[App] Setting command prefix to: ${data.prefix}`);
       setCommandPrefix(data.prefix as CommandPrefix);
     },

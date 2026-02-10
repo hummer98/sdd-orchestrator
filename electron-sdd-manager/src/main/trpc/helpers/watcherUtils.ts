@@ -68,6 +68,31 @@ export async function stopSpecsWatcher(): Promise<void> {
 
 let bugsWatcherService: BugsWatcherService | null = null;
 
+export async function startBugsWatcher(
+  getCurrentProjectPath: () => string | null,
+): Promise<void> {
+  const currentProjectPath = getCurrentProjectPath();
+  if (!currentProjectPath) {
+    logger.warn('[watcherUtils] Cannot start bugs watcher: no project path set');
+    return;
+  }
+
+  if (bugsWatcherService) {
+    await bugsWatcherService.stop();
+  }
+
+  bugsWatcherService = new BugsWatcherService(currentProjectPath);
+
+  bugsWatcherService.onChange((event) => {
+    logger.info('[watcherUtils] Bugs changed', { event });
+    // Emit to EventBus for tRPC Subscription (primary path)
+    getGlobalEventBus().emit(EVENT_NAMES.BUGS_CHANGED, event);
+  });
+
+  await bugsWatcherService.start();
+  logger.info('[watcherUtils] Bugs watcher started', { projectPath: currentProjectPath });
+}
+
 export async function stopBugsWatcher(): Promise<void> {
   if (bugsWatcherService) {
     await bugsWatcherService.stop();

@@ -73,24 +73,28 @@ vi.mock('../../services/bugService', () => ({
 vi.mock('../../services/specManagerService', () => ({
   SpecManagerService: vi.fn(),
 }));
-vi.mock('../helpers/projectSetup', () => ({
-  getCurrentProjectPath: vi.fn().mockReturnValue('/test/project'),
-  setProjectPath: vi.fn(),
-  getInitialProjectPath: vi.fn().mockReturnValue(null),
-  setInitialProjectPath: vi.fn(),
-  getSpecManagerService: vi.fn().mockReturnValue({}),
-  selectProject: vi.fn(),
-  getAutoExecutionCoordinator: vi.fn().mockReturnValue({
+vi.mock('../helpers/projectSetup', () => {
+  const mockCoordinator = {
     start: vi.fn(), stop: vi.fn(), getStatus: vi.fn(),
     getAllStatuses: vi.fn(), retryFrom: vi.fn(), resetAll: vi.fn(),
     resetImplRetryCount: vi.fn(),
-  }),
-  getMetricsService: vi.fn().mockReturnValue({
-    recordHumanSession: vi.fn(),
-    getSpecMetrics: vi.fn(),
-    getProjectMetrics: vi.fn(),
-  }),
-}));
+  };
+  return {
+    getCurrentProjectPath: vi.fn().mockReturnValue('/test/project'),
+    setProjectPath: vi.fn(),
+    getInitialProjectPath: vi.fn().mockReturnValue(null),
+    setInitialProjectPath: vi.fn(),
+    getSpecManagerService: vi.fn().mockReturnValue({}),
+    selectProject: vi.fn(),
+    getAutoExecutionCoordinator: vi.fn().mockReturnValue(mockCoordinator),
+    getAutoExecutionCoordinatorInternal: vi.fn().mockReturnValue(mockCoordinator),
+    getMetricsService: vi.fn().mockReturnValue({
+      recordHumanSession: vi.fn(),
+      getSpecMetrics: vi.fn(),
+      getProjectMetrics: vi.fn(),
+    }),
+  };
+});
 vi.mock('../helpers/projectFileUtils', () => ({
   listProjectFilesCore: vi.fn(),
   readProjectFileCore: vi.fn(),
@@ -99,6 +103,7 @@ vi.mock('../helpers/projectFileUtils', () => ({
 vi.mock('../helpers/watcherUtils', () => ({
   startSpecsWatcher: vi.fn(),
   stopSpecsWatcher: vi.fn(),
+  startBugsWatcher: vi.fn(),
   stopBugsWatcher: vi.fn(),
 }));
 vi.mock('../../services/bugsWatcherService', () => ({}));

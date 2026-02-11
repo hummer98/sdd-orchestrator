@@ -35,10 +35,10 @@ electron-sdd-manager/src/
 ├── shared/         # Electron版/Remote UI版共有コード
 │   ├── api/        # ApiClient抽象化層 (WebSocketApiClient)
 │   ├── trpc/       # tRPCクライアント (provider, vanillaClient)
-│   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, schedule/, git/, etc.)
+│   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, schedule/, git/, markdown/, migration/, etc.)
 │   ├── hooks/      # 共有フック (useDeviceType等)
 │   ├── providers/  # React Context Provider (PlatformProvider等)
-│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore, scheduleTaskStore, mcpStore, gitViewStore)
+│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore, scheduleTaskStore, mcpStore, gitViewStore, docsTreeExpandedStore, toolPathStore, projectEditorStore, notificationStore, parallelModeStore)
 │   └── types/      # 共有型定義
 ├── remote-ui/      # Remote UIアプリケーション（Web版React）
 │   ├── layouts/    # MobileLayout, DesktopLayout
@@ -303,11 +303,11 @@ Agent state and logs are stored in `.kiro/runtime/agents/` with a flat entity-ba
 ドメイン別にサービスを分離:
 - **Spec管理**: `specManagerService.ts`
 - **バグ管理**: `bugService.ts`
-- **エージェント**: `agentProcess.ts`, `agentRegistry.ts`
+- **エージェント**: `agentProcess.ts`, `agentRegistry.ts`, `agentLifecycleManager.ts`, `agentStateMachine.ts`, `agentWatchdog.ts`, `hangDetector.ts`
 - **ファイル**: `fileService.ts`
 - **コマンド**: `commandService.ts`
 - **SSH/リモート**: `ssh/` ディレクトリ配下
-- **設定管理**: `settingsFileManager.ts`, `profileManager.ts`
+- **設定管理**: `settingsFileManager.ts`, `profileManager.ts`, `engineConfigService.ts`, `engineCommandResolverService.ts`
 - **スケジュール実行**: `scheduleTaskService.ts`, `scheduleTaskCoordinator.ts`, `scheduleTaskFileService.ts`
 - **MCP Server**: `mcp/` ディレクトリ配下 (`mcpServerService.ts`, `mcpToolRegistry.ts`, etc.)
 
@@ -328,7 +328,7 @@ main/trpc/
 │   ├── agent.ts        # Agent管理
 │   ├── autoExecution.ts # 自動実行
 │   ├── git.ts          # Git/Worktree
-│   ├── events.ts       # Subscriptions（37イベント）
+│   ├── events.ts       # Subscriptions（36イベント）
 │   └── ...             # mcp, schedule, cloudflare, install, misc
 ├── helpers/            # 共通ユーティリティ
 │   ├── test-helpers.ts # テスト用 createTestContext, createMockServices
@@ -354,4 +354,4 @@ const store = create((set) => ({
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
-_updated_at: 2026-01-29_
+_updated_at: 2026-02-11_

@@ -12,6 +12,9 @@ SDD Orchestrator (Spec-Driven Development Orchestrator) は、Spec-Driven Develo
 6. **スケジュール実行**: 定期的なタスクの自動実行（Scheduled Execution）
 7. **MCP Server**: Model Context Protocol経由での外部ツール連携
 8. **Git差分表示**: Worktree変更のdiff表示・レビュー
+9. **メトリクス追跡**: Spec/Project単位のAI時間・Human時間・コスト計測
+10. **並列実行**: tasks.md内の独立タスクを複数Agentで並列実行
+11. **Inspection**: 実装完了後の品質検査（GO/NO-GO判定）
 
 ## Target Use Cases
 
@@ -31,7 +34,7 @@ SDD Orchestrator (Spec-Driven Development Orchestrator) は、Spec-Driven Develo
 ### SDDフェーズ
 
 ```
-spec-init -> requirements -> design -> tasks -> implementation
+spec-init -> requirements -> design -> tasks -> implementation -> inspection -> deploy
 ```
 
 各フェーズで生成・承認のステップがあり、人間のレビューを挟む。
@@ -40,7 +43,7 @@ spec-init -> requirements -> design -> tasks -> implementation
 
 **フル SDD**: 新機能開発向け
 ```
-requirements -> design -> tasks -> implementation (TDD)
+requirements -> design -> tasks -> implementation -> inspection -> deploy
 ```
 
 **バグ修正**: 軽量ワークフロー
@@ -54,4 +57,4 @@ Claude Codeと連携するスラッシュコマンド群を `.claude/commands/ki
 
 ---
 _Focus on patterns and purpose, not exhaustive feature lists_
-_updated_at: 2026-01-29_
+_updated_at: 2026-02-11_

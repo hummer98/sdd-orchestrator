@@ -113,22 +113,29 @@ task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 
 配置場所: `electron-sdd-manager/e2e-wdio/`
 
-| ファイル | 目的 | テスト数 |
-|---------|------|---------|
-| `app-launch.spec.ts` | 基本的なアプリ起動とセキュリティ | 8 |
-| `spec-workflow.e2e.spec.ts` | Spec選択とワークフローUI | 42 |
-| `bug-workflow.e2e.spec.ts` | バグ作成とワークフロー | 38 |
-| `auto-execution.spec.ts` | 自動実行機能 | 14 |
-| `experimental-tools-installer.spec.ts` | メニューとツールインストール | 26 |
-| `document-review.e2e.spec.ts` | ドキュメントレビューワークフロー | 32 |
-| `ssh-workflow.e2e.spec.ts` | SSH接続フロー | 18 |
-| `layout-persistence.e2e.spec.ts` | レイアウト永続化 | 14 |
-| `install-dialogs.e2e.spec.ts` | CLI/CLAUDE.mdインストールダイアログ | 18 |
-| `multi-window.e2e.spec.ts` | マルチウィンドウ機能 | 30 |
-| `workflow-integration.e2e.spec.ts` | **ワークフロー統合テスト（Mock Claude使用）** | 25 |
-| `auto-execution-flow.e2e.spec.ts` | **自動実行フロー全通テスト（Mock Claude使用）** | 21 |
-| `agent-log-streaming.e2e.spec.ts` | **エージェントログストリーミングテスト（ストリーミングMock使用）** | 10 |
-| `git-diff-viewer.e2e.spec.ts` | **Git差分表示機能テスト** | 15 |
+58のE2Eテストファイルが存在する。主要カテゴリ:
+
+| カテゴリ | 代表的なファイル | 概要 |
+|---------|----------------|------|
+| 基本起動・セキュリティ | `app-launch.spec.ts` | アプリ起動、contextIsolation、nodeIntegration |
+| Specワークフロー | `spec-workflow.e2e.spec.ts` | Spec選択、WorkflowView、フェーズ実行 |
+| Bugワークフロー | `bug-workflow.e2e.spec.ts`, `bug-auto-execution.e2e.spec.ts`, `bugs-*.e2e.spec.ts` | バグ作成、Analyze/Fix/Verify、自動実行、Worktree |
+| 自動実行 | `auto-execution-*.e2e.spec.ts`, `simple-auto-execution.e2e.spec.ts` | 許可制御、フロー全通、ドキュメントレビュー連携、impl、resume |
+| ワークフロー統合 | `workflow-integration.e2e.spec.ts` | Mock Claude使用の実ワークフロー統合テスト |
+| ドキュメントレビュー | `document-review*.e2e.spec.ts`, `debatex-scheme.e2e.spec.ts`, `gemini-document-review.e2e.spec.ts` | レビュー、UI状態、各種scheme |
+| Inspection | `inspection-workflow.e2e.spec.ts` | Inspection操作・結果表示 |
+| エージェント | `agent-log-streaming.e2e.spec.ts`, `agent-completion-notification.e2e.spec.ts`, `agent-resume-log-display.e2e.spec.ts`, `project-agent-startup.e2e.spec.ts` | ログストリーミング、完了通知、Resume |
+| Git差分 | `git-diff-viewer.e2e.spec.ts` | Git差分表示 |
+| Worktree | `worktree-*.e2e.spec.ts`, `convert-spec-to-worktree.e2e.spec.ts`, `impl-start-worktree.e2e.spec.ts` | Worktree実行、rebase、sync |
+| ファイル監視 | `file-watcher-*.e2e.spec.ts` | ルート監視、UI更新 |
+| メトリクス | `metrics-display.e2e.spec.ts` | メトリクス表示 |
+| スケジュール | `schedule-task.e2e.spec.ts` | スケジュールタスク |
+| Remote/SSH | `ssh-workflow.e2e.spec.ts`, `remote-webserver.e2e.spec.ts`, `cloudflare-tunnel.e2e.spec.ts`, `websocket-command-execution.e2e.spec.ts` | SSH接続、Remote UIサーバー、Tunnel |
+| UI全般 | `layout-persistence.e2e.spec.ts`, `install-dialogs.e2e.spec.ts`, `multi-window.e2e.spec.ts`, `mermaid-preview.e2e.spec.ts`, `parsed-log-entry-display.e2e.spec.ts`, `artifact-editor-search.e2e.spec.ts`, `additional-markdown-files.e2e.spec.ts`, `project-docs-viewer.e2e.spec.ts` | レイアウト、ダイアログ、マルチウィンドウ、Mermaid、検索 |
+| 診断 | `diagnostic*.e2e.spec.ts`, `diag-main-process.e2e.spec.ts` | 診断ツール |
+| プロジェクト選択 | `project-selection-basic.e2e.spec.ts`, `startup-project-selection.e2e.spec.ts` | プロジェクト選択フロー |
+| パーミッション | `permission-control.e2e.spec.ts` | パーミッション制御 |
+| ログ | `renderer-logging.e2e.spec.ts` | Rendererログ出力 |
 
 ---
 
@@ -217,15 +224,36 @@ process.env.E2E_MOCK_STREAM_DELAY = '0.3';  // 各行間の遅延（秒）
 
 ### 配置場所
 
+テスト目的別に複数のフィクスチャを使い分ける:
+
 ```
-e2e-wdio/fixtures/test-project/
+e2e-wdio/fixtures/
+├── test-project/          # 汎用（Spec/Bugワークフロー）
+├── auto-exec-test/        # 自動実行テスト
+├── bug-auto-exec-test/    # Bug自動実行テスト
+├── bugs-pane-test/        # Bugsパネルテスト
+├── doc-review-ui-test/    # ドキュメントレビューUIテスト
+├── document-review-test/  # ドキュメントレビューテスト
+├── docs-viewer-test/      # ドキュメントビューアテスト
+├── impl-test/             # 実装フェーズテスト
+├── inspection-test/       # Inspectionテスト
+├── mermaid-test/          # Mermaidプレビューテスト
+├── resume-test/           # Agent Resumeテスト
+├── tasks-approved-project/ # タスク承認済みプロジェクト
+├── worktree-exec-test/    # Worktree実行テスト
+└── worktree-spec-sync-test/ # Worktree Spec同期テスト
+```
+
+各フィクスチャは `.kiro/specs/` 配下にテスト対象のSpec構造を持つ:
+```
+{fixture}/
 └── .kiro/
     └── specs/
-        └── test-feature/
-            ├── spec.json        # Spec設定
-            ├── requirements.md  # 要件定義
-            ├── design.md        # 技術設計
-            └── tasks.md         # 実装タスク
+        └── {feature}/
+            ├── spec.json
+            ├── requirements.md
+            ├── design.md
+            └── tasks.md
 ```
 
 ### 使用方法
@@ -1127,11 +1155,9 @@ UIクリックは `SpecListItem` の `onClick` → `selectSpec()` を通常のRe
 
 | 指標 | 数値 |
 |-----|-----|
-| E2Eテストファイル | 13 |
-| E2Eテストケース | 約290 |
-| ユニットテストファイル | 114 |
-| コンポーネント数 | 44 |
-| data-testid付きコンポーネント | 46 |
+| WebdriverIO E2Eテストファイル | 58 |
+| Playwright Web E2Eテストファイル | 16 |
+| ユニットテストファイル（main/services） | 90+ |
 
 ### 総合評価
 
@@ -1169,4 +1195,4 @@ Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずに�
 
 ---
 
-_更新日: 2026-02-09_
+_更新日: 2026-02-11_

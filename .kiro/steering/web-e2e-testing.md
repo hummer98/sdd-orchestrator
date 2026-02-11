@@ -328,25 +328,28 @@ await expect(detailView).toBeVisible(); // 選択状態は保持される
 ```
 electron-sdd-manager/
 ├── playwright.config.ts          # Playwright設定
-├── e2e-playwright/               # Playwrightテスト
+├── e2e-playwright/               # Playwrightテスト (16ファイル)
 │   ├── global-setup.ts           # Electron起動
 │   ├── global-teardown.ts        # Electron停止
 │   ├── helpers/                  # ヘルパー関数
 │   │   ├── electron-launcher.ts  # Electron起動ヘルパー
+│   │   ├── index.ts              # ヘルパーエクスポート
 │   │   └── remote-ui.helpers.ts  # Remote UI操作ヘルパー
 │   ├── smoke.spec.ts             # Smoke Test（基本接続確認）
-│   ├── smartphone-spec.spec.ts   # スマートフォンUI Spec一覧・選択テスト
-│   ├── smartphone-spec-create.spec.ts # スマートフォンUI Spec作成テスト
-│   ├── smartphone-auto-execution.spec.ts # スマートフォンUI 自動実行テスト
-│   ├── smartphone-agent-log.spec.ts  # スマートフォンUI AgentLogテスト
+│   ├── smartphone-*.spec.ts      # スマートフォンUI各種テスト
 │   ├── agent-log-remote.spec.ts  # デスクトップUI AgentLogテスト
-│   └── project-agent-interaction.spec.ts # ProjectAgent操作テスト（クリック→Drawer→ログ表示）
-├── e2e-wdio/                     # 既存WebdriverIOテスト
-│   └── fixtures/                 # 共有テストフィクスチャ
+│   ├── project-agent-interaction.spec.ts # ProjectAgent操作テスト
+│   ├── workflow-integration.spec.ts      # ワークフロー統合テスト
+│   ├── auto-execution.spec.ts           # 自動実行テスト
+│   ├── phase-execution.spec.ts          # フェーズ実行テスト
+│   ├── bug-*.spec.ts                    # Bug関連テスト
+│   └── remote-ui-*.spec.ts             # Remote UI固有テスト
+├── e2e-wdio/                     # 既存WebdriverIOテスト (58ファイル)
+│   └── fixtures/                 # 共有テストフィクスチャ (14ディレクトリ)
 ├── playwright-report/            # テストレポート出力
 └── test-results/                 # テスト結果（スクリーンショット等）
 ```
 
 ---
 
-_updated_at: 2026-01-30_
+_updated_at: 2026-02-11_

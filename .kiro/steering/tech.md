@@ -6,14 +6,14 @@ Electronベースのデスクトップアプリケーション。
 
 ### electron-sdd-manager
 - **フロントエンド**: React + TypeScript (Vite)
-- **バックエンド**: Node.js (Electron 35)
+- **バックエンド**: Node.js (Electron 35.x)
 - **IPC**: tRPC (electron-trpc) + Zod schema validation
 
 ## Core Technologies
 
 - **Language**: TypeScript 5.8+
 - **Framework**: React 19, Vite 5+
-- **Runtime**: Node.js 20+, Electron 35
+- **Runtime**: Node.js 20+, Electron 35.x
 
 ## Key Libraries
 
@@ -34,8 +34,11 @@ Electronベースのデスクトップアプリケーション。
 - **express**: 静的ファイルサーバー
 - **@modelcontextprotocol/sdk**: MCP Server（外部ツール連携）
 
+### AI SDK
+- **@anthropic-ai/sdk**: Anthropic API連携
+
 ### ファイル監視
-- **chokidar**: ファイルシステム監視
+- **chokidar 5**: ファイルシステム監視
 
 ## Development Standards
 
@@ -104,10 +107,10 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 ## Key Technical Decisions
 
 ### tRPC IPC設計パターン
-- **ルーター構成**: `src/main/trpc/routers/` に15のドメイン別ルーター（system, config, project, file, bug, spec, agent, autoExecution, git, events, mcp, schedule, cloudflare, install, misc）
+- **ルーター構成**: `src/main/trpc/routers/` にドメイン別ルーター（system, config, project, file, bug, spec, agent, autoExecution, git, events, mcp, schedule, cloudflare, install, misc）
 - **Context DI**: `ctx.services.*` 経由でサービスインスタンスを注入。テスト時はモックサービスを注入可能
 - **Zodバリデーション**: 全プロシージャに入力/出力スキーマを定義
-- **Subscriptions**: `events` ルーターで37のリアルタイムイベントをSubscription経由で配信（EventBusパターン）
+- **Subscriptions**: `events` ルーターで36のリアルタイムイベントをSubscription経由で配信（EventBusパターン）
 - **vanillaClient**: Zustand storeなどReact外からの呼び出しは `getVanillaClient()` シングルトンを使用。内部実装は `provider.tsx` の `TRPCClient` を `createTRPCClientProxy()` でラップした proxy（`ipcLink()` は `provider.tsx` で1回のみ呼び出し、requestId 衝突を防止）
 
 **新しいAPI追加の手順**:
@@ -247,4 +250,4 @@ sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-te
 
 ---
 _Document standards and patterns, not every dependency_
-_updated_at: 2026-02-07_
+_updated_at: 2026-02-11_

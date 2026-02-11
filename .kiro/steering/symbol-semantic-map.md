@@ -72,7 +72,7 @@
 | **種類** | Spec Agent（Spec単位）、Global Agent（プロジェクト横断） |
 | **コードシンボル** | `AgentProcess`, `AgentRecord`, `AgentRegistry` |
 | **Store** | `agentStore.ts`, `agentStoreAdapter.ts`, `executionStore.ts` |
-| **Service** | `agentProcess.ts`, `agentRegistry.ts`, `agentRecordService.ts`, `agentRecordWatcherService.ts` |
+| **Service** | `agentProcess.ts`, `agentRegistry.ts`, `agentRecordService.ts`, `agentRecordWatcherService.ts`, `agentLifecycleManager.ts`, `agentStateMachine.ts`, `agentWatchdog.ts`, `hangDetector.ts`, `providerAgentProcess.ts` |
 
 ### Document Review（ドキュメントレビュー）
 
@@ -171,6 +171,25 @@
 | **Store** | `mcpStore.ts` (shared) |
 | **Service** | `mcpServerService.ts`, `mcpToolRegistry.ts`, `mcpAutoStart.ts`, `specToolHandlers.ts`, `bugToolHandlers.ts`, `projectToolHandlers.ts` |
 | **コンポーネント** | `McpStatusIndicator` |
+
+### Engine Configuration（エンジン設定）
+
+| 属性 | 定義 |
+|-----|------|
+| **定義** | AIエンジン（Claude Code等）のコマンド解決・設定管理 |
+| **用途** | エンジンバイナリの自動検出、コマンド引数構築、プロバイダ設定 |
+| **コードシンボル** | `EngineConfig`, `EngineCommandResolver` |
+| **Service** | `engineCommandResolverService.ts`, `engineConfigService.ts`, `toolPathResolverService.ts` |
+| **Store** | `toolPathStore.ts` (shared) |
+
+### Agent Lifecycle（エージェントライフサイクル）
+
+| 属性 | 定義 |
+|-----|------|
+| **定義** | Agentプロセスの状態管理・異常検知・復旧の仕組み |
+| **ステートマシン** | `spawning` -> `running` -> `completed` / `failed` / `hung` |
+| **コードシンボル** | `AgentLifecycleManager`, `AgentStateMachine`, `AgentWatchdog`, `HangDetector` |
+| **Service** | `agentLifecycleManager.ts`, `agentStateMachine.ts`, `agentWatchdog.ts`, `hangDetector.ts` |
 
 ### Git View（Git差分表示）
 
@@ -362,7 +381,9 @@ electron-sdd-manager/src/
 │   ├── bug/              # Bug関連（BugListItem）
 │   ├── eventLog/         # イベントログ関連
 │   ├── execution/        # 自動実行関連
+│   ├── markdown/         # Markdownレンダリング（MermaidCodeRenderer等）
 │   ├── metrics/          # メトリクス表示
+│   ├── migration/        # マイグレーションダイアログ
 │   ├── project/          # プロジェクト関連（AskAgentDialog, SteeringSection）
 │   ├── review/           # レビュー・Inspection関連
 │   ├── spec/             # Spec一覧関連
@@ -451,6 +472,9 @@ electron-sdd-manager/src/
 | スケジュール | `scheduleTaskStore` | `tasks`, `editingTask`, `queuedTasks`, `runningTasks` |
 | MCP | `mcpStore` | `isRunning`, `port`, `url` |
 | Git表示 | `gitViewStore` | `selectedFilePath`, `cachedStatus`, `diffMode` |
+| ドキュメントツリー展開 | `docsTreeExpandedStore` | `expandedPaths` |
+| ツールパス | `toolPathStore` | `resolvedPaths`, `status` |
+| プロジェクトエディタ | `projectEditorStore` | プロジェクト別エディタ状態 |
 
 ### main/services/（Main Process設定Store）
 
@@ -474,7 +498,9 @@ electron-sdd-manager/src/
 | Bug監視 | `bugsWatcherService` | `.kiro/bugs/` ファイル変更監視 |
 | Agent実行 | `agentProcess` | Agentプロセス起動・監視 |
 | Agent登録 | `agentRegistry` | 実行中Agent管理 |
+| Agentライフサイクル | `agentLifecycleManager`, `agentStateMachine`, `agentWatchdog`, `hangDetector` | 状態管理・異常検知・復旧 |
 | Agentレコード | `agentRecordService`, `agentRecordWatcherService` | Agent実行履歴管理・監視 |
+| エンジン設定 | `engineCommandResolverService`, `engineConfigService`, `toolPathResolverService` | AIエンジンコマンド解決・設定 |
 | ファイル操作 | `fileService` | ファイル読み書き |
 | ログ | `logParserService`, `logFileService`, `loggingService` | Agent出力解析、ログファイル管理 |
 | ドキュメントレビュー | `documentReviewService` | レビューラウンド管理 |
@@ -567,4 +593,4 @@ electron-sdd-manager/src/
 
 ---
 
-_updated_at: 2026-01-29_
+_updated_at: 2026-02-11_

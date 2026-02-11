@@ -99,7 +99,7 @@ export const menuOpenProjectSchema = z.object({
   projectPath: z.string(),
 });
 
-export const menuVoidSchema = z.object({});
+export const menuVoidSchema = z.object({ _src: z.string().optional() });
 
 export const menuSetCommandPrefixSchema = z.object({
   prefix: z.string(),

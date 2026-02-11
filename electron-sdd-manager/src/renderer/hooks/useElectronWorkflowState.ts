@@ -303,7 +303,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
 
     if (isAutoExecuting) {
       const result = await autoExecution.stopAutoExecution(specDetail.metadata.name);
-      if (!result.ok) {
+      if (result.ok) {
+        // Optimistic update: immediately reflect stop in store
+        useAutoExecutionStore.getState().stopAutoExecution(specDetail.metadata.name);
+      } else {
         notify.error('自動実行の停止に失敗しました。');
         if (result.error.type === 'NOT_EXECUTING') {
           useAutoExecutionStore.getState().stopAutoExecution(specDetail.metadata.name);
@@ -323,7 +326,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
           approvals: specDetail.specJson.approvals,
         }
       );
-      if (!result.ok) {
+      if (result.ok) {
+        // Optimistic update: immediately reflect running state in store
+        useAutoExecutionStore.getState().startAutoExecution(specDetail.metadata.name);
+      } else {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }

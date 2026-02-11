@@ -361,6 +361,7 @@ export function initBugAutoExecutionIpcListeners(): void {
   // Req 2.1: Listen for status changed events
   const statusSub = getVanillaClient().events.onBugAutoExecutionStatusChanged.subscribe(undefined, {
     onData: (rawData: Record<string, unknown>) => {
+      if (!rawData || !('bugPath' in rawData)) return; // phantom data guard
       const data = rawData as unknown as BugAutoExecutionStatusChangedEvent;
       const { bugPath, state } = data;
       if (!state) {
@@ -380,6 +381,7 @@ export function initBugAutoExecutionIpcListeners(): void {
   // Req 2.2: Listen for phase completed events (log only)
   const phaseSub = getVanillaClient().events.onBugAutoExecutionPhaseCompleted.subscribe(undefined, {
     onData: (rawData: Record<string, unknown>) => {
+      if (!rawData || !('bugPath' in rawData)) return; // phantom data guard
       const data = rawData as { bugPath: string; phase: string };
       console.log(`[BugAutoExecutionStore] Phase completed: ${data.phase}`, { bugPath: data.bugPath });
     },
@@ -389,6 +391,7 @@ export function initBugAutoExecutionIpcListeners(): void {
   // Req 2.3: Listen for execution completed events
   const completedSub = getVanillaClient().events.onBugAutoExecutionCompleted.subscribe(undefined, {
     onData: (rawData: Record<string, unknown>) => {
+      if (!rawData || !('bugPath' in rawData)) return; // phantom data guard
       const data = rawData as { bugPath: string };
       useBugAutoExecutionStore.getState().setCompletedState(data.bugPath);
     },

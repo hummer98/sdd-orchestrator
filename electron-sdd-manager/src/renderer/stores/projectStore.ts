@@ -447,6 +447,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (result.bugs) {
       useSharedBugStore.getState().updateBugs(result.bugs);
     }
+
+    // Register Renderer-side file watcher event listeners
+    // Both startWatching implementations are idempotent (clean up existing subscriptions first)
+    // This ensures watchers are registered in both the SDD_PROJECT_PATH startup path
+    // (which only calls applySelectProjectResult) and the UI selection path
+    // (which calls selectProject → applySelectProjectResult → startWatching again)
+    await useSpecStore.getState().startWatching();
+    useSharedBugStore.getState().setProjectPath(result.projectPath);
+    useSharedBugStore.getState().startWatching(null);
   },
 
   // trpc-full-migration Task 3.2: Use tRPC for getRecentProjects

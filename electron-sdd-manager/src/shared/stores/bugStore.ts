@@ -435,6 +435,7 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
       // Electron path: use tRPC subscription
       const sub = getVanillaClient().events.onBugsChanged.subscribe(undefined, {
         onData: (data: unknown) => {
+          if (!data || typeof data !== 'object' || !('type' in (data as Record<string, unknown>))) return; // phantom data guard
           const event = data as BugsChangeEvent;
           console.log('[useSharedBugStore] Bugs changed (tRPC):', event);
           get().handleBugsChanged(null, event);

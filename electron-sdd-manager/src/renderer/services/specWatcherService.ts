@@ -72,6 +72,7 @@ export class SpecWatcherService {
       // Task 9.2: window.electronAPI.onSpecsChanged -> tRPC Subscription
       const sub = getVanillaClient().events.onSpecsChanged.subscribe(undefined, {
         onData: (data: Record<string, unknown>) => {
+          if (!data || !('type' in data)) return; // phantom data guard
           this.handleSpecsChanged(data as unknown as SpecsChangeEvent);
         },
       });

@@ -589,6 +589,7 @@ export const useAgentStore = create<AgentStore>()(
       const facadeSubscriptions: Unsubscribable[] = [];
       const recordChangedSub = getVanillaClient().events.onAgentRecordChanged.subscribe(undefined, {
         onData: (data: { type: string; data?: { agentId?: string; specId?: string } }) => {
+          if (!data || !data.type) return; // phantom data guard
           const type = data.type as 'add' | 'change' | 'unlink';
           const eventInfo = data.data ?? {};
           console.log('[agentStore] Agent record changed', { type, eventInfo });

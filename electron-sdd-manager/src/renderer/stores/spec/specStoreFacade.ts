@@ -103,6 +103,8 @@ function getSpecManagerExecution(specId: string | null): SpecManagerExecutionSta
 let isInitialized = false;
 /** Flag to track subscription status (for testing) */
 let isAgentStoreSubscribed = false;
+/** Flag to track auto-execution store subscription (for testing) */
+let isAutoExecutionStoreSubscribed = false;
 
 /**
  * Get aggregated state from all child stores
@@ -164,11 +166,34 @@ export function setupAgentStoreSubscription(): void {
 }
 
 /**
+ * Set up autoExecutionStore subscription for state propagation
+ * When autoExecutionStore is updated externally (e.g., via tRPC subscription IPC
+ * or optimistic updates), the facade needs to re-aggregate to reflect changes.
+ */
+export function setupAutoExecutionStoreSubscription(): void {
+  if (isAutoExecutionStoreSubscribed) {
+    return;
+  }
+  useAutoExecutionStore.subscribe(() => {
+    useSpecStoreFacade.setState(getAggregatedState());
+  });
+  isAutoExecutionStoreSubscribed = true;
+}
+
+/**
  * Reset subscription flag (for testing only)
  * @internal
  */
 export function resetAgentStoreSubscription(): void {
   isAgentStoreSubscribed = false;
+}
+
+/**
+ * Reset auto-execution subscription flag (for testing only)
+ * @internal
+ */
+export function resetAutoExecutionStoreSubscription(): void {
+  isAutoExecutionStoreSubscribed = false;
 }
 
 /**
@@ -258,6 +283,11 @@ export function initSpecStoreFacade(): void {
 
   // Subscribe to agentStore changes for specManagerExecution updates
   setupAgentStoreSubscription();
+
+  // Subscribe to autoExecutionStore changes for runtime state propagation
+  // This ensures external updates (tRPC subscription IPC, optimistic updates)
+  // propagate to the facade and trigger React re-renders
+  setupAutoExecutionStoreSubscription();
 
   isInitialized = true;
   console.log('[specStoreFacade] Initialized');

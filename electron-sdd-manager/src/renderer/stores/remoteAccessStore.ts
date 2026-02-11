@@ -304,6 +304,7 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
           const { getVanillaClient: getClient } = await import('../../shared/trpc/vanillaClient');
           const sub = getClient().events.onRemoteServerStatusChanged.subscribe(undefined, {
             onData: (status: Record<string, unknown>) => {
+              if (!status || !('isRunning' in status)) return; // phantom data guard
               const typedStatus = status as { isRunning: boolean; port: number | null; url: string | null; clientCount: number };
               const { qrCodeDataUrl, localIp, isLoading } = get();
 

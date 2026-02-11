@@ -73,6 +73,7 @@ export function initAutoExecutionIpcListeners(): void {
   // Listen for status changed events from Main Process
   const statusSub = getVanillaClient().events.onAutoExecutionStatusChanged.subscribe(undefined, {
     onData: (data: Record<string, unknown>) => {
+      if (!data || !('state' in data)) return; // phantom data guard
       const typedData = data as { specPath: string; state: MainProcessAutoExecutionState };
       if (!typedData.state) {
         console.warn('[AutoExecutionStore] Received status changed event with empty state', typedData);
@@ -100,9 +101,8 @@ export function initAutoExecutionIpcListeners(): void {
   // Listen for phase completed events
   const phaseSub = getVanillaClient().events.onAutoExecutionPhaseCompleted.subscribe(undefined, {
     onData: (data: Record<string, unknown>) => {
+      if (!data || !('phase' in data)) return; // phantom data guard
       const typedData = data as { specPath: string; phase: string };
-      // Phase completion doesn't need to update runtime state
-      // The status changed event will handle state updates
       console.debug('[AutoExecutionStore] Phase completed:', typedData.phase);
     },
   });
@@ -111,8 +111,9 @@ export function initAutoExecutionIpcListeners(): void {
   // Listen for error events
   const errorSub = getVanillaClient().events.onAutoExecutionError.subscribe(undefined, {
     onData: (data: Record<string, unknown>) => {
+      if (!data || !('error' in data)) return; // phantom data guard
       const typedData = data as { specPath: string; error: { type: string; message?: string } };
-      if (!typedData || !typedData.error) return;
+      if (!typedData.error) return;
       console.error('[AutoExecutionStore] Auto-execution error:', typedData.error);
       // Error state is handled via status changed event with status='error'
     },

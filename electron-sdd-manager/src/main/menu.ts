@@ -197,7 +197,7 @@ export function createMenu(): void {
           label: 'レイアウトをリセット',
           enabled: currentProjectPathForMenu !== null,
           click: () => {
-            getGlobalEventBus().emit(EVENT_NAMES.MENU_RESET_LAYOUT, {});
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_RESET_LAYOUT, { _src: 'menu' });
           },
         },
       ],
@@ -228,7 +228,7 @@ export function createMenu(): void {
           label: isRemoteServerRunning ? 'リモートアクセスサーバーを停止' : 'リモートアクセスサーバーを起動',
           enabled: currentProjectPathForMenu !== null || isRemoteServerRunning, // Allow stopping even without project
           click: () => {
-            getGlobalEventBus().emit(EVENT_NAMES.MENU_TOGGLE_REMOTE_SERVER, {});
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_TOGGLE_REMOTE_SERVER, { _src: 'menu' });
           },
         },
         { type: 'separator' as const },
@@ -236,14 +236,14 @@ export function createMenu(): void {
           label: 'コマンドセットをインストール...',
           enabled: currentProjectPathForMenu !== null,
           click: () => {
-            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_COMMANDSET, {});
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_COMMANDSET, { _src: 'menu' });
           },
         },
         { type: 'separator' as const },
         {
           label: 'sdd CLIコマンドをインストール...',
           click: () => {
-            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_CLI, {});
+            getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_CLI, { _src: 'menu' });
           },
         },
         { type: 'separator' as const },
@@ -254,7 +254,7 @@ export function createMenu(): void {
               label: 'Debugエージェントをインストール (実験的)',
               enabled: currentProjectPathForMenu !== null,
               click: () => {
-                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_DEBUG, {});
+                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_DEBUG, { _src: 'menu' });
               },
             },
             // gemini-document-review Task 3.3: Gemini document-review install menu item
@@ -263,7 +263,7 @@ export function createMenu(): void {
               label: 'Gemini document-review をインストール (実験的)',
               enabled: currentProjectPathForMenu !== null,
               click: () => {
-                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_GEMINI, {});
+                getGlobalEventBus().emit(EVENT_NAMES.MENU_INSTALL_EXPERIMENTAL_GEMINI, { _src: 'menu' });
               },
             },
             // Note: Commit command is now auto-installed on project selection

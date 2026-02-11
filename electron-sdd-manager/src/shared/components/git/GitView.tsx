@@ -102,6 +102,7 @@ export function GitView({ workingPath, showDiffModeToggle = true }: GitViewProps
     const client = getVanillaClient();
     const sub = client.events.onGitChangesDetected.subscribe(undefined, {
       onData: (data: { projectPath?: string }) => {
+        if (!data || typeof data !== 'object') return; // phantom data guard
         // Only refresh if the change is for our project
         if (data.projectPath === effectivePath) {
           refreshStatus(apiClient, effectivePath);

@@ -17,6 +17,8 @@ import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useScheduleTaskStore } from '../../shared/stores/scheduleTaskStore';
 // git-diff-viewer Task 4.1: Import gitViewStore
 import { useGitViewStore } from './gitViewStore';
+// bug-auto-execution E2E: Import bugAutoExecutionStore for testing
+import { useBugAutoExecutionStore } from '../../shared/stores/bugAutoExecutionStore';
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
@@ -134,5 +136,11 @@ export { useGitViewStore } from './gitViewStore';
     getState: () => useGitViewStore.getState(),
     setState: (state: Parameters<typeof useGitViewStore.setState>[0]) => useGitViewStore.setState(state),
     subscribe: useGitViewStore.subscribe,
+  },
+  // bug-auto-execution E2E: Add bugAutoExecution store for testing
+  bugAutoExecution: {
+    getState: () => useBugAutoExecutionStore.getState(),
+    setState: (state: Parameters<typeof useBugAutoExecutionStore.setState>[0]) => useBugAutoExecutionStore.setState(state),
+    subscribe: useBugAutoExecutionStore.subscribe,
   },
 };

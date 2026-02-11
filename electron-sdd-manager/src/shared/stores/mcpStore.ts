@@ -97,6 +97,7 @@ export const useMcpStore = create<McpStore>((set) => ({
       // Subscribe to status changes via tRPC Subscription
       const sub = client.events.onMcpStatusChanged.subscribe(undefined, {
         onData: (newStatus) => {
+          if (!newStatus || !('isRunning' in newStatus)) return; // phantom data guard
           set({
             isRunning: newStatus.isRunning,
             port: newStatus.port,

@@ -335,7 +335,11 @@ export function App() {
   });
 
   trpc.events.onMenuInstallCli.useSubscription(undefined, {
-    onData: () => {
+    onData: (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuInstallCli received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       setIsCliInstallDialogOpen(true);
     },
   });
@@ -352,7 +356,11 @@ export function App() {
   });
 
   trpc.events.onMenuToggleRemoteServer.useSubscription(undefined, {
-    onData: async () => {
+    onData: async (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuToggleRemoteServer received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       // Always check actual server status to handle HMR/reload scenarios
       // trpc-full-migration Task 10.6: Use tRPC for getRemoteServerStatus
       const actualStatus = await getVanillaClient().misc.getRemoteServerStatus.query();
@@ -376,7 +384,11 @@ export function App() {
   });
 
   trpc.events.onMenuInstallCommandset.useSubscription(undefined, {
-    onData: () => {
+    onData: (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuInstallCommandset received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       if (!currentProject) {
         addNotification({
           type: 'warning',
@@ -389,14 +401,22 @@ export function App() {
   });
 
   trpc.events.onMenuResetLayout.useSubscription(undefined, {
-    onData: () => {
+    onData: (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuResetLayout received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       console.log('[App] Reset layout from menu');
       resetLayout();
     },
   });
 
   trpc.events.onMenuInstallExperimentalDebug.useSubscription(undefined, {
-    onData: async () => {
+    onData: async (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuInstallExperimentalDebug received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       if (!currentProject) {
         addNotification({
           type: 'warning',
@@ -435,7 +455,11 @@ export function App() {
   });
 
   trpc.events.onMenuInstallExperimentalGemini.useSubscription(undefined, {
-    onData: async () => {
+    onData: async (data) => {
+      if (data?._src !== 'menu') {
+        console.warn(`[App] onMenuInstallExperimentalGemini received phantom data, ignoring. data=${JSON.stringify(data)}`);
+        return;
+      }
       if (!currentProject) {
         addNotification({
           type: 'warning',
@@ -508,7 +532,7 @@ export function App() {
     fetchToolStatuses().then(() => {
       // Use getState to get the latest state after fetch completes
       const claudeResolved = useToolPathStore.getState().isClaudeResolved();
-      if (!claudeResolved) {
+      if (!claudeResolved && !(window as any).isE2E) {
         console.log('[App] Claude not resolved, auto-showing settings dialog');
         setIsRemoteAccessDialogOpen(true);
       }

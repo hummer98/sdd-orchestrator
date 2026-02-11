@@ -407,6 +407,34 @@ const BUG_PHASE_COMMANDS: Record<BugWorkflowPhase, string | null> = {
 };
 
 function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBugAutoExecutionCoordinator>): void {
+  // ============================================================
+  // EventBus Bridge: Bug Coordinator → EventBus → tRPC Subscription → Renderer
+  // Without this bridge, Renderer never receives bug auto-execution state updates.
+  // ============================================================
+  const eventBus = getGlobalEventBus();
+
+  bugCoordinator.on('state-changed', (bugPath: string, state: Record<string, unknown>) => {
+    const { timeoutId, ...serializableState } = state;
+    logger.info('[projectSetup] Bug EventBus bridge: state-changed', { bugPath, status: serializableState.status, currentPhase: serializableState.currentPhase });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED, { bugPath, state: serializableState });
+  });
+
+  bugCoordinator.on('phase-completed', (bugPath: string, phase: string) => {
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_COMPLETED, { bugPath, phase });
+  });
+
+  bugCoordinator.on('phase-started', (bugPath: string, phase: string) => {
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED, { bugPath, phase });
+  });
+
+  bugCoordinator.on('execution-error', (bugPath: string, error: Record<string, unknown>) => {
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR, { bugPath, error });
+  });
+
+  bugCoordinator.on('execution-completed', (bugPath: string) => {
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED, { bugPath });
+  });
+
   bugCoordinator.on('execute-next-phase', async (bugPath: string, phase: BugWorkflowPhase, context: { bugName: string }) => {
     logger.info('[projectSetup] Bug execute-next-phase event received', { bugPath, phase, bugName: context.bugName });
     try {
@@ -541,6 +569,37 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
     } catch {
       coordinator.handleAgentCompleted('', specPath, 'failed');
     }
+  });
+
+  // ============================================================
+  // EventBus Bridge: Coordinator → EventBus → tRPC Subscription → Renderer
+  // Without this bridge, Renderer never receives auto-execution state updates.
+  // ============================================================
+  const eventBus = getGlobalEventBus();
+
+  coordinator.on('state-changed', (specPath: string, state: Record<string, unknown>) => {
+    // Strip timeoutId before emitting to EventBus - it contains NodeJS.Timeout
+    // which has circular references and cannot be serialized via electron-trpc IPC
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { timeoutId, ...serializableState } = state;
+    logger.info('[projectSetup] EventBus bridge: state-changed', { specPath, status: serializableState.status, currentPhase: serializableState.currentPhase });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_STATUS_CHANGED, { specPath, state: serializableState });
+  });
+
+  coordinator.on('phase-completed', (specPath: string, phase: string) => {
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_COMPLETED, { specPath, phase });
+  });
+
+  coordinator.on('phase-started', (specPath: string, phase: string) => {
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_STARTED, { specPath, phase });
+  });
+
+  coordinator.on('execution-error', (specPath: string, error: Record<string, unknown>) => {
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_ERROR, { specPath, error });
+  });
+
+  coordinator.on('execution-completed', (specPath: string) => {
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_COMPLETED, { specPath });
   });
 
   coordinator.on('execute-spec-merge', async (specPath: string, context: { specId: string }) => {

@@ -22,7 +22,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { ensureProjectSelected, selectSpecViaUI } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, selectSpecViaUI, waitForCondition } from './helpers/auto-execution.helpers';
 
 // Fixture project path
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/permission-control-test');
@@ -52,25 +52,6 @@ async function setSkipPermissionsInAgentStore(value: boolean): Promise<void> {
   }, value);
 }
 
-/**
- * Helper: Wait for condition with timeout
- */
-async function waitForCondition(
-  condition: () => Promise<boolean>,
-  timeout: number = 5000,
-  interval: number = 100,
-  label: string = 'condition'
-): Promise<boolean> {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    if (await condition()) {
-      return true;
-    }
-    await browser.pause(interval);
-  }
-  console.error(`[E2E] Timeout waiting for ${label}`);
-  return false;
-}
 
 describe('Permission Control E2E Tests', () => {
   // ============================================================

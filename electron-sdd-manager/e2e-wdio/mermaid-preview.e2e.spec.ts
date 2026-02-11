@@ -15,6 +15,7 @@ import { browser, expect } from '@wdio/globals';
 import * as path from 'node:path';
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import {
+  ensureProjectSelected,
   selectSpecViaUI,
   waitForCondition,
   waitForProjectUIReady,
@@ -216,49 +217,13 @@ describe('Mermaid Preview E2E', () => {
     });
     await browser.pause(500);
 
-    // Check current project state
-    const projectState = await browser.execute(() => {
-      const stores = (window as any).__STORES__;
-      if (stores?.project?.getState) {
-        const state = stores.project.getState();
-        return {
-          currentProject: state.currentProject,
-          isLoading: state.isLoading,
-        };
-      }
-      return null;
-    });
-    console.log('[E2E] Initial project state:', JSON.stringify(projectState));
+    // Wait for project to be selected via SDD_PROJECT_PATH (set by wdio.conf.ts)
+    const projectSelected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
+    console.log('[E2E] Project selected:', projectSelected);
+    expect(projectSelected).toBe(true);
 
-    // If project is not yet selected (SDD_PROJECT_PATH not used), select it via store IPC
-    if (!projectState?.currentProject) {
-      console.log('[E2E] Project not pre-selected, selecting via store...');
-      const selected = await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-        try {
-          const stores = (window as any).__STORES__;
-          if (stores?.project?.getState) {
-            await stores.project.getState().selectProject(projPath);
-            const result = stores.project.getState().lastSelectResult;
-            done(result?.success || false);
-          } else {
-            done(false);
-          }
-        } catch (e) {
-          console.error('[E2E] selectProject error:', e);
-          done(false);
-        }
-      }, FIXTURE_PROJECT_PATH);
-      console.log('[E2E] selectProject result:', selected);
-      expect(selected).toBe(true);
-
-      // Wait for project UI to be ready
-      const uiReady = await waitForProjectUIReady(15000);
-      console.log('[E2E] Project UI ready:', uiReady);
-    } else {
-      console.log('[E2E] Project already selected via SDD_PROJECT_PATH');
-      // Wait for UI to stabilize
-      await waitForProjectUIReady(15000);
-    }
+    // Wait for project UI to be ready
+    await waitForProjectUIReady(15000);
 
     // Wait for spec list to load
     await browser.pause(500);

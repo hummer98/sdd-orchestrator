@@ -14,7 +14,7 @@
  */
 
 import * as path from 'path';
-import { waitForProjectUIReady } from './helpers/auto-execution.helpers';
+import { ensureProjectSelected, waitForProjectUIReady } from './helpers/auto-execution.helpers';
 
 // Fallback fixture path when SDD_PROJECT_PATH is not set
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/docs-viewer-test');
@@ -126,31 +126,8 @@ describe('Project Docs Viewer E2E', () => {
     });
     await browser.pause(500);
 
-    // Check if project is already selected (via SDD_PROJECT_PATH)
-    const currentProject = await browser.execute(() => {
-      const stores = (window as any).__STORES__;
-      return stores?.project?.getState()?.currentProject;
-    });
-
-    if (!currentProject) {
-      // Fallback: select project via store selectProject (IPC)
-      console.log('[E2E] SDD_PROJECT_PATH not set, selecting project via store...');
-      await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-        try {
-          const stores = (window as any).__STORES__;
-          if (stores?.project?.getState) {
-            await stores.project.getState().selectProject(projPath);
-            const result = stores.project.getState().lastSelectResult;
-            done(result?.success || false);
-          } else {
-            done(false);
-          }
-        } catch (e) {
-          console.error('[E2E] selectProject fallback error:', e);
-          done(false);
-        }
-      }, FIXTURE_PROJECT_PATH);
-    }
+    // Wait for project to be selected via SDD_PROJECT_PATH (set by wdio.conf.ts)
+    await ensureProjectSelected(FIXTURE_PROJECT_PATH);
 
     // Wait for project UI to fully initialize
     await waitForProjectUIReady(15000);

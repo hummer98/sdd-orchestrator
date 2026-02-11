@@ -30,6 +30,10 @@ const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 /**
  * Helper: Execute project command via tRPC
  * Returns { success: boolean, agentId?: string, error?: string }
+ *
+ * TODO: E2E方針違反 - executeProjectCommand() はUIに対応ボタンが存在しない内部API。
+ * このテストは integration test への移行が理想的。現在のUIには
+ * 「プロジェクトコマンド実行」ボタンがないため、tRPC直接呼び出しで検証している。
  */
 async function executeProjectCommand(
   command: string,
@@ -93,6 +97,10 @@ async function getProjectAgentCount(): Promise<number> {
 
 /**
  * Helper: Stop all running agents
+ *
+ * TODO: E2E方針違反 - tRPC直接呼び出しでエージェント停止。
+ * UIにはspec単位のauto-execution停止ボタンはあるが、
+ * project agent (specId='') の停止UIはないため現状維持。
  */
 async function stopAllAgents(): Promise<void> {
   await browser.executeAsync(async (done: () => void) => {

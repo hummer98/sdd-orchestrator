@@ -20,6 +20,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
+  ensureProjectSelected,
   setAutoExecutionPermissions,
   getAutoExecutionStatus,
   waitForCondition,
@@ -30,32 +31,6 @@ import {
   resetAutoExecutionCoordinator,
   waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
-
-/**
- * Helper: Store上で直接selectProjectを呼び出してプロジェクトを選択する。
- *
- * SDD_PROJECT_PATHのブロードキャストは起動時のレースコンディションで
- * 常に消失するため、Renderer側からstore.selectProject()を呼ぶ必要がある。
- * ensureProjectSelectedはselectProjectViaStoreのPromiseラッパーを経由して
- * 不安定なため、直接store操作を行う。
- */
-async function selectProjectViaStoreDirect(projectPath: string): Promise<boolean> {
-  return browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.project?.getState) {
-        done(false);
-        return;
-      }
-      await stores.project.getState().selectProject(projPath);
-      const result = stores.project.getState().lastSelectResult;
-      done(result?.success ?? false);
-    } catch (e) {
-      console.error('[E2E] selectProjectViaStoreDirect error:', e);
-      done(false);
-    }
-  }, projectPath);
-}
 
 // Fixture project path
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/impl-test');

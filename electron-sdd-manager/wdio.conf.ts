@@ -36,6 +36,7 @@ const fixtureOverrides: Record<string, string> = {
   'bugs-pane-integration': 'bugs-pane-test',
   'bugs-worktree-support': 'bugs-pane-test',
   'cloudflare-tunnel': 'bugs-pane-test',
+  'diagnostic': 'auto-exec-test',
   'diagnostic-project-selection': 'impl-test',
   'document-review-ui-states': 'doc-review-ui-test',
   'file-watcher-ui-update': 'auto-exec-test',

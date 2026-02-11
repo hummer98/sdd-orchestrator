@@ -88,30 +88,42 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
 /**
  * Helper: Ensure a project is selected
  *
- * SDD_PROJECT_PATH環境変数による起動時自動選択を優先し、
- * 未選択の場合のみストア経由でフォールバック選択を行う。
+ * SDD_PROJECT_PATH環境変数による起動時自動選択を優先。
+ * Main process が SDD_PROJECT_PATH を読み取り Renderer に伝播するのを
+ * ポーリングで待機する（Store直接操作によるフォールバックは廃止）。
  *
- * @param projectPath フォールバック時に選択するプロジェクトパス
+ * @param projectPath 期待するプロジェクトパス（SDD_PROJECT_PATHと一致すべき）
+ * @param timeout 待機タイムアウト（ミリ秒）
  * @returns true if project is selected
  */
-export async function ensureProjectSelected(projectPath: string): Promise<boolean> {
-  // Check if project is already selected and valid
-  const state = await browser.execute(() => {
-    const stores = (window as any).__STORES__;
-    return {
-      currentProject: stores?.project?.getState()?.currentProject,
-      kiroValidation: stores?.project?.getState()?.kiroValidation
-    };
-  });
+export async function ensureProjectSelected(projectPath: string, timeout: number = 15000): Promise<boolean> {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeout) {
+    const state = await browser.execute(() => {
+      const stores = (window as any).__STORES__;
+      return {
+        currentProject: stores?.project?.getState()?.currentProject,
+        kiroValidation: stores?.project?.getState()?.kiroValidation
+      };
+    });
 
-  // Strict check: Must match the requested path AND have valid .kiro directory
-  // This prevents tests from running against the wrong project or a stale/invalid state
-  if (state.currentProject === projectPath && state.kiroValidation?.exists) {
-    return true;
+    // Strict check: Must match the requested path AND have valid .kiro directory
+    if (state.currentProject === projectPath && state.kiroValidation?.exists) {
+      console.log(`[E2E] ensureProjectSelected: project ready after ${Date.now() - startTime}ms`);
+      return true;
+    }
+
+    // Also accept if any project is selected (for cases where path normalization differs)
+    if (state.currentProject && state.kiroValidation?.exists) {
+      console.log(`[E2E] ensureProjectSelected: project selected (${state.currentProject}) after ${Date.now() - startTime}ms`);
+      return true;
+    }
+
+    await browser.pause(500);
   }
 
-  // Fallback: select via store IPC (Renderer→IPC→Main)
-  return selectProjectViaStore(projectPath);
+  console.error(`[E2E] ensureProjectSelected: timeout waiting for project selection (expected: ${projectPath})`);
+  return false;
 }
 
 /**

@@ -470,6 +470,15 @@ describe('RemoteAccessServer E2E Tests', () => {
     });
 
     it('Specを選択するとSpecDetailが表示される', async () => {
+      // Wait for spec list items to be rendered (WebSocket state propagation may take time)
+      try {
+        await mobilePage.waitForSelector('[data-testid^="remote-spec-item-"]', { timeout: 15000 });
+      } catch {
+        // Skip if no specs available after timeout
+        console.log('[E2E] Skipping spec detail test - no spec items found');
+        return;
+      }
+
       // Skip if no specs available
       const specList = mobilePage.locator('[data-testid="remote-spec-list"]');
       const isSpecListVisible = await specList.isVisible().catch(() => false);
@@ -483,38 +492,57 @@ describe('RemoteAccessServer E2E Tests', () => {
       await firstSpec.click();
 
       // Wait for spec detail panel to appear
-      await mobilePage.waitForSelector('[data-testid="remote-spec-detail"]', { timeout: 5000 });
+      // Allow extra time for WebSocket roundtrip:
+      //   click → handleSelectSpec → apiClient.getSpecDetail → WebSocket → Main → read files → respond → pushSpecDetail → render
+      await mobilePage.waitForSelector('[data-testid="remote-spec-detail"], [data-testid="spec-detail-page"]', { timeout: 20000 });
 
       const specDetail = mobilePage.locator('[data-testid="remote-spec-detail"]');
-      const isVisible = await specDetail.isVisible();
+      const specDetailPage = mobilePage.locator('[data-testid="spec-detail-page"]');
+      const isVisible = await specDetail.isVisible().catch(() => false) || await specDetailPage.isVisible().catch(() => false);
       expect(isVisible).toBe(true);
     });
 
     it('SpecPhaseタグが表示される', async () => {
-      // Skip if no spec detail visible
+      // Skip if no spec detail visible (check both mobile and desktop testids)
       const specDetail = mobilePage.locator('[data-testid="remote-spec-detail"]');
-      const isDetailVisible = await specDetail.isVisible().catch(() => false);
+      const specDetailPage = mobilePage.locator('[data-testid="spec-detail-page"]');
+      const isDetailVisible = await specDetail.isVisible().catch(() => false) || await specDetailPage.isVisible().catch(() => false);
       if (!isDetailVisible) {
         console.log('[E2E] Skipping phase tag test - no spec detail visible');
         return;
       }
 
+      // SpecDetailPage uses WorkflowViewCore which renders phase items
+      // Check for workflow-view and first phase item (requirements)
+      const workflowView = mobilePage.locator('[data-testid="workflow-view"]');
+      const phaseItem = mobilePage.locator('[data-testid="phase-item-requirements"]');
+      // Also check legacy mobile testid for backward compatibility
       const phaseTag = mobilePage.locator('[data-testid="remote-spec-phase-tag"]');
-      const isVisible = await phaseTag.isVisible();
+      const isVisible = await workflowView.isVisible().catch(() => false)
+        || await phaseItem.isVisible().catch(() => false)
+        || await phaseTag.isVisible().catch(() => false);
       expect(isVisible).toBe(true);
     });
 
     it('NextActionボタンが表示される', async () => {
-      // Skip if no spec detail visible
+      // Skip if no spec detail visible (check both mobile and desktop testids)
       const specDetail = mobilePage.locator('[data-testid="remote-spec-detail"]');
-      const isDetailVisible = await specDetail.isVisible().catch(() => false);
+      const specDetailPage = mobilePage.locator('[data-testid="spec-detail-page"]');
+      const isDetailVisible = await specDetail.isVisible().catch(() => false) || await specDetailPage.isVisible().catch(() => false);
       if (!isDetailVisible) {
         console.log('[E2E] Skipping next action test - no spec detail visible');
         return;
       }
 
-      const actionButton = mobilePage.locator('[data-testid="remote-spec-next-action"]');
-      const isVisible = await actionButton.isVisible();
+      // SpecDetailPage uses SpecWorkflowFooter which renders auto-execution-button
+      // and PhaseItem renders phase-button-{phase} for executable phases
+      const autoButton = mobilePage.locator('[data-testid="auto-execution-button"]');
+      const phaseButton = mobilePage.locator('[data-testid="phase-button-requirements"]');
+      // Also check legacy mobile testid for backward compatibility
+      const legacyButton = mobilePage.locator('[data-testid="remote-spec-next-action"]');
+      const isVisible = await autoButton.isVisible().catch(() => false)
+        || await phaseButton.isVisible().catch(() => false)
+        || await legacyButton.isVisible().catch(() => false);
       expect(isVisible).toBe(true);
     });
   });

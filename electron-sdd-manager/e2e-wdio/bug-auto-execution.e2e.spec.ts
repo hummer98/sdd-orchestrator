@@ -52,6 +52,16 @@ function resetFixture(): void {
   // Reset report.md (only report exists initially)
   fs.writeFileSync(path.join(BUG_DIR, 'report.md'), INITIAL_REPORT_MD);
 
+  // spec-path-ssot-refactor: resolveEntityPath requires bug.json to exist
+  const bugJson = {
+    name: BUG_NAME,
+    description: 'Test bug for E2E testing of bugs-workflow-auto-execution feature.',
+    phase: 'reported',
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z',
+  };
+  fs.writeFileSync(path.join(BUG_DIR, 'bug.json'), JSON.stringify(bugJson, null, 2));
+
   // Remove generated files (analysis.md, fix.md, verification.md)
   for (const file of ['analysis.md', 'fix.md', 'verification.md']) {
     const filePath = path.join(BUG_DIR, file);
@@ -87,34 +97,26 @@ function resetFixture(): void {
 }
 
 /**
- * Helper: Select bug using Zustand bugStore action
+ * Helper: Select bug via UI click (avoids tRPC IPC anti-pattern in browser.executeAsync)
+ * trpc-bug-migration: selectBug signature changed to (apiClient, bugId) - UI click avoids mismatch
  */
-async function selectBugViaStore(bugName: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
-      try {
-        const stores = (window as any).__STORES__;
-        // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
-        if (stores?.bug?.getState) {
-          const bugStore = stores.bug.getState();
-          const bug = bugStore.bugs.find((b: any) => b.name === name);
-          if (bug) {
-            await bugStore.selectBug(bug);
-            done(true);
-          } else {
-            console.error('[E2E] Bug not found:', name, 'Available:', bugStore.bugs.map((b: any) => b.name));
-            done(false);
-          }
-        } else {
-          console.error('[E2E] bugStore not available (check __STORES__.bug)');
-          done(false);
-        }
-      } catch (e) {
-        console.error('[E2E] selectBug error:', e);
-        done(false);
-      }
-    }, bugName).then(resolve);
-  });
+async function selectBugViaUI(bugName: string, timeout: number = 10000): Promise<boolean> {
+  try {
+    // Wait for bug item to appear in the list
+    const bugItem = await $(`[data-testid="bug-item-${bugName}"]`);
+    await bugItem.waitForExist({ timeout });
+
+    if (await bugItem.isExisting()) {
+      await browser.execute((el: HTMLElement) => el.click(), bugItem);
+      await browser.pause(1000); // Wait for React rendering + tRPC bugDetail fetch
+      return true;
+    }
+    console.error(`[E2E] selectBugViaUI: bug-item-${bugName} not found`);
+    return false;
+  } catch (e) {
+    console.error(`[E2E] selectBugViaUI error:`, e);
+    return false;
+  }
 }
 
 /**
@@ -144,31 +146,34 @@ async function setBugAutoExecutionPermissions(permissions: Record<string, boolea
 }
 
 /**
- * Helper: Get bug auto-execution status via IPC
- * bug-auto-execution-per-bug-state: Uses electronAPI.bugAutoExecutionStatus() IPC
- * which queries the Main Process BugAutoExecutionCoordinator directly.
+ * Helper: Get bug auto-execution status from bugAutoExecutionStore
+ * trpc-full-migration: window.electronAPI removed, use store directly
  */
 async function getBugAutoExecutionStatus(): Promise<{
   isAutoExecuting: boolean;
   autoExecutionStatus: string;
   currentAutoPhase: string | null;
 }> {
-  return browser.executeAsync(async (bugDir: string, done: (result: any) => void) => {
+  return browser.execute((bugName: string) => {
     try {
-      const result = await (window as any).electronAPI.bugAutoExecutionStatus({ bugPath: bugDir });
-      if (result) {
-        done({
-          isAutoExecuting: result.status === 'running',
-          autoExecutionStatus: result.status,
-          currentAutoPhase: result.currentPhase,
-        });
-      } else {
-        done({ isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null });
+      const stores = (window as any).__STORES__;
+      if (!stores?.bugAutoExecution?.getState) {
+        return { isAutoExecuting: false, autoExecutionStatus: 'error', currentAutoPhase: null };
       }
-    } catch (e) {
-      done({ isAutoExecuting: false, autoExecutionStatus: 'error', currentAutoPhase: null });
+      const state = stores.bugAutoExecution.getState();
+      const runtime = state.getBugAutoExecutionRuntime(bugName);
+      if (!runtime) {
+        return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
+      }
+      return {
+        isAutoExecuting: runtime.isAutoExecuting,
+        autoExecutionStatus: runtime.autoExecutionStatus,
+        currentAutoPhase: runtime.currentAutoPhase,
+      };
+    } catch {
+      return { isAutoExecuting: false, autoExecutionStatus: 'error', currentAutoPhase: null };
     }
-  }, BUG_DIR);
+  }, BUG_NAME);
 }
 
 /**
@@ -238,17 +243,21 @@ async function clearAgentStore(): Promise<void> {
 
 /**
  * Helper: Reset bug auto-execution state
- * bug-auto-execution-per-bug-state: Reset via IPC (bugAutoExecutionReset)
+ * trpc-full-migration: Clear bugAutoExecutionStore runtime map directly
  */
 async function resetBugAutoExecutionService(): Promise<void> {
-  await browser.executeAsync(async (done: () => void) => {
+  await browser.execute((bugName: string) => {
     try {
-      await (window as any).electronAPI?.bugAutoExecutionReset?.();
+      const stores = (window as any).__STORES__;
+      if (stores?.bugAutoExecution?.getState) {
+        const state = stores.bugAutoExecution.getState();
+        // Stop auto-execution if running, then clear the runtime entry
+        state.stopAutoExecution(bugName);
+      }
     } catch {
       // ignore
     }
-    done();
-  });
+  }, BUG_NAME);
   await browser.pause(300);
 }
 
@@ -289,13 +298,23 @@ async function clearSelectedSpecViaStore(): Promise<void> {
  */
 async function waitForBugDetail(): Promise<boolean> {
   return waitForCondition(async () => {
-    const hasDetail = await browser.execute(() => {
+    const state = await browser.execute(() => {
       const stores = (window as any).__STORES__;
       // bugs-view-unification: __STORES__.bug (not bugStore) is the correct key
-      return stores?.bug?.getState()?.bugDetail !== null;
+      const bugState = stores?.bug?.getState();
+      return {
+        hasDetail: bugState?.bugDetail !== null && bugState?.bugDetail !== undefined,
+        selectedBugId: bugState?.selectedBugId ?? null,
+        isLoading: bugState?.isLoading ?? false,
+        error: bugState?.error ?? null,
+        bugsCount: bugState?.bugs?.length ?? 0,
+      };
     });
-    return hasDetail;
-  }, 5000, 100, 'bugDetail-loaded');
+    if (!state.hasDetail) {
+      console.log(`[E2E] waitForBugDetail: selectedBugId=${state.selectedBugId}, isLoading=${state.isLoading}, error=${state.error}, bugsCount=${state.bugsCount}`);
+    }
+    return state.hasDetail;
+  }, 10000, 500, 'bugDetail-loaded');
 }
 
 /**
@@ -355,10 +374,9 @@ describe('Bug Auto Execution E2E Tests', () => {
     await refreshBugStore();
     await browser.pause(500);
 
-    // Select bug
-    const bugSuccess = await selectBugViaStore(BUG_NAME);
+    // Select bug via UI click (avoids tRPC IPC anti-pattern)
+    const bugSuccess = await selectBugViaUI(BUG_NAME);
     expect(bugSuccess).toBe(true);
-    await browser.pause(500);
 
     // Wait for bugDetail to be loaded (required for auto-execution to start)
     const bugDetailLoaded = await waitForBugDetail();
@@ -385,19 +403,19 @@ describe('Bug Auto Execution E2E Tests', () => {
   // ============================================================
   describe('Auto-execute Button Display', () => {
     it('should display auto-execute button in BugWorkflowView', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       expect(await autoButton.isDisplayed()).toBe(true);
     });
 
     it('should show "auto-execute" text on the button', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       const buttonText = await autoButton.getText();
       expect(buttonText).toContain('自動実行');
     });
 
     it('should have auto-execute button enabled when no agent is running', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       expect(await autoButton.isEnabled()).toBe(true);
     });
   });
@@ -417,26 +435,18 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
-      // Wait a moment for state to update
-      await browser.pause(300);
-
-      // Check that stop button is now displayed
-      const stopButton = await $('[data-testid="bug-auto-stop-button"]');
-      const isStopButtonVisible = await stopButton.isExisting();
-
-      // Either stop button exists OR auto-execute button text changed to "stop"
-      if (isStopButtonVisible) {
-        expect(await stopButton.isDisplayed()).toBe(true);
-        const stopText = await stopButton.getText();
-        expect(stopText).toContain('停止');
-      } else {
-        // Check if original button changed to stop state
-        const buttonText = await autoButton.getText();
-        expect(buttonText).toContain('停止');
-      }
+      // Wait for store to update (optimistic update should be immediate)
+      // Re-query the button since React conditional rendering replaces the DOM element
+      const stopButtonVisible = await waitForCondition(async () => {
+        const btn = await $('[data-testid="bug-auto-execute-button"]');
+        if (!await btn.isExisting()) return false;
+        const text = await btn.getText();
+        return text.includes('停止');
+      }, 5000, 200, 'stop-button-visible');
+      expect(stopButtonVisible).toBe(true);
 
       // Wait for completion
       await waitForCondition(async () => {
@@ -455,7 +465,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -466,10 +476,10 @@ describe('Bug Auto Execution E2E Tests', () => {
       expect(completed).toBe(true);
 
       // Wait for UI to update
-      await browser.pause(3000);
+      await browser.pause(2000);
 
-      // Check that auto-execute button is back
-      const autoButtonAfter = await $('[data-testid="bug-auto-execution-button"]');
+      // Check that auto-execute button is back (re-query for fresh element)
+      const autoButtonAfter = await $('[data-testid="bug-auto-execute-button"]');
       expect(await autoButtonAfter.isExisting()).toBe(true);
       const buttonText = await autoButtonAfter.getText();
       expect(buttonText).toContain('自動実行');
@@ -512,7 +522,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       console.log(`[E2E] Permissions before click: ${JSON.stringify(permissionsState)}`);
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait a moment for auto-execution to start
@@ -552,7 +562,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -582,7 +592,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -620,7 +630,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Mock execution is very fast, so we check if it started correctly
@@ -658,7 +668,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -687,7 +697,7 @@ describe('Bug Auto Execution E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       await waitForCondition(async () => {
@@ -738,7 +748,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Mock execution is very fast, so we check if it started correctly
@@ -771,7 +781,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -817,7 +827,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
 
       // Wait for completion

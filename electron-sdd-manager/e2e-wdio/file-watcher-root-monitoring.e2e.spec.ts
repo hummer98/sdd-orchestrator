@@ -165,6 +165,8 @@ describe('File Watcher Root Monitoring E2E', () => {
     before(async () => {
       // Create Worktree spec directory
       specDir = createSpecDirectory(specId, true);
+      // Wait for file watcher to register the new directory
+      await browser.pause(3000);
     });
 
     after(async () => {
@@ -306,6 +308,8 @@ describe('File Watcher Root Monitoring E2E', () => {
     before(async () => {
       // Create normal spec directory
       specDir = createSpecDirectory(specId, false);
+      // Wait for file watcher to register the new directory
+      await browser.pause(3000);
     });
 
     after(async () => {

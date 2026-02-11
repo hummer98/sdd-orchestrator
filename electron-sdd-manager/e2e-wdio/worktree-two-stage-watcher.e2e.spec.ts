@@ -423,6 +423,13 @@ describe('Worktree Two-Stage Watcher E2E', () => {
       const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
+
+      // Switch to Bugs tab (bug items are only visible when Bugs tab is active)
+      const bugsTab = await $('[data-testid="tab-bugs"]');
+      if (await bugsTab.isExisting()) {
+        await bugsTab.click();
+        await browser.pause(500);
+      }
     });
 
     afterEach(async () => {

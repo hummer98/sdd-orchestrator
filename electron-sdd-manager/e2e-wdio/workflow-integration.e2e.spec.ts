@@ -186,10 +186,17 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
         await browser.pause(500);
       }
 
+      // With fast mock execution, the executing indicator may have already
+      // transitioned to generated/approved by the time we check.
+      // Verify that either executing OR a completion state is visible.
       const executingIcon = await $('[data-testid="progress-icon-executing"]');
-      if (await executingIcon.isExisting()) {
-        expect(await executingIcon.isDisplayed()).toBe(true);
-      }
+      const generatedIcon = await $('[data-testid="progress-icon-generated"]');
+      const approvedIcon = await $('[data-testid="progress-icon-approved"]');
+      const hasAnyProgressIcon =
+        (await executingIcon.isExisting()) ||
+        (await generatedIcon.isExisting()) ||
+        (await approvedIcon.isExisting());
+      expect(hasAnyProgressIcon).toBe(true);
     });
 
     it('should complete execution with mock Claude', async () => {

@@ -36,6 +36,7 @@ const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/document-review-test');
 const SPEC_NAME = 'doc-review-feature';
 const SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/specs', SPEC_NAME);
 const RUNTIME_AGENTS_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents', SPEC_NAME);
+const RUNTIME_AGENTS_SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents/specs', SPEC_NAME);
 
 // Initial spec.json content with design COMPLETED (tasks will be executed next)
 // Note: Document Review is triggered AFTER tasks phase EXECUTION completes,
@@ -143,6 +144,8 @@ function ensureFixtureDirectories(): void {
     path.join(FIXTURE_PATH, '.kiro/runtime'),
     path.join(FIXTURE_PATH, '.kiro/runtime/agents'),
     RUNTIME_AGENTS_DIR,
+    RUNTIME_AGENTS_SPEC_DIR,
+    path.join(RUNTIME_AGENTS_SPEC_DIR, 'logs'),
   ];
 
   for (const dir of dirs) {
@@ -175,7 +178,7 @@ function resetFixtureToDesignCompleted(): void {
     fs.unlinkSync(tasksPath);
   }
 
-  // Cleanup runtime/agents
+  // Cleanup runtime/agents (legacy path)
   if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
     const files = fs.readdirSync(RUNTIME_AGENTS_DIR);
     for (const file of files) {
@@ -187,7 +190,30 @@ function resetFixtureToDesignCompleted(): void {
     }
   }
 
-  // Cleanup logs
+  // Cleanup runtime/agents/specs (category-aware path)
+  const runtimeLogsDir = path.join(RUNTIME_AGENTS_SPEC_DIR, 'logs');
+  if (fs.existsSync(runtimeLogsDir)) {
+    for (const file of fs.readdirSync(runtimeLogsDir)) {
+      try {
+        fs.unlinkSync(path.join(runtimeLogsDir, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (fs.existsSync(RUNTIME_AGENTS_SPEC_DIR)) {
+    for (const file of fs.readdirSync(RUNTIME_AGENTS_SPEC_DIR)) {
+      if (file.endsWith('.json')) {
+        try {
+          fs.unlinkSync(path.join(RUNTIME_AGENTS_SPEC_DIR, file));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  // Cleanup logs (spec dir)
   const logsDir = path.join(SPEC_DIR, 'logs');
   if (fs.existsSync(logsDir)) {
     const files = fs.readdirSync(logsDir);
@@ -196,6 +222,20 @@ function resetFixtureToDesignCompleted(): void {
         fs.unlinkSync(path.join(logsDir, file));
       } catch {
         // ignore
+      }
+    }
+  }
+
+  // Cleanup leftover document-review files and events.jsonl from previous runs
+  if (fs.existsSync(SPEC_DIR)) {
+    const files = fs.readdirSync(SPEC_DIR);
+    for (const file of files) {
+      if (file.startsWith('document-review-') || file === 'events.jsonl') {
+        try {
+          fs.unlinkSync(path.join(SPEC_DIR, file));
+        } catch {
+          // ignore
+        }
       }
     }
   }
@@ -218,7 +258,7 @@ function resetFixtureToAllPhasesApproved(): void {
   fs.writeFileSync(path.join(SPEC_DIR, 'design.md'), DESIGN_MD_CONTENT);
   fs.writeFileSync(path.join(SPEC_DIR, 'tasks.md'), TASKS_MD_CONTENT);
 
-  // Cleanup runtime/agents
+  // Cleanup runtime/agents (legacy path)
   if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
     const files = fs.readdirSync(RUNTIME_AGENTS_DIR);
     for (const file of files) {
@@ -226,6 +266,29 @@ function resetFixtureToAllPhasesApproved(): void {
         fs.unlinkSync(path.join(RUNTIME_AGENTS_DIR, file));
       } catch {
         // ignore
+      }
+    }
+  }
+
+  // Cleanup runtime/agents/specs (category-aware path)
+  const runtimeLogsDir2 = path.join(RUNTIME_AGENTS_SPEC_DIR, 'logs');
+  if (fs.existsSync(runtimeLogsDir2)) {
+    for (const file of fs.readdirSync(runtimeLogsDir2)) {
+      try {
+        fs.unlinkSync(path.join(runtimeLogsDir2, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (fs.existsSync(RUNTIME_AGENTS_SPEC_DIR)) {
+    for (const file of fs.readdirSync(RUNTIME_AGENTS_SPEC_DIR)) {
+      if (file.endsWith('.json')) {
+        try {
+          fs.unlinkSync(path.join(RUNTIME_AGENTS_SPEC_DIR, file));
+        } catch {
+          // ignore
+        }
       }
     }
   }
@@ -267,16 +330,16 @@ async function isDocumentReviewPanelVisible(): Promise<boolean> {
 /**
  * Helper: Get agents executed for document review
  */
-async function getDocumentReviewAgents(): Promise<{ skill: string; status: string }[]> {
+async function getDocumentReviewAgents(): Promise<{ phase: string; status: string }[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return [];
 
-    const agents: { skill: string; status: string }[] = [];
+    const agents: { phase: string; status: string }[] = [];
     stores.agent.getState().agents.forEach((agentList: any[]) => {
       agentList.forEach((agent: any) => {
-        if (agent.skill && agent.skill.includes('document-review')) {
-          agents.push({ skill: agent.skill, status: agent.status });
+        if (agent.phase && agent.phase.includes('document-review')) {
+          agents.push({ phase: agent.phase, status: agent.status });
         }
       });
     });
@@ -363,7 +426,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for document-review agent to appear
       const docReviewStarted = await waitForCondition(async () => {
         const agents = await getDocumentReviewAgents();
-        return agents.some(a => a.skill.includes('document-review'));
+        return agents.some(a => a.phase.includes('document-review'));
       }, 30000, 500, 'document-review-agent-started');
 
       console.log(`[E2E] Document review agent started: ${docReviewStarted}`);
@@ -549,7 +612,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for document-review to be triggered (after tasks completion)
       const docReviewStarted = await waitForCondition(async () => {
         const agents = await getDocumentReviewAgents();
-        return agents.some(a => a.skill.includes('document-review'));
+        return agents.some(a => a.phase.includes('document-review'));
       }, 60000, 1000, 'document-review-triggered');
 
       console.log(`[E2E] Document review triggered: ${docReviewStarted}`);
@@ -651,9 +714,10 @@ describe('Auto Execution Document Review Integration E2E', () => {
       await autoButton.click();
 
       // Wait for first document-review agent to start
+      // Longer timeout: previous scenarios may leave cleanup in progress
       const firstReviewStarted = await waitForCondition(async () => {
         const agents = await getDocumentReviewAgents();
-        return agents.some(a => a.skill.includes('document-review') && !a.skill.includes('reply'));
+        return agents.some(a => a.phase.includes('document-review') && !a.phase.includes('reply'));
       }, 60000, 1000, 'first-document-review-started');
 
       console.log(`[E2E] First document review started: ${firstReviewStarted}`);
@@ -662,7 +726,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for first document-review-reply agent to complete
       const firstReplyCompleted = await waitForCondition(async () => {
         const agents = await getDocumentReviewAgents();
-        const replyAgents = agents.filter(a => a.skill.includes('document-review-reply'));
+        const replyAgents = agents.filter(a => a.phase.includes('document-review-reply'));
         return replyAgents.some(a => a.status === 'completed');
       }, 90000, 1000, 'first-document-review-reply-completed');
 
@@ -695,7 +759,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
         const secondReviewStarted = await waitForCondition(async () => {
           const agents = await getDocumentReviewAgents();
           const reviewAgents = agents.filter(a =>
-            a.skill.includes('document-review') && !a.skill.includes('reply')
+            a.phase.includes('document-review') && !a.phase.includes('reply')
           );
           // Should have at least 2 review agents (round 1 and round 2)
           return reviewAgents.length >= 2;

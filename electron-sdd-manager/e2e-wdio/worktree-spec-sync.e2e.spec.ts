@@ -343,41 +343,31 @@ describe('Worktree Spec Sync E2E', () => {
     });
 
     it('should display worktree badge for worktree spec in UI', async () => {
-      // Select the worktree spec
-      const specSuccess = await selectSpecViaUI(WORKTREE_SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
+      // Check for worktree badge scoped to the worktree spec item in the list
+      const hasBadge = await browser.execute((specName: string) => {
+        const specItem = document.querySelector(`[data-testid="spec-item-${specName}"]`);
+        if (!specItem) return false;
+        const badge = specItem.querySelector('[data-testid="worktree-badge"]');
+        return badge !== null;
+      }, WORKTREE_SPEC_NAME);
 
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      console.log(`[E2E] Worktree badge exists in worktree spec item: ${hasBadge}`);
 
-      // Check for worktree badge
-      const worktreeBadge = await $('[data-testid="worktree-badge"]');
-      const badgeExists = await worktreeBadge.isExisting();
-
-      console.log(`[E2E] Worktree badge exists (worktree spec selected): ${badgeExists}`);
-
-      expect(badgeExists).toBe(true);
+      expect(hasBadge).toBe(true);
     });
 
     it('should NOT display worktree badge for main spec in UI', async () => {
-      // Select the main spec
-      const specSuccess = await selectSpecViaUI(MAIN_SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
+      // Check for worktree badge scoped to the main spec item in the list
+      const hasBadge = await browser.execute((specName: string) => {
+        const specItem = document.querySelector(`[data-testid="spec-item-${specName}"]`);
+        if (!specItem) return false;
+        const badge = specItem.querySelector('[data-testid="worktree-badge"]');
+        return badge !== null;
+      }, MAIN_SPEC_NAME);
 
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
+      console.log(`[E2E] Worktree badge exists in main spec item: ${hasBadge}`);
 
-      // Check for worktree badge (should not exist)
-      const worktreeBadge = await $('[data-testid="worktree-badge"]');
-      const badgeExists = await worktreeBadge.isExisting();
-
-      console.log(`[E2E] Worktree badge exists (main spec selected): ${badgeExists}`);
-
-      expect(badgeExists).toBe(false);
+      expect(hasBadge).toBe(false);
     });
   });
 
@@ -438,7 +428,8 @@ describe('Worktree Spec Sync E2E', () => {
       expect(selectedSpec).not.toBeNull();
       expect(selectedSpec?.name).toBe(MAIN_SPEC_NAME);
       expect(selectedSpec?.phase).toBe('tasks');
-      expect(selectedSpec?.worktree).toBeUndefined();
+      // worktreeフィールドがnullまたはundefinedであることを確認（main specにはworktreeがない）
+      expect(selectedSpec?.worktree == null).toBe(true);
     });
   });
 

@@ -219,6 +219,9 @@ export async function waitForProjectUIReady(timeout: number = 10000): Promise<bo
  */
 export async function selectSpecViaUI(specName: string, timeout: number = 10000): Promise<boolean> {
   try {
+    // Dismiss any open dialogs first (overlay may block clicks)
+    await dismissDialogs();
+
     // Ensure Specs tab is active (spec-list is only rendered when activeTab === 'specs')
     const specsTab = await $('[data-testid="tab-specs"]');
     if (await specsTab.isExisting()) {
@@ -233,7 +236,19 @@ export async function selectSpecViaUI(specName: string, timeout: number = 10000)
     // Find and click the spec item
     const specItem = await $(`[data-testid="spec-item-${specName}"]`);
     if (await specItem.isExisting()) {
-      await specItem.click();
+      try {
+        await specItem.click();
+      } catch (clickError: any) {
+        // If click was intercepted by overlay, dismiss and retry
+        if (clickError?.message?.includes('intercepted') || clickError?.message?.includes('bg-black')) {
+          console.log(`[E2E] selectSpecViaUI: click intercepted by overlay, dismissing and retrying`);
+          await dismissDialogs();
+          await browser.pause(300);
+          await specItem.click();
+        } else {
+          throw clickError;
+        }
+      }
       await browser.pause(1000);
       return true;
     }
@@ -340,6 +355,10 @@ export async function setAutoExecutionPermissions(
       for (const [key, value] of Object.entries(perms)) {
         const normalizedKey = key === 'documentReview' ? 'document-review' : key;
         normalizedPerms[normalizedKey] = value;
+      }
+      // Default document-review to true if not explicitly provided
+      if (!('document-review' in normalizedPerms)) {
+        normalizedPerms['document-review'] = true;
       }
 
       // Update spec.json via tRPC (SSOT)
@@ -835,6 +854,9 @@ export async function standardE2ESetup(
   projectPath: string,
   specName: string
 ): Promise<boolean> {
+  // 0. Dismiss any open dialogs (left over from previous tests)
+  await dismissDialogs();
+
   // 1. Clean up auto-execution state from previous tests
   await fullAutoExecutionCleanup();
   await browser.pause(100);
@@ -851,6 +873,9 @@ export async function standardE2ESetup(
   if (!uiReady) {
     console.warn('[E2E] standardE2ESetup: UI not ready, continuing anyway');
   }
+
+  // 3.5 Dismiss any dialogs that appeared during project load
+  await dismissDialogs();
 
   // 4. Select spec via UI click (recommended approach)
   const specSelected = await selectSpecViaUI(specName);
@@ -869,6 +894,71 @@ export async function standardE2ESetup(
   await browser.pause(200);
 
   return true;
+}
+
+/**
+ * Helper: Dismiss any open modal dialogs
+ *
+ * Closes dialogs that may have been left open from previous tests or
+ * auto-opened during app initialization. Detects any dialog with
+ * bg-black/50 backdrop overlay and clicks it to close.
+ */
+export async function dismissDialogs(): Promise<void> {
+  const dismissed = await browser.execute(() => {
+    // Find ALL backdrop overlay elements (bg-black/50)
+    const allElements = document.querySelectorAll('*');
+    const overlays: HTMLElement[] = [];
+
+    for (const el of allElements) {
+      const classes = el.className;
+      if (typeof classes === 'string' && classes.includes('bg-black/50')) {
+        overlays.push(el as HTMLElement);
+      }
+    }
+
+    if (overlays.length === 0) {
+      return null;
+    }
+
+    // Log diagnostic info about found overlays
+    const diagnostics = overlays.map(el => {
+      const parent = el.parentElement;
+      const parentTestId = parent?.getAttribute('data-testid') || 'none';
+      const parentClass = parent?.className?.substring(0, 100) || 'none';
+      const elTestId = el.getAttribute('data-testid') || 'none';
+      return `overlay[testid=${elTestId}, class=${el.className.substring(0, 80)}] parent[testid=${parentTestId}, class=${parentClass}]`;
+    });
+    console.log(`[E2E] dismissDialogs: found ${overlays.length} overlay(s):`, diagnostics.join(' | '));
+
+    // Click each overlay backdrop to close (most dialogs have onClick on backdrop)
+    for (const overlay of overlays) {
+      overlay.click();
+    }
+
+    return diagnostics;
+  });
+
+  if (dismissed) {
+    console.log(`[E2E] dismissDialogs: dismissed ${dismissed.length} dialog(s)`);
+    await browser.pause(300);
+
+    // Double-check: verify overlays are gone
+    const remaining = await browser.execute(() => {
+      const allEl = document.querySelectorAll('*');
+      let count = 0;
+      for (const el of allEl) {
+        if (typeof el.className === 'string' && el.className.includes('bg-black/50')) {
+          count++;
+        }
+      }
+      return count;
+    });
+    if (remaining > 0) {
+      console.log(`[E2E] dismissDialogs: ${remaining} overlay(s) still present after click, trying Escape`);
+      await browser.keys('Escape');
+      await browser.pause(200);
+    }
+  }
 }
 
 /**
@@ -953,15 +1043,15 @@ export async function configureMockClaude(config: {
 export async function resumeAgentViaStore(agentId: string, prompt: string): Promise<boolean> {
   return browser.executeAsync(async (id: string, p: string, done: (result: boolean) => void) => {
     try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.agent?.getState) {
-        console.error('[E2E] resumeAgentViaStore: agentStore not available');
+      // Use __TRPC__ directly to avoid store indirection issues
+      const trpc = (window as any).__TRPC__;
+      if (!trpc?.agent?.resume?.mutate) {
+        console.error('[E2E] resumeAgentViaStore: __TRPC__.agent.resume not available');
         done(false);
         return;
       }
 
-      const agentStore = stores.agent.getState();
-      await agentStore.resumeAgent(id, p);
+      await trpc.agent.resume.mutate({ agentId: id, prompt: p });
       done(true);
     } catch (e) {
       console.error('[E2E] resumeAgentViaStore error:', e);

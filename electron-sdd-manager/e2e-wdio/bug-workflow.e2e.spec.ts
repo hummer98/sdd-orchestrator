@@ -169,29 +169,6 @@ describe('Bug Workflow UI E2E', () => {
       }
     });
 
-    it('バグ名入力フィールドが存在する', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
-      const createButton = await $('[data-testid="create-button"]');
-
-      if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
-        await bugsTab.click();
-        await createButton.click();
-
-        const dialog = await $('[data-testid="create-bug-dialog"]');
-        if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const bugNameInput = await $('[data-testid="bug-name-input"]');
-          const exists = await bugNameInput.isExisting();
-          expect(exists).toBe(true);
-
-          // ダイアログを閉じる
-          const closeButton = await $('[data-testid="close-button"]');
-          if (await closeButton.isExisting()) {
-            await closeButton.click();
-          }
-        }
-      }
-    });
-
     it('説明入力フィールドが存在する', async () => {
       const bugsTab = await $('[data-testid="tab-bugs"]');
       const createButton = await $('[data-testid="create-button"]');
@@ -215,7 +192,7 @@ describe('Bug Workflow UI E2E', () => {
       }
     });
 
-    it('バグ名が空の場合は作成ボタンが無効化される', async () => {
+    it('説明が空の場合は作成ボタンが無効化される', async () => {
       const bugsTab = await $('[data-testid="tab-bugs"]');
       const createButton = await $('[data-testid="create-button"]');
 
@@ -228,7 +205,7 @@ describe('Bug Workflow UI E2E', () => {
           const dialogCreateButton = await dialog.$('[data-testid="create-button"]');
           if (await dialogCreateButton.isExisting()) {
             const isEnabled = await dialogCreateButton.isEnabled();
-            // バグ名が空なので無効化されているはず
+            // 説明が空なので無効化されているはず
             expect(isEnabled).toBe(false);
           }
 
@@ -241,7 +218,7 @@ describe('Bug Workflow UI E2E', () => {
       }
     });
 
-    it('バグ名を入力すると作成ボタンが有効化される', async () => {
+    it('説明を入力すると作成ボタンが有効化される', async () => {
       const bugsTab = await $('[data-testid="tab-bugs"]');
       const createButton = await $('[data-testid="create-button"]');
 
@@ -251,10 +228,10 @@ describe('Bug Workflow UI E2E', () => {
 
         const dialog = await $('[data-testid="create-bug-dialog"]');
         if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const bugNameInput = await $('[data-testid="bug-name-input"]');
-          if (await bugNameInput.isExisting()) {
-            // バグ名を入力
-            await bugNameInput.setValue('test-bug');
+          const descriptionInput = await $('[data-testid="bug-description-input"]');
+          if (await descriptionInput.isExisting()) {
+            // 説明を入力
+            await descriptionInput.setValue('テスト用バグの説明');
 
             const dialogCreateButton = await dialog.$('[data-testid="create-button"]');
             if (await dialogCreateButton.isExisting()) {
@@ -305,15 +282,17 @@ describe('Bug Workflow UI E2E', () => {
 
         const dialog = await $('[data-testid="create-bug-dialog"]');
         if (await dialog.waitForExist({ timeout: 3000 }).catch(() => false)) {
-          const backdrop = await $('[data-testid="dialog-backdrop"]');
-          if (await backdrop.isExisting()) {
-            await backdrop.click();
+          // backdrop はダイアログコンテンツの背後にあるため、WebdriverIO の .click() では
+          // ダイアログ中央にあるtextareaに遮られる。JavaScript直接クリックで回避。
+          await browser.execute(() => {
+            const backdrop = document.querySelector('[data-testid="dialog-backdrop"]');
+            if (backdrop) (backdrop as HTMLElement).click();
+          });
 
-            // ダイアログが閉じるのを待機
-            await browser.pause(500);
-            const isDialogVisible = await dialog.isDisplayed().catch(() => false);
-            expect(isDialogVisible).toBe(false);
-          }
+          // ダイアログが閉じるのを待機
+          await browser.pause(500);
+          const isDialogVisible = await dialog.isDisplayed().catch(() => false);
+          expect(isDialogVisible).toBe(false);
         }
       }
     });
@@ -324,6 +303,15 @@ describe('Bug Workflow UI E2E', () => {
   // Requirements: 5.2, 5.3, 5.4
   // ============================================================
   describe('BugActionButtonsコンポーネント', () => {
+    beforeEach(async () => {
+      // 前テストでダイアログが残留している場合のクリーンアップ
+      await browser.execute(() => {
+        const backdrop = document.querySelector('[data-testid="dialog-backdrop"]');
+        if (backdrop) (backdrop as HTMLElement).click();
+      });
+      await browser.pause(300);
+    });
+
     it('アクションボタンコンテナの構造が正しい', async () => {
       // BugActionButtons は選択されたバグがある場合に表示される
       // data-testid="bug-action-buttons" で識別
@@ -374,6 +362,15 @@ describe('Bug Workflow UI E2E', () => {
   // Requirements: 1.1, 1.2
   // ============================================================
   describe('タブ状態保持', () => {
+    beforeEach(async () => {
+      // 前テストでダイアログが残留している場合のクリーンアップ
+      await browser.execute(() => {
+        const backdrop = document.querySelector('[data-testid="dialog-backdrop"]');
+        if (backdrop) (backdrop as HTMLElement).click();
+      });
+      await browser.pause(300);
+    });
+
     it('タブ切り替え後も選択状態が維持される', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
       const bugsTab = await $('[data-testid="tab-bugs"]');

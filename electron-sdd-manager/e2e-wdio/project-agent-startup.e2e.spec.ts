@@ -35,18 +35,20 @@ async function executeProjectCommand(
   command: string,
   title: string
 ): Promise<{ success: boolean; agentId?: string; error?: string }> {
-  return browser.execute(
-    async (cmd: string, ttl: string) => {
+  return browser.executeAsync(
+    async (cmd: string, ttl: string, done: (result: any) => void) => {
       try {
         const stores = (window as any).__STORES__;
         const projectPath = stores?.project?.getState()?.currentProject;
         if (!projectPath) {
-          return { success: false, error: 'No project selected' };
+          done({ success: false, error: 'No project selected' });
+          return;
         }
 
         const trpc = (window as any).__TRPC__;
         if (!trpc?.spec?.executeProjectCommand?.mutate) {
-          return { success: false, error: '__TRPC__ spec.executeProjectCommand not available' };
+          done({ success: false, error: '__TRPC__ spec.executeProjectCommand not available' });
+          return;
         }
 
         const result = await trpc.spec.executeProjectCommand.mutate({
@@ -55,11 +57,12 @@ async function executeProjectCommand(
           title: ttl,
         });
         if (result && result.agentId) {
-          return { success: true, agentId: result.agentId };
+          done({ success: true, agentId: result.agentId });
+        } else {
+          done({ success: false, error: 'No agentId returned' });
         }
-        return { success: false, error: 'No agentId returned' };
       } catch (e) {
-        return { success: false, error: String(e) };
+        done({ success: false, error: String(e) });
       }
     },
     command,
@@ -76,8 +79,15 @@ async function getProjectAgentCount(): Promise<number> {
     if (!stores?.agent?.getState) return 0;
 
     const agents = stores.agent.getState().agents;
-    // Project agents have empty specId
-    return Object.values(agents).filter((a: any) => a.specId === '').length;
+    // agents is a Map<string, AgentInfo[]>
+    // Project agents are stored with empty specId key ('')
+    let count = 0;
+    agents.forEach((agentList: any[], specId: string) => {
+      if (specId === '') {
+        count += agentList.length;
+      }
+    });
+    return count;
   });
 }
 
@@ -85,26 +95,59 @@ async function getProjectAgentCount(): Promise<number> {
  * Helper: Stop all running agents
  */
 async function stopAllAgents(): Promise<void> {
-  await browser.execute(async () => {
+  await browser.executeAsync(async (done: () => void) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agent?.getState) return;
+    if (!stores?.agent?.getState) { done(); return; }
 
     const trpc = (window as any).__TRPC__;
-    if (!trpc?.agent?.stop?.mutate) return;
+    if (!trpc?.agent?.stop?.mutate) { done(); return; }
 
     const agents = stores.agent.getState().agents;
-    for (const agent of Object.values(agents) as any[]) {
-      if (agent.status === 'running') {
-        try {
-          await trpc.agent.stop.mutate({
-            agentId: agent.agentId,
-          });
-        } catch {
-          // Ignore errors when stopping agents
+    // agents is a Map<string, AgentInfo[]>
+    const stopPromises: Promise<void>[] = [];
+    agents.forEach((agentList: any[]) => {
+      agentList.forEach((agent: any) => {
+        if (agent.status === 'running') {
+          stopPromises.push(
+            trpc.agent.stop.mutate({ agentId: agent.agentId }).catch(() => {})
+          );
         }
-      }
-    }
+      });
+    });
+    await Promise.all(stopPromises);
+    done();
   });
+}
+
+/**
+ * Helper: Wait for all project agents (specId='') to finish running
+ * Queries Main process file-based records via tRPC to ensure agents
+ * are fully stopped before proceeding (prevents ALREADY_RUNNING errors).
+ */
+async function waitForNoRunningProjectAgents(timeoutMs: number = 5000): Promise<boolean> {
+  return waitForCondition(
+    async () => {
+      const noRunning = await browser.executeAsync(
+        async (done: (result: boolean) => void) => {
+          try {
+            const trpc = (window as any).__TRPC__;
+            if (!trpc?.agent?.getAgents?.query) { done(true); return; }
+            const agents = await trpc.agent.getAgents.query({ specId: '' });
+            const hasRunning = agents.some(
+              (a: any) => a.status === 'running' || a.status === 'hang'
+            );
+            done(!hasRunning);
+          } catch {
+            done(true);
+          }
+        }
+      );
+      return noRunning;
+    },
+    timeoutMs,
+    300,
+    'no running project agents'
+  );
 }
 
 /**
@@ -167,6 +210,9 @@ describe('Project Agent Startup E2E', () => {
   afterEach(async () => {
     // Stop any running agents to clean up
     await stopAllAgents();
+    // Wait for agents to fully terminate on Main process side
+    // (prevents ALREADY_RUNNING error in next test)
+    await waitForNoRunningProjectAgents(5000);
     await browser.pause(200);
   });
 
@@ -215,14 +261,39 @@ describe('Project Agent Startup E2E', () => {
         return;
       }
 
-      const result = await executeProjectCommand('/kiro:spec-status', 'test-agent-2');
+      // Wrap in try-catch: if previous test's agent hasn't fully stopped,
+      // tRPC may throw ALREADY_RUNNING as WebDriverError
+      let result: { success: boolean; agentId?: string; error?: string };
+      try {
+        result = await executeProjectCommand('/kiro:spec-status', 'test-agent-2');
+      } catch (e: any) {
+        console.log(`[E2E] executeProjectCommand threw: ${e.message}`);
+        result = { success: false, error: String(e.message || e) };
+      }
       expect(result.success).toBe(true);
 
       // Wait for agent to appear in store
       const hasAgent = await waitForCondition(
-        async () => (await getProjectAgentCount()) > 0,
-        3000,
-        100,
+        async () => {
+          const count = await getProjectAgentCount();
+          if (count === 0) {
+            // Debug: dump all agent store keys and counts
+            const debug = await browser.execute(() => {
+              const stores = (window as any).__STORES__;
+              if (!stores?.agent?.getState) return 'agent store not available';
+              const agents = stores.agent.getState().agents;
+              const entries: string[] = [];
+              agents.forEach((agentList: any[], specId: string) => {
+                entries.push(`"${specId}": ${agentList.length} agents`);
+              });
+              return `Map size: ${agents.size}, entries: [${entries.join(', ')}]`;
+            });
+            console.log(`[E2E] getProjectAgentCount=0, agentStore debug: ${debug}`);
+          }
+          return count > 0;
+        },
+        10000,
+        200,
         'agent in store'
       );
 
@@ -261,7 +332,17 @@ describe('Project Agent Startup E2E', () => {
         }
       });
 
-      const result = await executeProjectCommand('/kiro:spec-status', 'no-project');
+      // executeProjectCommand may throw a WebDriverError when the tRPC
+      // mutation fails on the Main process side (the error propagates
+      // through Chromedriver before the done() callback is processed).
+      // We handle both cases: a returned error object or a thrown error.
+      let result: { success: boolean; error?: string };
+      try {
+        result = await executeProjectCommand('/kiro:spec-status', 'no-project');
+      } catch (e: any) {
+        // WebDriverError wraps the error message from the renderer
+        result = { success: false, error: String(e.message || e) };
+      }
 
       // Should fail with appropriate error (not AgentRecordService error)
       expect(result.success).toBe(false);

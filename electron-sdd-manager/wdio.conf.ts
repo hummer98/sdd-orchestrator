@@ -69,9 +69,10 @@ function resolveFixtureForSpec(specFilePath: string): string {
 // Environment variables set on process.env are inherited by the Electron child process
 const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude.sh');
 process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
-// Allow E2E_MOCK_CLAUDE_DELAY to be set via environment variable (default: 0.1s)
+// Allow E2E_MOCK_CLAUDE_DELAY to be set via environment variable (default: 1s)
+// Note: 0.1s was too fast - transitional UI states (e.g. "停止" button) were never observable
 if (!process.env.E2E_MOCK_CLAUDE_DELAY) {
-  process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
+  process.env.E2E_MOCK_CLAUDE_DELAY = '1';
 }
 // Default mock environment variables (can be overridden via CLI env vars)
 if (!process.env.E2E_MOCK_DOC_REVIEW_RESULT) {

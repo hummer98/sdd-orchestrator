@@ -207,9 +207,11 @@ describe('File Watcher UI Update', () => {
       await browser.pause(1000);
 
       // 3. 初期状態を確認 - エディタのDOM内容で検証
+      // Note: プレビューモードではHTMLコメント (<!-- Will be generated -->)は表示されない
+      // フィクスチャの内容が表示されていることを確認
       const initialEditorText = await getEditorTextFromDOM();
       console.log('[E2E] Initial editor text length:', initialEditorText.length);
-      expect(initialEditorText).toContain('Will be generated');
+      expect(initialEditorText).toContain('Requirements');
 
       // 4. ファイルを直接更新（mock_claude.shがやることをシミュレート）
       const newRequirementsContent = `# Requirements Document

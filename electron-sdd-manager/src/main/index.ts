@@ -8,6 +8,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { existsSync } from 'fs';
 import { initializeEventWiring, selectProject } from './trpc/helpers/projectSetup';
+import { getGlobalEventBus } from './trpc/services/globalEventBus';
 import { setInitialProjectPath, setInitialSelectResult } from './trpc/helpers/projectState';
 // trpc-full-migration Task 10.7: IPC handlers deleted, utility functions moved to services/
 import { setupStatusNotifications, getRemoteAccessServer } from './services/remoteAccessSetup';
@@ -26,7 +27,7 @@ import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 // Circular dependency elimination: createWindow extracted to windowFactory.ts
-import { createWindow } from './windowFactory';
+import { createWindow, getMainWindow } from './windowFactory';
 // Entry point must have zero exports — testable cleanup logic lives in appLifecycle.ts
 import { cleanupOnQuit } from './appLifecycle';
 
@@ -99,6 +100,42 @@ if (cliOptions.help) {
 
 // E2E test mode detection via CLI options
 const isE2ETest = cliOptions.e2eTest;
+
+// Single instance lock: prevent multiple app instances
+// When a second instance is launched, focus the existing window and handle its arguments
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance already running - quit this one
+  // The existing instance will receive 'second-instance' event with our argv
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    logger.info('[main] second-instance event received', { argv: argv.join(' ') });
+
+    // Parse the second instance's arguments to extract --project path
+    // For packaged apps, argv[0] is the executable path
+    const secondArgs = isAppPackaged ? argv.slice(1) : argv.slice(2);
+    const secondOptions = parseCLIArgs(secondArgs);
+
+    // Focus existing window
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+
+    // If the second instance specified a project path, select it
+    if (secondOptions.projectPath && existsSync(secondOptions.projectPath)) {
+      logger.info('[main] Selecting project from second instance', {
+        projectPath: secondOptions.projectPath,
+      });
+      selectProject(secondOptions.projectPath).catch((error) => {
+        logger.error('[main] Failed to select project from second instance', { error });
+      });
+    }
+  });
+}
 
 /**
  * Get initial project path from CLI options or environment
@@ -191,6 +228,12 @@ app.whenReady().then(async () => {
 
   // Initialize event wiring (auto-execution events, file watchers)
   initializeEventWiring();
+
+  // E2E: Expose globalEventBus on global for test access
+  // (Renderer side exposes __STORES__ and __TRPC__ on window for the same purpose)
+  if (isE2ETest) {
+    (global as any).__GLOBAL_EVENT_BUS__ = getGlobalEventBus();
+  }
 
   // Remote Access & SSH: IPC handlers deleted (Task 10.7), setup notifications only
   setupStatusNotifications();

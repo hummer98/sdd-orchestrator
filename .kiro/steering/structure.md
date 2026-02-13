@@ -38,7 +38,7 @@ electron-sdd-manager/src/
 │   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, schedule/, git/, markdown/, migration/, etc.)
 │   ├── hooks/      # 共有フック (useDeviceType等)
 │   ├── providers/  # React Context Provider (PlatformProvider等)
-│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore, scheduleTaskStore, mcpStore, gitViewStore, docsTreeExpandedStore, toolPathStore, projectEditorStore, notificationStore, parallelModeStore)
+│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, bugAutoExecutionStore, specStore, executionStore, scheduleTaskStore, mcpStore, gitViewStore, docsTreeExpandedStore, toolPathStore, projectEditorStore, notificationStore, parallelModeStore)
 │   └── types/      # 共有型定義
 ├── remote-ui/      # Remote UIアプリケーション（Web版React）
 │   ├── layouts/    # MobileLayout, DesktopLayout
@@ -354,4 +354,4 @@ const store = create((set) => ({
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
-_updated_at: 2026-02-11_
+_updated_at: 2026-02-13_

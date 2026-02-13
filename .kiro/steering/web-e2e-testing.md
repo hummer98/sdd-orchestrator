@@ -328,7 +328,7 @@ await expect(detailView).toBeVisible(); // 選択状態は保持される
 ```
 electron-sdd-manager/
 ├── playwright.config.ts          # Playwright設定
-├── e2e-playwright/               # Playwrightテスト (16ファイル)
+├── e2e-playwright/               # Playwrightテスト (18ファイル)
 │   ├── global-setup.ts           # Electron起動
 │   ├── global-teardown.ts        # Electron停止
 │   ├── helpers/                  # ヘルパー関数
@@ -336,15 +336,15 @@ electron-sdd-manager/
 │   │   ├── index.ts              # ヘルパーエクスポート
 │   │   └── remote-ui.helpers.ts  # Remote UI操作ヘルパー
 │   ├── smoke.spec.ts             # Smoke Test（基本接続確認）
-│   ├── smartphone-*.spec.ts      # スマートフォンUI各種テスト
+│   ├── smartphone-*.spec.ts      # スマートフォンUI各種テスト (6ファイル)
 │   ├── agent-log-remote.spec.ts  # デスクトップUI AgentLogテスト
 │   ├── project-agent-interaction.spec.ts # ProjectAgent操作テスト
 │   ├── workflow-integration.spec.ts      # ワークフロー統合テスト
 │   ├── auto-execution.spec.ts           # 自動実行テスト
 │   ├── phase-execution.spec.ts          # フェーズ実行テスト
-│   ├── bug-*.spec.ts                    # Bug関連テスト
-│   └── remote-ui-*.spec.ts             # Remote UI固有テスト
-├── e2e-wdio/                     # 既存WebdriverIOテスト (58ファイル)
+│   ├── bug-*.spec.ts                    # Bug関連テスト (2ファイル)
+│   └── remote-ui-*.spec.ts             # Remote UI固有テスト (4ファイル)
+├── e2e-wdio/                     # 既存WebdriverIOテスト (72ファイル)
 │   └── fixtures/                 # 共有テストフィクスチャ (14ディレクトリ)
 ├── playwright-report/            # テストレポート出力
 └── test-results/                 # テスト結果（スクリーンショット等）
@@ -352,4 +352,4 @@ electron-sdd-manager/
 
 ---
 
-_updated_at: 2026-02-11_
+_updated_at: 2026-02-13_

@@ -53,7 +53,7 @@ E2Eテストは**ユーザーが実際に行う操作とその結果を検証す
 | テストランナー | WebdriverIO | 9.20.1 |
 | Electronサービス | wdio-electron-service | 9.2.1 |
 | フレームワーク | Mocha | - |
-| Electron | 35.5.1 | - |
+| Electron | 35.7+ | - |
 | Chromedriver | 自動管理 | - |
 
 ### WebdriverIO採用理由
@@ -113,7 +113,7 @@ task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 
 配置場所: `electron-sdd-manager/e2e-wdio/`
 
-58のE2Eテストファイルが存在する。主要カテゴリ:
+72のE2Eテストファイルが存在する。主要カテゴリ:
 
 | カテゴリ | 代表的なファイル | 概要 |
 |---------|----------------|------|
@@ -122,20 +122,23 @@ task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 | Bugワークフロー | `bug-workflow.e2e.spec.ts`, `bug-auto-execution.e2e.spec.ts`, `bugs-*.e2e.spec.ts` | バグ作成、Analyze/Fix/Verify、自動実行、Worktree |
 | 自動実行 | `auto-execution-*.e2e.spec.ts`, `simple-auto-execution.e2e.spec.ts` | 許可制御、フロー全通、ドキュメントレビュー連携、impl、resume |
 | ワークフロー統合 | `workflow-integration.e2e.spec.ts` | Mock Claude使用の実ワークフロー統合テスト |
-| ドキュメントレビュー | `document-review*.e2e.spec.ts`, `debatex-scheme.e2e.spec.ts`, `gemini-document-review.e2e.spec.ts` | レビュー、UI状態、各種scheme |
+| ドキュメントレビュー | `document-review*.e2e.spec.ts`, `debatex-scheme.e2e.spec.ts`, `gemini-document-review.e2e.spec.ts`, `vcs-scheme-ui.e2e.spec.ts` | レビュー、UI状態、各種scheme |
 | Inspection | `inspection-workflow.e2e.spec.ts` | Inspection操作・結果表示 |
-| エージェント | `agent-log-streaming.e2e.spec.ts`, `agent-completion-notification.e2e.spec.ts`, `agent-resume-log-display.e2e.spec.ts`, `project-agent-startup.e2e.spec.ts` | ログストリーミング、完了通知、Resume |
+| エージェント | `agent-log-streaming.e2e.spec.ts`, `agent-completion-notification.e2e.spec.ts`, `agent-resume-log-display.e2e.spec.ts`, `project-agent-startup.e2e.spec.ts`, `agent-delete.e2e.spec.ts`, `ask-agent-dialog.e2e.spec.ts` | ログストリーミング、完了通知、Resume、削除、Ask |
 | Git差分 | `git-diff-viewer.e2e.spec.ts` | Git差分表示 |
 | Worktree | `worktree-*.e2e.spec.ts`, `convert-spec-to-worktree.e2e.spec.ts`, `impl-start-worktree.e2e.spec.ts` | Worktree実行、rebase、sync |
-| ファイル監視 | `file-watcher-*.e2e.spec.ts` | ルート監視、UI更新 |
+| ファイル監視 | `file-watcher-*.e2e.spec.ts`, `file-change-dialogs.e2e.spec.ts` | ルート監視、UI更新、ファイル変更ダイアログ |
 | メトリクス | `metrics-display.e2e.spec.ts` | メトリクス表示 |
-| スケジュール | `schedule-task.e2e.spec.ts` | スケジュールタスク |
+| スケジュール | `schedule-task.e2e.spec.ts`, `schedule-type-settings.e2e.spec.ts` | スケジュールタスク、タイプ設定 |
 | Remote/SSH | `ssh-workflow.e2e.spec.ts`, `remote-webserver.e2e.spec.ts`, `cloudflare-tunnel.e2e.spec.ts`, `websocket-command-execution.e2e.spec.ts` | SSH接続、Remote UIサーバー、Tunnel |
-| UI全般 | `layout-persistence.e2e.spec.ts`, `install-dialogs.e2e.spec.ts`, `multi-window.e2e.spec.ts`, `mermaid-preview.e2e.spec.ts`, `parsed-log-entry-display.e2e.spec.ts`, `artifact-editor-search.e2e.spec.ts`, `additional-markdown-files.e2e.spec.ts`, `project-docs-viewer.e2e.spec.ts` | レイアウト、ダイアログ、マルチウィンドウ、Mermaid、検索 |
+| UI全般 | `layout-persistence.e2e.spec.ts`, `install-dialogs.e2e.spec.ts`, `multi-window.e2e.spec.ts`, `mermaid-preview.e2e.spec.ts`, `parsed-log-entry-display.e2e.spec.ts`, `artifact-editor-search.e2e.spec.ts`, `additional-markdown-files.e2e.spec.ts`, `project-docs-viewer.e2e.spec.ts`, `edit-preview-toggle.e2e.spec.ts` | レイアウト、ダイアログ、マルチウィンドウ、Mermaid、検索、編集/プレビュー切替 |
 | 診断 | `diagnostic*.e2e.spec.ts`, `diag-main-process.e2e.spec.ts` | 診断ツール |
-| プロジェクト選択 | `project-selection-basic.e2e.spec.ts`, `startup-project-selection.e2e.spec.ts` | プロジェクト選択フロー |
+| プロジェクト選択 | `project-selection-basic.e2e.spec.ts`, `startup-project-selection.e2e.spec.ts`, `recent-projects.e2e.spec.ts`, `project-switch-warning.e2e.spec.ts` | プロジェクト選択、最近使ったプロジェクト、切替警告 |
+| プロジェクト設定 | `project-settings-dialog.e2e.spec.ts`, `project-file-editing.e2e.spec.ts`, `tool-path-settings.e2e.spec.ts`, `mcp-server-settings.e2e.spec.ts` | 設定ダイアログ、ファイル編集、ツールパス、MCPサーバー |
 | パーミッション | `permission-control.e2e.spec.ts` | パーミッション制御 |
 | ログ | `renderer-logging.e2e.spec.ts` | Rendererログ出力 |
+| フェーズ操作 | `phase-rejection.e2e.spec.ts` | フェーズ却下操作 |
+| インストール | `cli-install-dialog.e2e.spec.ts` | CLIインストールダイアログ |
 
 ---
 
@@ -238,6 +241,7 @@ e2e-wdio/fixtures/
 ├── impl-test/             # 実装フェーズテスト
 ├── inspection-test/       # Inspectionテスト
 ├── mermaid-test/          # Mermaidプレビューテスト
+├── project-file-test/     # プロジェクトファイル編集テスト
 ├── resume-test/           # Agent Resumeテスト
 ├── tasks-approved-project/ # タスク承認済みプロジェクト
 ├── worktree-exec-test/    # Worktree実行テスト
@@ -1155,8 +1159,8 @@ UIクリックは `SpecListItem` の `onClick` → `selectSpec()` を通常のRe
 
 | 指標 | 数値 |
 |-----|-----|
-| WebdriverIO E2Eテストファイル | 58 |
-| Playwright Web E2Eテストファイル | 16 |
+| WebdriverIO E2Eテストファイル | 72 |
+| Playwright Web E2Eテストファイル | 18 |
 | ユニットテストファイル（main/services） | 90+ |
 
 ### 総合評価
@@ -1195,4 +1199,4 @@ Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずに�
 
 ---
 
-_更新日: 2026-02-11_
+_更新日: 2026-02-13_

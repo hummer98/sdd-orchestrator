@@ -13,7 +13,7 @@ Electronベースのデスクトップアプリケーション。
 
 - **Language**: TypeScript 5.8+
 - **Framework**: React 19, Vite 5+
-- **Runtime**: Node.js 20+, Electron 35.x
+- **Runtime**: Node.js 20+, Electron 35.7+
 
 ## Key Libraries
 
@@ -118,6 +118,13 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 2. ルーターにプロシージャ追加（`t.procedure.input(schema).query/mutation`）
 3. `createTestContext` でテスト作成
 4. Renderer側で `trpc.{router}.{procedure}.useQuery/useMutation()` または `getVanillaClient().{router}.{procedure}.query/mutate()` で呼び出し
+
+### 多重起動防止（Single Instance Lock）
+
+`app.requestSingleInstanceLock()` でアプリの多重起動を防止する。2番目のインスタンスが起動された場合:
+- 既存ウィンドウをフォーカス（最小化されていれば復元）
+- 2番目のインスタンスの `--project` 引数があれば、そのプロジェクトを選択
+- CLIからの起動（`open -a`）でも多重起動を防止
 
 ### spec.json updated_at 更新ルール
 
@@ -250,4 +257,4 @@ sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-te
 
 ---
 _Document standards and patterns, not every dependency_
-_updated_at: 2026-02-11_
+_updated_at: 2026-02-13_

@@ -28,7 +28,12 @@ export default defineConfig({
           build: {
             outDir: 'dist/main',
             rollupOptions: {
-              external: ['electron', 'zod'],
+              // ssh2 and its optional native addon deps (cpu-features, buildcheck)
+              // must not be bundled. Bundling inlines their code and loses the
+              // try/catch fallback for missing .node binaries, causing a hard crash
+              // on platforms where the addon failed to compile.
+              external: (id) =>
+                ['electron', 'zod', 'ssh2'].includes(id) || /\.node($|\?)/.test(id),
               // vite-plugin-electron uses build.lib mode, which makes Vite set
               // preserveEntrySignatures: 'strict'. With 'strict', Rollup creates
               // a facade (shim) when the chunk needs internal exports even if the
@@ -68,5 +73,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist/renderer',
+    rollupOptions: {
+      // Node.js native modules (.node) must not be bundled into renderer builds.
+      // On some environments (e.g., remote CI), optional deps like cpu-features
+      // compile native addons that Rollup cannot parse.
+      // Function form handles ?commonjs-external query suffixes.
+      external: (id) => /\.node($|\?)/.test(id),
+    },
   },
 });

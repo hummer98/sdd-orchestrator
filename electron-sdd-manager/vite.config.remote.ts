@@ -45,7 +45,19 @@ export default defineConfig({
     // Clear output directory before build
     emptyOutDir: true,
 
+    // Prevent @rollup/plugin-commonjs from following require() calls inside
+    // try/catch blocks. ssh2's native addon (sshcrypto.node) is loaded via
+    // require() inside try/catch — without this, commonjs converts it to a
+    // static import that Rollup tries to parse as JavaScript.
+    commonjsOptions: {
+      ignoreTryCatch: true,
+    },
+
     rollupOptions: {
+      // Node.js native modules (.node binaries) must not be bundled into browser builds.
+      // The function form handles ?commonjs-external query suffixes that
+      // @rollup/plugin-commonjs appends to externalized require() targets.
+      external: (id) => /\.node($|\?)/.test(id),
       input: {
         main: resolve(__dirname, 'src/remote-ui/index.html'),
       },

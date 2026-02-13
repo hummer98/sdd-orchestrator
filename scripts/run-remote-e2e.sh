@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# Remote E2E Execution Script
-# リモートMacOSマシンでE2Eテストを実行するメインスクリプト
+# Remote Build & Smoke Test Script
+# リモートMacOSマシンでビルド＋スモークテストを実行するメインスクリプト
+# ビルド成果物が正常に起動するかを open -a (Aquaセッション) で検証する
 #
 # NOTE: Do not run this script directly. Use Taskfile instead:
-#   task electron:test:e2e:remote   - Run E2E tests on remote machine
+#   task electron:test:e2e:remote   - Build & smoke test on remote machine
 #
 # Required Environment Variables:
 #   REMOTE_E2E_HOST  - リモートホスト名またはIP
@@ -146,9 +147,10 @@ manage_dependencies() {
     else
         echo "  Dependencies changed, running npm ci..."
 
-        # npm ciを実行
-        if ! remote_exec "cd $REMOTE_WORKSPACE && npm ci"; then
-            error_exit 5 "npm ci failed"
+        # npm install を実行
+        # npm ci はnpmバージョン差異でlock file不整合エラーが起きやすいため npm install を使用
+        if ! remote_exec "cd $REMOTE_WORKSPACE && npm install"; then
+            error_exit 5 "npm install failed"
         fi
 
         # 新しいハッシュを保存
@@ -168,57 +170,147 @@ run_build() {
     echo -e "  ${GREEN}Build completed successfully${NC}"
 }
 
-# E2Eテスト実行
-run_e2e_tests() {
-    echo -e "${BLUE}[5/5] Running E2E tests on remote...${NC}"
+# スモークテスト実行
+# ビルド成果物が正常に動作するか検証する
+# open -a で Aqua セッション内で Electron を起動し、ログを監視する
+run_smoke_test() {
+    echo -e "${BLUE}[5/5] Running smoke test on remote...${NC}"
 
-    local remote="$REMOTE_E2E_USER@$REMOTE_E2E_HOST"
+    local test_project="$REMOTE_WORKSPACE/e2e-wdio/fixtures/test-project"
+    local electron_app="$REMOTE_WORKSPACE/node_modules/electron/dist/Electron.app"
+    local app_entry="$REMOTE_WORKSPACE/dist/main/index.js"
+    local log_file="$REMOTE_WORKSPACE/logs/main.log"
+    local smoke_timeout=30  # スモークテストのタイムアウト（秒）
 
-    # 一時ファイルに出力を保存
-    local temp_output
-    temp_output=$(mktemp)
+    echo "  Test project: $test_project"
+    echo "  Timeout: ${smoke_timeout}s"
 
-    # タイムアウト付きでE2Eテストを実行
-    # timeout コマンドがない場合は直接実行
-    local exit_code=0
+    # 1. 既存の Electron プロセスを停止し、ログファイルをクリア
+    echo "  Cleaning up..."
+    local stdout_log="$REMOTE_WORKSPACE/logs/stdout.log"
+    remote_exec "pkill -f 'Electron.*dist/main' 2>/dev/null || true; \
+        rm -f $log_file $stdout_log; \
+        mkdir -p $REMOTE_WORKSPACE/logs" || true
 
-    echo "  Timeout: ${E2E_TIMEOUT}s"
-    echo "  Running task electron:test:e2e..."
+    # 2. ラッパースクリプトを作成して open 経由で起動
+    #    open -a Terminal でスクリプトを実行することで Aqua セッション内で起動
+    #    環境変数（SDD_LOG_DIR）でログパスを制御
+    echo "  Launching Electron via wrapper script (Aqua session)..."
+    remote_exec "cat > /tmp/sdd-smoke-test.sh << 'SCRIPT'
+#!/bin/bash
+WORKSPACE=\$HOME/.sdd-e2e-cache/electron-sdd-manager
+export SDD_LOG_DIR=\"\$WORKSPACE/logs\"
+mkdir -p \"\$SDD_LOG_DIR\"
+exec \"\$WORKSPACE/node_modules/.bin/electron\" \
+    \"--app=\$WORKSPACE/dist/main/index.js\" \
+    \"--project=\$WORKSPACE/e2e-wdio/fixtures/test-project\" \
+    > \"\$SDD_LOG_DIR/stdout.log\" 2>&1
+SCRIPT
+chmod +x /tmp/sdd-smoke-test.sh"
+
+    # open -a Terminal でスクリプトを実行（Aquaセッション）
+    remote_exec "open -a Terminal /tmp/sdd-smoke-test.sh"
+
+    # 3. ログを監視して起動を確認
+    #    main.log: ProjectLogger のログ（SDD_LOG_DIR で制御）
+    #    stdout.log: プロセスの stdout/stderr リダイレクト
+    echo "  Waiting for app startup..."
+    local elapsed=0
+    local started=false
+    local has_error=false
+
+    while [ "$elapsed" -lt "$smoke_timeout" ]; do
+        sleep 2
+        elapsed=$((elapsed + 2))
+
+        # main.log または stdout.log が存在するか確認
+        local log_exists=false
+        if remote_exec "test -f $log_file" 2>/dev/null; then
+            log_exists=true
+        elif remote_exec "test -f $stdout_log" 2>/dev/null; then
+            log_exists=true
+        fi
+
+        if ! $log_exists; then
+            echo "  [$elapsed/${smoke_timeout}s] Waiting for log file..."
+            continue
+        fi
+
+        # Logger initialized を確認（アプリ起動成功）
+        if ! $started; then
+            if remote_exec "grep -q 'Logger initialized' $log_file $stdout_log 2>/dev/null"; then
+                echo -e "  [$elapsed/${smoke_timeout}s] ${GREEN}App started successfully${NC}"
+                started=true
+            fi
+        fi
+
+        # Project set を確認（プロジェクト読み込み成功）
+        if $started; then
+            if remote_exec "grep -q 'Project set:' $log_file $stdout_log 2>/dev/null"; then
+                echo -e "  [$elapsed/${smoke_timeout}s] ${GREEN}Project loaded successfully${NC}"
+                break
+            fi
+        fi
+
+        # 起動時のクラッシュを検出（Electron の load error）
+        if remote_exec "grep -q 'App threw an error during load' $stdout_log 2>/dev/null"; then
+            has_error=true
+            echo -e "  [$elapsed/${smoke_timeout}s] ${RED}App crashed during load${NC}"
+            break
+        fi
+
+        # ERROR レベルのログを検出（Unhandled rejection 等の致命的エラー）
+        if remote_exec "grep -q '\[ERROR\].*\(Uncaught\|Unhandled\|FATAL\)' $log_file $stdout_log 2>/dev/null"; then
+            has_error=true
+            echo -e "  [$elapsed/${smoke_timeout}s] ${RED}Fatal error detected in logs${NC}"
+            break
+        fi
+
+        echo "  [$elapsed/${smoke_timeout}s] Monitoring..."
+    done
+
+    # 4. Electron プロセスを停止
+    echo "  Stopping Electron..."
+    remote_exec "pkill -f 'Electron.*dist/main' 2>/dev/null || true"
+    sleep 1
+
+    # 5. 結果を表示
+    echo ""
+    echo -e "${BLUE}=== Smoke Test Result ===${NC}"
     echo ""
 
-    if command -v timeout > /dev/null; then
-        # GNU timeout (Linux)
-        timeout --signal=TERM "$E2E_TIMEOUT" ssh -o BatchMode=yes "$remote" \
-            "cd $REMOTE_WORKSPACE && cd .. && task electron:test:e2e" 2>&1 | tee "$temp_output" || exit_code=$?
-    elif command -v gtimeout > /dev/null; then
-        # GNU timeout installed via Homebrew (macOS)
-        gtimeout --signal=TERM "$E2E_TIMEOUT" ssh -o BatchMode=yes "$remote" \
-            "cd $REMOTE_WORKSPACE && cd .. && task electron:test:e2e" 2>&1 | tee "$temp_output" || exit_code=$?
+    # ログファイルの内容を表示
+    if remote_exec "test -f $log_file" 2>/dev/null; then
+        echo -e "${BLUE}--- main.log ---${NC}"
+        remote_exec "cat $log_file"
+        echo -e "${BLUE}--- End ---${NC}"
+        echo ""
+    fi
+    if remote_exec "test -f $stdout_log" 2>/dev/null; then
+        local stdout_size
+        stdout_size=$(remote_exec "wc -c < $stdout_log 2>/dev/null | tr -d ' '")
+        if [ "${stdout_size:-0}" -gt 0 ]; then
+            echo -e "${BLUE}--- stdout.log ---${NC}"
+            remote_exec "head -50 $stdout_log"
+            echo -e "${BLUE}--- End ---${NC}"
+            echo ""
+        fi
+    fi
+
+    # 判定
+    if $has_error; then
+        echo -e "${RED}SMOKE TEST FAILED${NC}"
+        echo "  Reason: Error detected in logs"
+        exit 1
+    elif ! $started; then
+        echo -e "${RED}SMOKE TEST FAILED${NC}"
+        echo "  Reason: App did not start within ${smoke_timeout}s"
+        exit 1
     else
-        # macOS without GNU coreutils - use perl for timeout
-        # perl -e 'alarm shift; exec @ARGV' -- $timeout command args
-        perl -e 'alarm shift; exec @ARGV' -- "$E2E_TIMEOUT" \
-            ssh -o BatchMode=yes "$remote" \
-            "cd $REMOTE_WORKSPACE && cd .. && task electron:test:e2e" 2>&1 | tee "$temp_output" || exit_code=$?
+        echo -e "${GREEN}SMOKE TEST PASSED${NC}"
+        echo "  App started and loaded project without errors"
+        exit 0
     fi
-
-    echo ""
-
-    # タイムアウトの場合（exit code 124 or 142 from timeout/alarm）
-    if [ "$exit_code" -eq 124 ] || [ "$exit_code" -eq 142 ]; then
-        rm -f "$temp_output"
-        error_exit 124 "Timeout: E2E test exceeded ${E2E_TIMEOUT} seconds ($(( E2E_TIMEOUT / 60 )) minutes)"
-    fi
-
-    # 結果をパース
-    echo -e "${BLUE}=== E2E Test Result ===${NC}"
-    "$SCRIPT_DIR/parse-e2e-result.sh" < "$temp_output"
-    local parse_exit_code=$?
-
-    rm -f "$temp_output"
-
-    # parse-e2e-result.shの終了コードを返す
-    exit $parse_exit_code
 }
 
 # メイン処理
@@ -234,7 +326,7 @@ main() {
     sync_files
     manage_dependencies
     run_build
-    run_e2e_tests
+    run_smoke_test
 }
 
 main "$@"

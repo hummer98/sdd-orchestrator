@@ -138,10 +138,13 @@ export class ProjectLogger implements ProjectLoggerService {
     // E2E mode detection: explicit parameter or command line argument
     this.isE2EMode = isE2EMode ?? process.argv.includes('--e2e-test');
 
-    // Determine global logs directory based on whether app is packaged
+    // Determine global logs directory
+    // Priority: 1. SDD_LOG_DIR env var, 2. Production path, 3. Development path
     let logsDir: string;
 
-    if (app.isPackaged) {
+    if (process.env.SDD_LOG_DIR) {
+      logsDir = process.env.SDD_LOG_DIR;
+    } else if (app.isPackaged) {
       // Production: Use macOS standard log directory
       // ~/Library/Logs/SDD Orchestrator/
       logsDir = path.join(app.getPath('logs'));

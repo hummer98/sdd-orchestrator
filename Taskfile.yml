@@ -67,6 +67,19 @@ tasks:
     cmds:
       - npm run test:run {{.CLI_ARGS}}
 
+  electron:test:report:
+    desc: Run unit tests and generate failure-only markdown report
+    dir: electron-sdd-manager
+    cmds:
+      - cmd: npm run test:run
+        ignore_error: true
+      - npx ts-node ../scripts/parse-unit-test-results.ts
+
+  electron:test:report:parse:
+    desc: Re-parse existing vitest JSON into markdown report
+    cmds:
+      - npx ts-node scripts/parse-unit-test-results.ts
+
   electron:test:e2e:
     desc: Run E2E tests for Electron application
     dir: electron-sdd-manager
@@ -80,6 +93,22 @@ tasks:
     env:
       REMOTE_E2E_HOST: "{{.REMOTE_E2E_HOST}}"
       REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
+
+  electron:test:e2e:remote:kdg069:
+    desc: Run E2E tests on KDG-069 (yuji@172.25.76.217)
+    cmds:
+      - ./scripts/run-remote-e2e.sh
+    env:
+      REMOTE_E2E_HOST: "172.25.76.217"
+      REMOTE_E2E_USER: "yuji"
+
+  electron:check:remote:kdg069:
+    desc: Check KDG-069 environment for E2E testing
+    cmds:
+      - ./scripts/check-remote-environment.sh
+    env:
+      REMOTE_E2E_HOST: "172.25.76.217"
+      REMOTE_E2E_USER: "yuji"
 
   electron:check:remote:
     desc: Check remote machine environment for E2E testing

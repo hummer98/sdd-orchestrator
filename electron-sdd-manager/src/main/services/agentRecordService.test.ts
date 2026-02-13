@@ -114,6 +114,15 @@ describe('AgentRecordService', () => {
       const result = await service.readRecord('non-existent-spec', 'non-existent-agent');
       expect(result).toBeNull();
     });
+
+    it('should return null for corrupted JSON file', async () => {
+      const dirPath = path.join(testDir, 'specs', 'spec-a');
+      await fs.mkdir(dirPath, { recursive: true });
+      await fs.writeFile(path.join(dirPath, 'agent-corrupt.json'), '{truncated');
+
+      const result = await service.readRecord('spec-a', 'agent-corrupt');
+      expect(result).toBeNull();
+    });
   });
 
   describe('readAllRecords', () => {
@@ -169,6 +178,86 @@ describe('AgentRecordService', () => {
     it('should return empty array when no files exist', async () => {
       const allRecords = await service.readAllRecords();
       expect(allRecords).toHaveLength(0);
+    });
+
+    it('should skip corrupted JSON files and return valid records', async () => {
+      const validRecord: AgentRecord = {
+        agentId: 'agent-valid',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+      await service.writeRecord(validRecord);
+
+      // Write a corrupted JSON file alongside the valid one
+      const dirPath = path.join(testDir, 'specs', 'spec-a');
+      await fs.writeFile(path.join(dirPath, 'agent-corrupt.json'), '{"agentId":');
+
+      const allRecords = await service.readAllRecords();
+      expect(allRecords).toHaveLength(1);
+      expect(allRecords[0].agentId).toBe('agent-valid');
+    });
+  });
+
+  describe('findRecordByAgentId', () => {
+    it('should find an existing agent record across specs', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-findme',
+        specId: 'spec-x',
+        phase: 'impl',
+        pid: 99999,
+        sessionId: 'session-find',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+      await service.writeRecord(record);
+
+      const result = await service.findRecordByAgentId('agent-findme');
+      expect(result).not.toBeNull();
+      expect(result?.agentId).toBe('agent-findme');
+      expect(result?.specId).toBe('spec-x');
+    });
+
+    it('should return null for non-existent agent', async () => {
+      const result = await service.findRecordByAgentId('agent-does-not-exist');
+      expect(result).toBeNull();
+    });
+
+    it('should skip corrupted JSON files without throwing', async () => {
+      // Write a valid record in one spec
+      const validRecord: AgentRecord = {
+        agentId: 'agent-good',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 11111,
+        sessionId: 'session-good',
+        status: 'completed',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+      await service.writeRecord(validRecord);
+
+      // Write a corrupted JSON file in another spec
+      const corruptDir = path.join(testDir, 'specs', 'spec-b');
+      await fs.mkdir(corruptDir, { recursive: true });
+      await fs.writeFile(path.join(corruptDir, 'agent-target.json'), '{"agentId":"agent-target"');
+
+      // Should not throw, should return null for the corrupted record
+      const result = await service.findRecordByAgentId('agent-target');
+      expect(result).toBeNull();
+
+      // Should still find the valid record
+      const validResult = await service.findRecordByAgentId('agent-good');
+      expect(validResult).not.toBeNull();
+      expect(validResult?.agentId).toBe('agent-good');
     });
   });
 
@@ -749,6 +838,16 @@ describe('AgentRecordService', () => {
 
       it('should return null for non-existent record', async () => {
         const result = await service.readRecordWithCategory('specs', 'my-feature', 'non-existent');
+        expect(result).toBeNull();
+      });
+
+      it('should return null for corrupted/truncated JSON file', async () => {
+        // Simulate a race condition where the file is partially written
+        const dirPath = path.join(testDir, 'specs', 'my-feature');
+        await fs.mkdir(dirPath, { recursive: true });
+        await fs.writeFile(path.join(dirPath, 'agent-corrupt.json'), '{"agentId":"agent-corrupt","status":');
+
+        const result = await service.readRecordWithCategory('specs', 'my-feature', 'agent-corrupt');
         expect(result).toBeNull();
       });
     });

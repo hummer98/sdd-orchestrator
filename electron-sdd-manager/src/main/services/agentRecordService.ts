@@ -625,6 +625,10 @@ export class AgentRecordService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return null;
       }
+      // Corrupted/truncated JSON (e.g., race condition during agent record write)
+      if (error instanceof SyntaxError) {
+        return null;
+      }
       throw error;
     }
   }

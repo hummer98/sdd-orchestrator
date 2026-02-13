@@ -132,11 +132,11 @@ export class WorktreeService {
   /**
    * Execute a git command in the project directory
    */
-  private execGit(command: string): Promise<WorktreeServiceResult<string>> {
+  private execGit(command: string, cwd?: string): Promise<WorktreeServiceResult<string>> {
     return new Promise((resolve) => {
       this.execFn(
         command,
-        { cwd: this.projectPath },
+        { cwd: cwd || this.projectPath },
         (error, stdout, _stderr) => {
           if (error) {
             const message = error.message || String(error);
@@ -891,7 +891,7 @@ export class WorktreeService {
       scriptArg = entityName;
     }
 
-    // Check if rebase-worktree.sh exists
+    // Check if rebase-worktree.sh exists (always in main project)
     const scriptPath = path.join(this.projectPath, '.kiro', 'scripts', 'rebase-worktree.sh');
     if (!fs.existsSync(scriptPath)) {
       logger.error('[WorktreeService] rebase-worktree.sh not found', { scriptPath });
@@ -904,9 +904,19 @@ export class WorktreeService {
       };
     }
 
-    // Execute rebase-worktree.sh
-    logger.info('[WorktreeService] Executing rebase-worktree.sh', { scriptArg, specOrBugPath });
-    const result = await this.execGit(`.kiro/scripts/rebase-worktree.sh ${scriptArg}`);
+    // Resolve worktree path: spec.json with worktree config exists in the worktree,
+    // not on the main branch. Run script from worktree dir if it exists.
+    const worktreePath = entityType === 'bugs'
+      ? this.getBugWorktreePath(entityName).absolute
+      : this.getWorktreePath(entityName).absolute;
+    const useWorktreeCwd = fs.existsSync(worktreePath);
+    const execCwd = useWorktreeCwd ? worktreePath : this.projectPath;
+
+    // Execute rebase-worktree.sh (use absolute script path since cwd may differ)
+    logger.info('[WorktreeService] Executing rebase-worktree.sh', {
+      scriptArg, specOrBugPath, cwd: execCwd, useWorktreeCwd,
+    });
+    const result = await this.execGit(`"${scriptPath}" ${scriptArg}`, execCwd);
 
     if (result.ok) {
       const output = result.value;

@@ -21,6 +21,10 @@ vi.mock('fs', async (importOriginal) => {
       if (filePath.includes('rebase-worktree.sh')) {
         return true;
       }
+      // Mock worktree directories as existing by default
+      if (filePath.includes('.kiro/worktrees/')) {
+        return true;
+      }
       // Call original for other paths
       return actual.existsSync(filePath);
     }),
@@ -997,6 +1001,9 @@ describe('WorktreeService', () => {
         if (String(filePath).includes('rebase-worktree.sh')) {
           return true;
         }
+        if (String(filePath).includes('.kiro/worktrees/')) {
+          return true;
+        }
         return true;
       });
     });
@@ -1047,12 +1054,14 @@ describe('WorktreeService', () => {
 
     it('should handle bugs path correctly', async () => {
       let capturedCommand = '';
+      let capturedCwd = '';
       const mockExec = (
         command: string,
-        _options: { cwd: string },
+        options: { cwd: string },
         callback: (error: Error | null, stdout: string, stderr: string) => void
       ) => {
         capturedCommand = command;
+        capturedCwd = options.cwd;
         callback(null, 'Rebase completed successfully\n', '');
         return { kill: () => {} };
       };
@@ -1062,16 +1071,20 @@ describe('WorktreeService', () => {
 
       expect(capturedCommand).toContain('rebase-worktree.sh');
       expect(capturedCommand).toContain('bug:my-bug');
+      // Should use worktree directory as cwd
+      expect(capturedCwd).toBe(path.resolve(projectPath, '.kiro/worktrees/bugs/my-bug'));
     });
 
     it('should handle specs path correctly', async () => {
       let capturedCommand = '';
+      let capturedCwd = '';
       const mockExec = (
         command: string,
-        _options: { cwd: string },
+        options: { cwd: string },
         callback: (error: Error | null, stdout: string, stderr: string) => void
       ) => {
         capturedCommand = command;
+        capturedCwd = options.cwd;
         callback(null, 'Rebase completed successfully\n', '');
         return { kill: () => {} };
       };
@@ -1082,6 +1095,49 @@ describe('WorktreeService', () => {
       expect(capturedCommand).toContain('rebase-worktree.sh');
       expect(capturedCommand).toContain('my-feature');
       expect(capturedCommand).not.toContain('bug:');
+      // Should use worktree directory as cwd
+      expect(capturedCwd).toBe(path.resolve(projectPath, '.kiro/worktrees/specs/my-feature'));
+    });
+
+    it('should fallback to projectPath when worktree dir does not exist', async () => {
+      // Mock worktree directory as NOT existing
+      vi.mocked(fs.existsSync).mockImplementation((filePath: fs.PathLike) => {
+        if (String(filePath).includes('rebase-worktree.sh')) {
+          return true;
+        }
+        if (String(filePath).includes('.kiro/worktrees/')) {
+          return false;
+        }
+        return true;
+      });
+
+      let capturedCwd = '';
+      const mockExec = (
+        command: string,
+        options: { cwd: string },
+        callback: (error: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        capturedCwd = options.cwd;
+        callback(null, 'Rebase completed successfully\n', '');
+        return { kill: () => {} };
+      };
+      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
+
+      await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      // Should fallback to projectPath
+      expect(capturedCwd).toBe(projectPath);
+
+      // Restore mock for other tests
+      vi.mocked(fs.existsSync).mockImplementation((filePath: fs.PathLike) => {
+        if (String(filePath).includes('rebase-worktree.sh')) {
+          return true;
+        }
+        if (String(filePath).includes('.kiro/worktrees/')) {
+          return true;
+        }
+        return true;
+      });
     });
   });
 

@@ -57,8 +57,9 @@ fi
 VCS_SCHEME=$(jq -r '.worktree.vcsScheme // "git"' "$CONFIG_JSON")
 echo "VCS Scheme: $VCS_SCHEME" >&2
 
-# Check if this is a git repository
-if [ ! -d ".git" ]; then
+# Check if this is a git repository (supports both regular repo and worktree)
+# In a worktree, .git is a file (not directory) pointing to the main repo
+if [ ! -d ".git" ] && [ ! -f ".git" ]; then
   echo "Error: Not a git repository" >&2
   exit 2
 fi

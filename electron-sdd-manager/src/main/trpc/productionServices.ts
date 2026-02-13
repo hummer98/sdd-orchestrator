@@ -378,12 +378,14 @@ export function createProductionServices(): Partial<ContextServices> {
     convertCheck: async (projectPath: string, specPath: string) => {
       const worktreeService = new WorktreeService(projectPath);
       const convertService = new ConvertWorktreeService(worktreeService, fileService);
-      return convertService.canConvert(projectPath, specPath);
+      const fullSpecPath = join(projectPath, '.kiro', 'specs', specPath);
+      return convertService.canConvert(projectPath, fullSpecPath);
     },
     convertToWorktree: async (projectPath: string, specPath: string, featureName: string) => {
       const worktreeService = new WorktreeService(projectPath);
       const convertService = new ConvertWorktreeService(worktreeService, fileService);
-      return convertService.convertToWorktree(projectPath, specPath, featureName);
+      const fullSpecPath = join(projectPath, '.kiro', 'specs', specPath);
+      return convertService.convertToWorktree(projectPath, fullSpecPath, featureName);
     },
 
     // ============================================================

@@ -1,0 +1,23 @@
+{
+  "feature_name": "test-feature",
+  "name": "test-feature",
+  "description": "E2E test feature for project file editing",
+  "phase": "requirements-generated",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

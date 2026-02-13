@@ -25,6 +25,7 @@ const mainE2ELogPath = path.join(projectRoot, '..', 'logs', 'main-e2e.log');
  */
 const DEFAULT_FIXTURE = 'test-project';
 const fixtureOverrides: Record<string, string> = {
+  'agent-delete': 'auto-exec-test',
   'agent-log-streaming': 'auto-exec-test',
   'agent-resume-log-display': 'auto-exec-test',
   'auto-execution-document-review': 'document-review-test',
@@ -36,6 +37,7 @@ const fixtureOverrides: Record<string, string> = {
   'bugs-pane-integration': 'bugs-pane-test',
   'bugs-worktree-support': 'bugs-pane-test',
   'cloudflare-tunnel': 'bugs-pane-test',
+  'edit-preview-toggle': 'project-file-test',
   'diagnostic': 'auto-exec-test',
   'diagnostic-project-selection': 'impl-test',
   'document-review-ui-states': 'doc-review-ui-test',
@@ -46,7 +48,10 @@ const fixtureOverrides: Record<string, string> = {
   'parsed-log-entry-display': 'auto-exec-test',
   'permission-control': 'permission-control-test',
   'project-docs-viewer': 'docs-viewer-test',
+  'project-file-editing': 'project-file-test',
+  'file-change-dialogs': 'project-file-test',
   'remote-webserver': 'bugs-pane-test',
+  'schedule-type-settings': 'auto-exec-test',
   'simple-auto-execution': 'auto-exec-test',
   'worktree-execution': 'worktree-exec-test',
   'worktree-spec-sync': 'worktree-spec-sync-test',

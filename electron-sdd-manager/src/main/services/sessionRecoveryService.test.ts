@@ -9,7 +9,16 @@ import { mkdtemp, rm, readFile, mkdir, writeFile, access } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { SessionRecoveryService } from './sessionRecoveryService';
+import { MetricsFileWriter } from './metricsFileWriter';
 import type { SessionTempData } from '../types/metrics';
+import type { ProjectLoggerService } from './projectLogger';
+
+const mockLogger: ProjectLoggerService = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+} as any;
 
 describe('SessionRecoveryService', () => {
   let tempDir: string;
@@ -17,7 +26,8 @@ describe('SessionRecoveryService', () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'session-recovery-test-'));
-    service = new SessionRecoveryService();
+    const writer = new MetricsFileWriter(mockLogger);
+    service = new SessionRecoveryService(mockLogger, writer);
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2025-01-15T14:00:00.000Z'));
   });

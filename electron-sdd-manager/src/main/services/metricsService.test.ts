@@ -9,7 +9,17 @@ import { mkdtemp, rm, readFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { MetricsService } from './metricsService';
+import { MetricsFileWriter } from './metricsFileWriter';
+import { MetricsFileReader } from './metricsFileReader';
 import type { HumanSessionData } from '../types/metrics';
+import type { ProjectLoggerService } from './projectLogger';
+
+const mockLogger: ProjectLoggerService = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+} as any;
 
 describe('MetricsService', () => {
   let tempDir: string;
@@ -17,7 +27,9 @@ describe('MetricsService', () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'metrics-service-test-'));
-    service = new MetricsService();
+    const writer = new MetricsFileWriter(mockLogger);
+    const reader = new MetricsFileReader(mockLogger);
+    service = new MetricsService(mockLogger, writer, reader);
     // Initialize project path for the service
     service.setProjectPath(tempDir);
     // Mock timers
@@ -54,7 +66,7 @@ describe('MetricsService', () => {
     });
 
     it('should do nothing when project path is not set', async () => {
-      const serviceWithoutPath = new MetricsService();
+      const serviceWithoutPath = new MetricsService(mockLogger, new MetricsFileWriter(mockLogger), new MetricsFileReader(mockLogger));
       await serviceWithoutPath.recordAiSessionFromFile(
         'test-spec', 
         'requirements', 
@@ -422,7 +434,7 @@ describe('MetricsService', () => {
     });
 
     it('should return zeros when no project path is set', async () => {
-      const serviceWithoutPath = new MetricsService();
+      const serviceWithoutPath = new MetricsService(mockLogger, new MetricsFileWriter(mockLogger), new MetricsFileReader(mockLogger));
 
       const projectMetrics = await serviceWithoutPath.getProjectMetrics();
 

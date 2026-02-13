@@ -212,6 +212,12 @@ vi.mock('../../shared/components/ui', () => ({
 }));
 
 vi.mock('../../shared/stores/bugAutoExecutionStore', () => ({
+  useBugAutoExecutionStore: vi.fn(() => ({
+    isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle',
+    lastFailedPhase: null,
+  })),
   initBugAutoExecutionWebSocketListeners: () => () => {},
 }));
 

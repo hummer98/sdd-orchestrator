@@ -10,6 +10,14 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { MetricsFileReader } from './metricsFileReader';
 import type { AiMetricRecord, HumanMetricRecord, LifecycleMetricRecord } from '../types/metrics';
+import type { ProjectLoggerService } from './projectLogger';
+
+const mockLogger: ProjectLoggerService = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+} as any;
 
 describe('MetricsFileReader', () => {
   let tempDir: string;
@@ -17,7 +25,7 @@ describe('MetricsFileReader', () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'metrics-reader-test-'));
-    reader = new MetricsFileReader();
+    reader = new MetricsFileReader(mockLogger);
   });
 
   afterEach(async () => {

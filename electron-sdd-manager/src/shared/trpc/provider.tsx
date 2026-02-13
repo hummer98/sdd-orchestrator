@@ -29,17 +29,36 @@ interface TRPCProviderProps {
 }
 
 /**
+ * Module-level cache to ensure ipcLink() is called exactly once.
+ * React StrictMode in dev mode invokes useState initializers twice,
+ * which would create multiple ipcLink instances and cause requestId
+ * collisions (electron-trpc Issue #201).
+ */
+let cachedTRPCClient: ReturnType<typeof trpc.createClient> | null = null;
+let clientInitAttempted = false;
+
+/**
  * Attempt to create a tRPC client with ipcLink.
  * Returns null if electronTRPC global is not available (Remote UI environment).
  * When successful, shares the TRPCClient with vanillaClient via setSharedClient().
+ *
+ * Uses module-level cache to guarantee a single ipcLink() call regardless of
+ * React StrictMode double-invocation of useState initializers.
  */
 function createTRPCClient() {
+  // Return cached client if already created (StrictMode guard)
+  if (clientInitAttempted) {
+    return cachedTRPCClient;
+  }
+  clientInitAttempted = true;
+
   try {
     const client = trpc.createClient({
       links: [ipcLink()],
     });
     // Share the TRPCClient with vanillaClient for singleton IPC
     setSharedClient(client);
+    cachedTRPCClient = client;
     return client;
   } catch {
     // electronTRPC global not available (Remote UI environment)

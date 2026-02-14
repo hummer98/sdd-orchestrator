@@ -25,6 +25,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestCaller, createMockServices } from '../helpers/test-helpers';
 
+// Mock module-level getCurrentProjectPath and getAutoExecutionCoordinator
+// used by updateApproval, updateSpecJson, syncSpecPhase, setInspectionAutoExecutionFlag, etc.
+const mockGetCurrentProjectPath = vi.fn().mockReturnValue('/test/project');
+const mockAutoExecutionCoordinator = {
+  setInspectionAutoExecutionFlag: vi.fn(),
+};
+
+vi.mock('../helpers/projectSetup', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../helpers/projectSetup')>();
+  return {
+    ...original,
+    getCurrentProjectPath: (...args: unknown[]) => mockGetCurrentProjectPath(...args),
+    getAutoExecutionCoordinator: () => mockAutoExecutionCoordinator,
+  };
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetCurrentProjectPath.mockReturnValue('/test/project');
+});
+
 describe('Spec Router (spec.ts)', () => {
   // ============================================================
   // Spec CRUD procedures
@@ -63,7 +84,7 @@ describe('Spec Router (spec.ts)', () => {
       );
     });
 
-    it('should throw on fileService failure', async () => {
+    it('should return error result on fileService failure (no throw)', async () => {
       const mockFileService = {
         createSpec: vi.fn().mockResolvedValue({
           ok: false,
@@ -73,13 +94,14 @@ describe('Spec Router (spec.ts)', () => {
 
       const caller = createTestCaller({ fileService: mockFileService });
 
-      await expect(
-        caller.spec.create({
-          projectPath: '/test/project',
-          specName: 'my-feature',
-          description: 'Test feature',
-        }),
-      ).rejects.toThrow();
+      // The router returns the Result directly without throwing on error
+      const result = await caller.spec.create({
+        projectPath: '/test/project',
+        specName: 'my-feature',
+        description: 'Test feature',
+      });
+
+      expect(result.ok).toBe(false);
     });
 
     it('should reject empty specName', async () => {
@@ -123,6 +145,8 @@ describe('Spec Router (spec.ts)', () => {
     });
 
     it('should throw when project not selected', async () => {
+      mockGetCurrentProjectPath.mockReturnValue(null);
+
       const caller = createTestCaller({
         getCurrentProjectPath: vi.fn().mockReturnValue(null),
       });
@@ -133,7 +157,7 @@ describe('Spec Router (spec.ts)', () => {
           phase: 'requirements',
           approved: true,
         }),
-      ).rejects.toThrow('Project not selected');
+      ).rejects.toThrow('No project selected');
     });
   });
 
@@ -440,13 +464,13 @@ describe('Spec Router (spec.ts)', () => {
   // ============================================================
 
   describe('executeSpecInit', () => {
-    it('should start spec init agent via specManagerService', async () => {
-      const mockStartAgent = vi.fn().mockResolvedValue({
+    it('should execute spec init via specManagerService.execute', async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
         ok: true,
         value: { agentId: 'agent-020' },
       });
       const mockSpecManager = {
-        startAgent: mockStartAgent,
+        execute: mockExecute,
       };
 
       const caller = createTestCaller({
@@ -454,93 +478,78 @@ describe('Spec Router (spec.ts)', () => {
       });
 
       const result = await caller.spec.executeSpecInit({
-        projectPath: '/test/project',
+        specId: 'test-spec',
+        featureName: 'test-feature',
         description: 'New feature description',
       });
 
       expect(result).toEqual({ agentId: 'agent-020' });
-      expect(mockStartAgent).toHaveBeenCalledWith(
+      expect(mockExecute).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: '',
-          phase: 'spec-init',
-          group: 'doc',
-          engineId: 'claude',
+          type: 'requirements',
+          specId: 'test-spec',
+          featureName: 'test-feature',
+          commandPrefix: 'kiro',
         }),
       );
     });
 
-    it('should support worktreeMode flag', async () => {
-      const mockStartAgent = vi.fn().mockResolvedValue({
-        ok: true,
-        value: { agentId: 'agent-021' },
+    it('should throw on execute failure', async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
+        ok: false,
+        error: { type: 'SPAWN_ERROR', message: 'Process failed' },
       });
-      const mockSpecManager = { startAgent: mockStartAgent };
+      const mockSpecManager = { execute: mockExecute };
 
       const caller = createTestCaller({
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
       });
 
-      await caller.spec.executeSpecInit({
-        projectPath: '/test/project',
-        description: 'Feature',
-        worktreeMode: true,
-      });
-
-      expect(mockStartAgent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          args: expect.arrayContaining([expect.stringContaining('--worktree')]),
+      await expect(
+        caller.spec.executeSpecInit({
+          specId: 'test-spec',
+          featureName: 'test-feature',
+          description: 'Feature',
         }),
-      );
+      ).rejects.toThrow();
     });
 
-    it('should support commandPrefix parameter', async () => {
-      const mockStartAgent = vi.fn().mockResolvedValue({
-        ok: true,
-        value: { agentId: 'agent-022' },
-      });
-      const mockSpecManager = { startAgent: mockStartAgent };
-
-      const caller = createTestCaller({
-        getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
-      });
-
-      await caller.spec.executeSpecInit({
-        projectPath: '/test/project',
-        description: 'Feature',
-        commandPrefix: 'spec-manager',
-      });
-
-      expect(mockStartAgent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          args: expect.arrayContaining([expect.stringContaining('/spec-manager:init')]),
-        }),
-      );
+    it('should reject missing required fields', async () => {
+      const caller = createTestCaller();
+      await expect(
+        caller.spec.executeSpecInit({
+          specId: 'test-spec',
+          featureName: 'test-feature',
+          // description is missing
+        } as any),
+      ).rejects.toThrow();
     });
   });
 
   describe('executeSpecPlan', () => {
-    it('should start spec plan agent via specManagerService', async () => {
-      const mockStartAgent = vi.fn().mockResolvedValue({
+    it('should execute spec plan via specManagerService.execute', async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
         ok: true,
         value: { agentId: 'agent-030' },
       });
-      const mockSpecManager = { startAgent: mockStartAgent };
+      const mockSpecManager = { execute: mockExecute };
 
       const caller = createTestCaller({
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
       });
 
       const result = await caller.spec.executeSpecPlan({
-        projectPath: '/test/project',
-        description: 'Plan description',
+        specId: 'test-spec',
+        featureName: 'test-feature',
       });
 
       expect(result).toEqual({ agentId: 'agent-030' });
-      expect(mockStartAgent).toHaveBeenCalledWith(
+      expect(mockExecute).toHaveBeenCalledWith(
         expect.objectContaining({
-          specId: '',
-          phase: 'spec-plan',
-          group: 'doc',
+          type: 'design',
+          specId: 'test-spec',
+          featureName: 'test-feature',
+          commandPrefix: 'kiro',
         }),
       );
     });
@@ -552,12 +561,12 @@ describe('Spec Router (spec.ts)', () => {
   // ============================================================
 
   describe('executeAskSpec', () => {
-    it('should start ask-spec agent via specManagerService', async () => {
-      const mockStartAgent = vi.fn().mockResolvedValue({
+    it('should execute ask-spec via specManagerService.execute', async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
         ok: true,
         value: { agentId: 'agent-040' },
       });
-      const mockSpecManager = { startAgent: mockStartAgent };
+      const mockSpecManager = { execute: mockExecute };
 
       const caller = createTestCaller({
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
@@ -566,15 +575,15 @@ describe('Spec Router (spec.ts)', () => {
       const result = await caller.spec.executeAskSpec({
         specId: 'my-spec',
         featureName: 'my-feature',
-        prompt: 'What is the status?',
+        question: 'What is the status?',
       });
 
       expect(result).toEqual({ agentId: 'agent-040' });
-      expect(mockStartAgent).toHaveBeenCalledWith(
+      expect(mockExecute).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: 'my-spec',
-          phase: 'ask',
-          group: 'doc',
+          featureName: 'my-feature',
+          commandPrefix: 'kiro',
         }),
       );
     });
@@ -641,38 +650,32 @@ describe('Spec Router (spec.ts)', () => {
   });
 
   describe('setInspectionAutoExecutionFlag', () => {
-    it('should set inspection flag via specManagerService', async () => {
-      const mockSetFlag = vi.fn().mockResolvedValue(undefined);
-      const mockSpecManager = {
-        setInspectionAutoExecutionFlag: mockSetFlag,
-      };
-
-      const caller = createTestCaller({
-        getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
-      });
+    it('should set inspection flag via coordinator', async () => {
+      const caller = createTestCaller();
 
       await caller.spec.setInspectionAutoExecutionFlag({
-        specPath: '/test/.kiro/specs/test',
-        flag: 'run',
+        specName: 'test-spec',
+        enabled: true,
       });
 
-      expect(mockSetFlag).toHaveBeenCalledWith('/test/.kiro/specs/test', 'run');
+      expect(mockAutoExecutionCoordinator.setInspectionAutoExecutionFlag).toHaveBeenCalledWith(
+        '/test/project/.kiro/specs/test-spec',
+        true,
+      );
     });
 
-    it('should accept pause flag', async () => {
-      const mockSetFlag = vi.fn().mockResolvedValue(undefined);
-      const mockSpecManager = { setInspectionAutoExecutionFlag: mockSetFlag };
-
-      const caller = createTestCaller({
-        getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
-      });
+    it('should accept enabled=false', async () => {
+      const caller = createTestCaller();
 
       await caller.spec.setInspectionAutoExecutionFlag({
-        specPath: '/test/.kiro/specs/test',
-        flag: 'pause',
+        specName: 'test-spec',
+        enabled: false,
       });
 
-      expect(mockSetFlag).toHaveBeenCalledWith('/test/.kiro/specs/test', 'pause');
+      expect(mockAutoExecutionCoordinator.setInspectionAutoExecutionFlag).toHaveBeenCalledWith(
+        '/test/project/.kiro/specs/test-spec',
+        false,
+      );
     });
   });
 
@@ -695,7 +698,6 @@ describe('Spec Router (spec.ts)', () => {
 
       const result = await caller.spec.executeSpecMerge({
         specId: 'test-spec',
-        featureName: 'test-feature',
       });
 
       expect(result).toEqual({ agentId: 'agent-060' });
@@ -777,7 +779,7 @@ describe('Spec Router (spec.ts)', () => {
         getCurrentProjectPath: vi.fn().mockReturnValue(null),
       });
 
-      const result = await caller.spec.parseTasksForParallel({ specName: 'test' });
+      const result = await caller.spec.parseTasksForParallel({ featureName: 'test' });
       expect(result).toBeNull();
     });
 
@@ -791,7 +793,7 @@ describe('Spec Router (spec.ts)', () => {
 
       const caller = createTestCaller({ fileService: mockFileService });
 
-      const result = await caller.spec.parseTasksForParallel({ specName: 'nonexistent' });
+      const result = await caller.spec.parseTasksForParallel({ featureName: 'nonexistent' });
       expect(result).toBeNull();
     });
   });
@@ -814,7 +816,7 @@ describe('Spec Router (spec.ts)', () => {
       });
 
       const result = await caller.spec.executeProjectCommand({
-        projectPath: '/test/project',
+        specId: '',
         command: '/kiro:steering',
         title: 'Steering',
       });
@@ -823,9 +825,9 @@ describe('Spec Router (spec.ts)', () => {
       expect(mockStartAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: '',
-          phase: 'Steering',
+          phase: 'project-command',
           args: ['/kiro:steering'],
-          group: 'doc',
+          group: 'project',
           engineId: 'claude',
         }),
       );
@@ -835,7 +837,7 @@ describe('Spec Router (spec.ts)', () => {
       const caller = createTestCaller();
       await expect(
         caller.spec.executeProjectCommand({
-          projectPath: '/test/project',
+          specId: '',
           command: '',
           title: 'Test',
         }),
@@ -846,7 +848,7 @@ describe('Spec Router (spec.ts)', () => {
       const caller = createTestCaller();
       await expect(
         caller.spec.executeProjectCommand({
-          projectPath: '/test/project',
+          specId: '',
           command: '/kiro:steering',
           title: '',
         }),
@@ -866,7 +868,7 @@ describe('Spec Router (spec.ts)', () => {
 
       await expect(
         caller.spec.executeProjectCommand({
-          projectPath: '/test/project',
+          specId: '',
           command: '/kiro:steering',
           title: 'Steering',
         }),
@@ -900,7 +902,7 @@ describe('Spec Router (spec.ts)', () => {
       const result = await caller.spec.confirmCommonCommands({
         projectPath: '/test/project',
         decisions: [
-          { name: 'cmd1', action: 'overwrite' },
+          { name: 'cmd1', action: 'install' },
           { name: 'cmd2', action: 'skip' },
         ],
       });
@@ -911,18 +913,20 @@ describe('Spec Router (spec.ts)', () => {
         expect(result.value.totalSkipped).toBe(1);
       }
       expect(mockConfirm).toHaveBeenCalledWith('/test/project', [
-        { name: 'cmd1', action: 'overwrite' },
+        { name: 'cmd1', action: 'install' },
         { name: 'cmd2', action: 'skip' },
       ]);
     });
 
     it('should throw if confirmCommonCommands service not initialized', async () => {
-      const caller = createTestCaller();
+      const caller = createTestCaller({
+        confirmCommonCommands: undefined as any,
+      });
 
       await expect(
         caller.spec.confirmCommonCommands({
           projectPath: '/test/project',
-          decisions: [{ name: 'cmd1', action: 'overwrite' }],
+          decisions: [{ name: 'cmd1', action: 'install' }],
         }),
       ).rejects.toThrow('confirmCommonCommands service not initialized');
     });
@@ -971,9 +975,7 @@ describe('Spec Router (spec.ts)', () => {
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
       });
 
-      const result = await caller.spec.generateVerificationMd({
-        projectPath: '/test/project',
-      });
+      const result = await caller.spec.generateVerificationMd({});
 
       expect(result).toEqual({ agentId: 'agent-080' });
       expect(mockStartAgent).toHaveBeenCalledWith(
@@ -1013,16 +1015,14 @@ describe('Spec Router (spec.ts)', () => {
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
       });
 
-      const result = await caller.spec.generateReleaseMd({
-        projectPath: '/test/project',
-      });
+      const result = await caller.spec.generateReleaseMd({});
 
       expect(result).toEqual({ agentId: 'agent-090' });
       expect(mockStartAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: '',
-          phase: 'generate-release',
-          args: ['/kiro:generate-release'],
+          phase: 'release-md',
+          args: ['/kiro:release-md'],
           group: 'doc',
           engineId: 'claude',
         }),

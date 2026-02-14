@@ -206,10 +206,15 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
-      expect(queuedTasks[0].taskId).toBe('interval-task');
-      expect(queuedTasks[0].reason).toBe('schedule');
+      // After scheduler tick, checkScheduleConditions + processQueue run in sequence.
+      // Task was queued and then immediately processed (no avoidance, no waitForIdle).
+      // Verify via onTaskQueued callback that the task was indeed queued.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'interval-task',
+          reason: 'schedule',
+        })
+      );
     });
 
     it('should NOT queue task when hoursInterval has NOT passed', async () => {
@@ -257,9 +262,13 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
-      expect(queuedTasks[0].taskId).toBe('never-executed');
+      // Task was queued then immediately processed by processQueue in the same tick.
+      // Verify via onTaskQueued callback.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'never-executed',
+        })
+      );
     });
   });
 
@@ -292,10 +301,13 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
-      expect(queuedTasks[0].taskId).toBe('weekly-task');
-      expect(queuedTasks[0].reason).toBe('schedule');
+      // Task was queued and immediately processed. Verify via callback.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'weekly-task',
+          reason: 'schedule',
+        })
+      );
     });
 
     it('should NOT queue task when day does not match', async () => {
@@ -378,8 +390,10 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
+      // Task was queued and immediately processed. Verify via callback.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 'multi-day-task' })
+      );
     });
 
     it('should NOT queue weekly task if already executed this hour', async () => {
@@ -439,10 +453,13 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
-      expect(queuedTasks[0].taskId).toBe('idle-task');
-      expect(queuedTasks[0].reason).toBe('idle');
+      // Task was queued and immediately processed. Verify via callback.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'idle-task',
+          reason: 'idle',
+        })
+      );
     });
 
     it('should NOT queue task when idle time is less than idleMinutes', async () => {
@@ -489,8 +506,10 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
+      // Task was queued and immediately processed. Verify via callback.
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 'idle-task' })
+      );
     });
   });
 
@@ -594,16 +613,19 @@ describe('ScheduleTaskCoordinator', () => {
 
     it('should clear queue on clearQueue()', async () => {
       const now = Date.now();
+      // Use waitForIdle: true so the task stays in the queue after processQueue
       const task = createMockTask({
         id: 'clear-test',
         schedule: {
           type: 'interval',
           hoursInterval: 1,
-          waitForIdle: false,
+          waitForIdle: true,
         },
         lastExecutedAt: now - 2 * 60 * 60 * 1000,
       });
 
+      // Not idle - so waitForIdle tasks remain in queue
+      mockDeps.getIdleTimeMs = vi.fn().mockReturnValue(0);
       mockDeps.getAllTasks = vi.fn().mockResolvedValue([task]);
 
       coordinator = new ScheduleTaskCoordinator('/project/path', mockDeps);
@@ -697,15 +719,18 @@ describe('ScheduleTaskCoordinator', () => {
   describe('dispose', () => {
     it('should stop scheduler and clear state on dispose', async () => {
       const now = Date.now();
+      // Use waitForIdle: true so the task stays in the queue after processQueue
       const task = createMockTask({
         schedule: {
           type: 'interval',
           hoursInterval: 1,
-          waitForIdle: false,
+          waitForIdle: true,
         },
         lastExecutedAt: now - 2 * 60 * 60 * 1000,
       });
 
+      // Not idle - so waitForIdle tasks remain in queue
+      mockDeps.getIdleTimeMs = vi.fn().mockReturnValue(0);
       mockDeps.getAllTasks = vi.fn().mockResolvedValue([task]);
 
       coordinator = new ScheduleTaskCoordinator('/project/path', mockDeps);
@@ -949,14 +974,13 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      // Task should be queued
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
+      // After tick: checkScheduleConditions queued the task, then processQueue skipped it.
+      // Task should be queued (verified via callback) and then skipped (removed from queue).
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 'skip-behavior-task' })
+      );
 
-      // Try to process queue - should skip
-      await coordinator.processQueue();
-
-      // Task should be removed from queue (skipped)
+      // Task should be removed from queue (skipped by processQueue during the tick)
       expect(coordinator.getQueuedTasks()).toHaveLength(0);
 
       // onTaskSkipped should be called
@@ -1129,12 +1153,8 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      // Task should be queued
-      expect(coordinator.getQueuedTasks()).toHaveLength(1);
-
-      // Process queue - should execute
-      await coordinator.processQueue();
-
+      // After tick: task was queued and immediately processed (no avoidance, no waitForIdle).
+      // processQueue already ran as part of the scheduler tick.
       // onTaskStarted should be called
       expect(mockDeps.onTaskStarted).toHaveBeenCalledWith(
         'execute-condition-task',
@@ -1215,13 +1235,17 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      // Task should be queued without waitingForIdle
-      const queuedTasks = coordinator.getQueuedTasks();
-      expect(queuedTasks).toHaveLength(1);
-      expect(queuedTasks[0].waitingForIdle).toBeFalsy();
+      // Task was queued without waitingForIdle (verified via callback)
+      expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'no-wait-task',
+        })
+      );
+      // waitingForIdle should be falsy (false or undefined)
+      const queuedArg = (mockDeps.onTaskQueued as ReturnType<typeof vi.fn>).mock.calls[0][0] as QueuedTask;
+      expect(queuedArg.waitingForIdle).toBeFalsy();
 
-      // Process queue - should execute even though not idle
-      await coordinator.processQueue();
+      // processQueue already ran during the tick - should have executed even though not idle
       expect(mockDeps.onTaskStarted).toHaveBeenCalled();
     });
   });
@@ -1257,14 +1281,9 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
       await advanceSchedulerTick();
 
-      // Both tasks should be queued
-      expect(coordinator.getQueuedTasks()).toHaveLength(2);
-
-      // Process queue
-      await coordinator.processQueue();
-
-      // task-1 should still be waiting (spec-merge conflict)
-      // task-2 should have been executed (no conflict)
+      // After tick: both tasks were queued, then processQueue ran.
+      // task-2 (no conflict) was executed and removed from queue.
+      // task-1 (spec-merge conflict) is still waiting in queue.
       const remainingTasks = coordinator.getQueuedTasks();
       expect(remainingTasks).toHaveLength(1);
       expect(remainingTasks[0].taskId).toBe('task-1');
@@ -1521,7 +1540,7 @@ describe('ScheduleTaskCoordinator', () => {
 
       it('should pass task info to agent start', async () => {
         const task = createMockTask({
-          agentId: 'agent-info-task',
+          id: 'agent-info-task',
           name: 'my-task',
           workflow: { enabled: false },
           prompts: [{ order: 0, content: '/kiro:steering' }],
@@ -1690,7 +1709,7 @@ describe('ScheduleTaskCoordinator', () => {
     describe('error handling', () => {
       it('should return AGENT_START_FAILED error when agent start fails', async () => {
         const task = createMockTask({
-          agentId: 'agent-fail-task',
+          id: 'agent-fail-task',
           name: 'test-task',
           workflow: { enabled: false },
           prompts: [{ order: 0, content: '/kiro:steering' }],
@@ -1765,16 +1784,19 @@ describe('ScheduleTaskCoordinator', () => {
     describe('task removal during queue processing', () => {
       it('should handle task being deleted while in queue', async () => {
         const now = Date.now();
+        // Use waitForIdle: true so task stays in queue after first processQueue
         const task = createMockTask({
           id: 'deleted-task',
           schedule: {
             type: 'interval',
             hoursInterval: 1,
-            waitForIdle: false,
+            waitForIdle: true,
           },
           lastExecutedAt: now - 2 * 60 * 60 * 1000,
         });
 
+        // Not idle - so waitForIdle tasks remain in queue
+        mockDeps.getIdleTimeMs = vi.fn().mockReturnValue(0);
         // Initially task exists
         mockDeps.getAllTasks = vi.fn().mockResolvedValue([task]);
 
@@ -1784,16 +1806,17 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        // Task is queued
+        // Task is queued (waitingForIdle, so processQueue didn't execute it)
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
 
         // Now simulate task being deleted (getAllTasks returns empty)
+        // Note: cachedTasks is updated by checkScheduleConditions in next tick
+        // We need to manually trigger another tick to update cachedTasks
         mockDeps.getAllTasks = vi.fn().mockResolvedValue([]);
+        await advanceSchedulerTick();
 
-        // Process queue - task should be removed as it no longer exists
-        await coordinator.processQueue();
-
-        // Queue should be empty (deleted task removed)
+        // Queue should be empty (deleted task removed during processQueue since
+        // cachedTasks no longer includes it)
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
       });
     });
@@ -1869,11 +1892,14 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        const queuedTasks = coordinator.getQueuedTasks();
-        expect(queuedTasks).toHaveLength(3);
-        expect(queuedTasks.map((t) => t.taskId)).toContain('multi-1');
-        expect(queuedTasks.map((t) => t.taskId)).toContain('multi-2');
-        expect(queuedTasks.map((t) => t.taskId)).toContain('multi-3');
+        // All 3 tasks were queued and immediately processed. Verify via onTaskQueued.
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledTimes(3);
+        const queuedTaskIds = (mockDeps.onTaskQueued as ReturnType<typeof vi.fn>).mock.calls.map(
+          (call: unknown[]) => (call[0] as QueuedTask).taskId
+        );
+        expect(queuedTaskIds).toContain('multi-1');
+        expect(queuedTaskIds).toContain('multi-2');
+        expect(queuedTaskIds).toContain('multi-3');
       });
     });
 
@@ -1900,8 +1926,10 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        // Should be queued as elapsed time equals interval
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        // Should be queued as elapsed time equals interval. Verify via callback.
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'exact-boundary-task' })
+        );
       });
 
       it('should NOT queue when elapsed time is significantly less than interval', async () => {
@@ -1960,7 +1988,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'sunday-task' })
+        );
       });
 
       it('should handle Saturday (weekday 6)', async () => {
@@ -1987,7 +2017,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'saturday-task' })
+        );
       });
 
       it('should handle midnight (hourOfDay 0)', async () => {
@@ -2013,7 +2045,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'midnight-task' })
+        );
       });
 
       it('should handle 11pm (hourOfDay 23)', async () => {
@@ -2039,7 +2073,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'late-night-task' })
+        );
       });
     });
 
@@ -2064,7 +2100,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'exact-idle-task' })
+        );
       });
 
       it('should NOT queue when idle time is 1ms less than threshold', async () => {
@@ -2110,7 +2148,9 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
         await advanceSchedulerTick();
 
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'one-minute-idle-task' })
+        );
       });
     });
 
@@ -2267,10 +2307,14 @@ describe('ScheduleTaskCoordinator', () => {
         // Simulate user activity ending - idle time starts accumulating
         simulatedIdleMs = 5 * 60 * 1000; // 5 minutes idle
 
-        // Second check: Now idle enough
+        // Second check: Now idle enough - task queued and immediately processed
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
-        expect(coordinator.getQueuedTasks()[0].reason).toBe('idle');
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({
+            taskId: 'idle-integration-task',
+            reason: 'idle',
+          })
+        );
       });
 
       it('should correctly calculate idle time for fixed schedule with waitForIdle option', async () => {
@@ -2345,17 +2389,19 @@ describe('ScheduleTaskCoordinator', () => {
         // Check 1: 3 minutes idle - not enough
         simulatedIdleMs = 3 * 60 * 1000;
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(0);
+        expect(mockDeps.onTaskQueued).not.toHaveBeenCalled();
 
         // Check 2: 6 minutes idle - still not enough
         simulatedIdleMs = 6 * 60 * 1000;
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(0);
+        expect(mockDeps.onTaskQueued).not.toHaveBeenCalled();
 
-        // Check 3: 10 minutes idle - threshold met
+        // Check 3: 10 minutes idle - threshold met, task queued and processed
         simulatedIdleMs = 10 * 60 * 1000;
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'continuous-idle-check' })
+        );
       });
 
       it('should handle idle time reset (user activity resumes)', async () => {
@@ -2384,17 +2430,19 @@ describe('ScheduleTaskCoordinator', () => {
         // Idle time reaches near threshold
         simulatedIdleMs = 4 * 60 * 1000; // 4 minutes
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(0);
+        expect(mockDeps.onTaskQueued).not.toHaveBeenCalled();
 
         // User resumes activity - idle time resets
         simulatedIdleMs = 0;
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(0);
+        expect(mockDeps.onTaskQueued).not.toHaveBeenCalled();
 
-        // Idle time accumulates again to threshold
+        // Idle time accumulates again to threshold - queued and processed
         simulatedIdleMs = 5 * 60 * 1000;
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
+        expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: 'idle-reset-task' })
+        );
       });
     });
 
@@ -2407,7 +2455,7 @@ describe('ScheduleTaskCoordinator', () => {
       it('should execute complete agent startup flow from schedule detection to agent start (Req 5.4)', async () => {
         const now = Date.now();
         const task = createMockTask({
-          agentId: 'agent-flow-task',
+          id: 'agent-flow-task',
           name: 'Integration Test Task',
           schedule: {
             type: 'interval',
@@ -2447,12 +2495,9 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
         coordinator.startScheduler();
 
-        // Step 1: Schedule check detects task is due
+        // Scheduler tick: checkScheduleConditions detects task is due, queues it,
+        // then processQueue executes it immediately (no avoidance, no waitForIdle).
         await advanceSchedulerTick();
-        expect(coordinator.getQueuedTasks()).toHaveLength(1);
-
-        // Step 2: Process queue - should trigger agent start
-        await coordinator.processQueue();
 
         // Verify agent was started with correct parameters
         expect(agentStartCalls).toHaveLength(1);
@@ -2463,7 +2508,7 @@ describe('ScheduleTaskCoordinator', () => {
           promptIndex: 0,
         });
 
-        // Step 3: Task should be removed from queue after execution
+        // Task should be removed from queue after execution
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
       });
 
@@ -2655,7 +2700,7 @@ describe('ScheduleTaskCoordinator', () => {
 
       it('should handle agent start failure gracefully', async () => {
         const task = createMockTask({
-          agentId: 'agent-fail-integration-task',
+          id: 'agent-fail-integration-task',
           prompts: [
             { order: 0, content: '/kiro:first' },
             { order: 1, content: '/kiro:second' },

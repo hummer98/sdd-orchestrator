@@ -351,7 +351,7 @@ describe('BugDetailPage', () => {
   describe('AgentList in Bug tab (Req 4.2, 4.3, 4.4)', () => {
     // Helper to set up mock agents in the store
     const setupMockAgents = (agents: Array<{
-      id: string;
+      agentId: string;
       phase: string;
       status: 'running' | 'completed' | 'failed' | 'interrupted' | 'hang';
       specId?: string;
@@ -359,11 +359,11 @@ describe('BugDetailPage', () => {
       const agentStore = useSharedAgentStore.getState();
       agents.forEach(agent => {
         agentStore.addAgent(agent.specId ?? 'test-bug', {
-          agentId: agent.id,
+          agentId: agent.agentId,
           phase: agent.phase,
           status: agent.status,
           specId: agent.specId ?? 'test-bug',
-          sessionId: `session-${agent.id}`,
+          sessionId: `session-${agent.agentId}`,
           startedAt: new Date().toISOString(),
         });
       });
@@ -445,62 +445,57 @@ describe('BugDetailPage', () => {
       expect(screen.getByTestId('bug-agent-list-empty')).toBeInTheDocument();
     });
 
-    it('should open AgentDetailDrawer when agent is tapped (Req 4.4)', async () => {
+    it('should call onSelectAgent when agent is tapped (mobile-agent-log-fullscreen)', async () => {
       setupMockAgents([
         { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
       ]);
 
+      const onSelectAgent = vi.fn();
       render(
         <BugDetailPage
           bug={mockBug}
           bugDetail={mockBugDetail}
           apiClient={mockApiClient}
           onBack={() => {}}
+          onSelectAgent={onSelectAgent}
         />
       );
 
-      // Find the agent list and click on an agent item
-      const agentList = screen.getByTestId('bug-agent-list');
-      const agentItem = within(agentList).getByRole('listitem');
+      // Find the agent item and click on it
+      const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
 
-      // AgentDetailDrawer should appear
+      // onSelectAgent should be called with the agent info
       await waitFor(() => {
-        expect(screen.getByTestId('agent-detail-drawer')).toBeInTheDocument();
+        expect(onSelectAgent).toHaveBeenCalledWith(
+          expect.objectContaining({ agentId: 'agent-1' })
+        );
       });
     });
 
-    it('should close AgentDetailDrawer when onClose is called (Req 4.4)', async () => {
+    it('should select agent in store when agent is tapped (mobile-agent-log-fullscreen)', async () => {
       setupMockAgents([
         { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
       ]);
 
+      const onSelectAgent = vi.fn();
       render(
         <BugDetailPage
           bug={mockBug}
           bugDetail={mockBugDetail}
           apiClient={mockApiClient}
           onBack={() => {}}
+          onSelectAgent={onSelectAgent}
         />
       );
 
-      // Click on agent to open drawer
-      const agentList = screen.getByTestId('bug-agent-list');
-      const agentItem = within(agentList).getByRole('listitem');
+      // Click on agent item
+      const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
 
-      // Wait for drawer to open
+      // Agent should be selected in store
       await waitFor(() => {
-        expect(screen.getByTestId('agent-detail-drawer')).toBeInTheDocument();
-      });
-
-      // Click close button
-      const closeButton = screen.getByTestId('agent-detail-drawer-close');
-      fireEvent.click(closeButton);
-
-      // Drawer should close
-      await waitFor(() => {
-        expect(screen.queryByTestId('agent-detail-drawer')).not.toBeInTheDocument();
+        expect(useSharedAgentStore.getState().selectedAgentId).toBe('agent-1');
       });
     });
 

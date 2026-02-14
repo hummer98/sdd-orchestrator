@@ -105,10 +105,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'これは新しい機能の説明です',
-          commandPrefix: 'kiro', // default commandPrefix
-          worktreeMode: false, // default worktreeMode
+          specId: '',
+          featureName: 'これは新しい機能の説明です',
         });
       });
     });
@@ -127,12 +125,11 @@ describe('CreateSpecDialog', () => {
       const button = screen.getByRole('button', { name: /spec-planで作成/i });
       fireEvent.click(button);
 
+      // commandPrefix is no longer passed to the new tRPC API
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'これは新しい機能の説明です',
-          commandPrefix: 'spec-manager',
-          worktreeMode: false, // default worktreeMode
+          specId: '',
+          featureName: 'これは新しい機能の説明です',
         });
       });
     });
@@ -394,10 +391,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'プランニングしたい機能の説明',
-          commandPrefix: 'kiro',
-          worktreeMode: false, // default worktreeMode
+          specId: '',
+          featureName: 'プランニングしたい機能の説明',
         });
       });
     });
@@ -415,12 +410,11 @@ describe('CreateSpecDialog', () => {
       const button = screen.getByRole('button', { name: /spec-planで作成/i });
       fireEvent.click(button);
 
+      // commandPrefix is no longer passed to the new tRPC API
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'プランニングしたい機能の説明',
-          commandPrefix: 'spec-manager',
-          worktreeMode: false, // default worktreeMode
+          specId: '',
+          featureName: 'プランニングしたい機能の説明',
         });
       });
     });
@@ -614,12 +608,11 @@ describe('CreateSpecDialog', () => {
       const button = screen.getByRole('button', { name: /spec-planで作成/i });
       fireEvent.click(button);
 
+      // worktreeMode is no longer passed to the new tRPC API
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'Worktreeモードで作成する機能',
-          commandPrefix: 'kiro',
-          worktreeMode: true, // worktreeMode enabled
+          specId: '',
+          featureName: 'Worktreeモードで作成する機能',
         });
       });
     });
@@ -671,10 +664,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: '新しい機能の説明',
-          commandPrefix: 'kiro',
-          worktreeMode: false,
+          specId: '',
+          featureName: '新しい機能の説明',
         });
       });
     });
@@ -787,10 +778,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: '新しい機能の説明',
-          commandPrefix: 'kiro',
-          worktreeMode: false,
+          specId: '',
+          featureName: '新しい機能の説明',
         });
       });
     });
@@ -806,10 +795,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: '新しい機能の説明',
-          commandPrefix: 'kiro',
-          worktreeMode: false,
+          specId: '',
+          featureName: '新しい機能の説明',
         });
       });
     });
@@ -879,10 +866,8 @@ describe('CreateSpecDialog', () => {
 
       await waitFor(() => {
         expect(mockVanillaClient.spec.executeSpecPlan.mutate).toHaveBeenCalledWith({
-          projectPath: '/test/project',
-          description: 'Worktreeモードで作成',
-          commandPrefix: 'kiro',
-          worktreeMode: true, // worktreeMode enabled
+          specId: '',
+          featureName: 'Worktreeモードで作成',
         });
       });
     });

@@ -61,9 +61,9 @@ describe('CommandsetInstallDialog', () => {
     it('should display all profile options', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      // Check that all three radio buttons exist (one for each profile)
+      // Check that all profile radio buttons exist (cc-sdd and cc-sdd-agent)
       const radioButtons = screen.getAllByRole('radio');
-      expect(radioButtons.length).toBe(3);
+      expect(radioButtons.length).toBe(2);
     });
 
     it('should display profile descriptions', () => {
@@ -71,7 +71,6 @@ describe('CommandsetInstallDialog', () => {
 
       expect(screen.getByText(/cc-sdd workflow commands/)).toBeInTheDocument();
       expect(screen.getByText(/cc-sdd-agent commands with agents/)).toBeInTheDocument();
-      expect(screen.getByText(/spec-manager commands/)).toBeInTheDocument();
     });
   });
 
@@ -373,12 +372,12 @@ describe('CommandsetInstallDialog', () => {
 
   describe('E2E/UI Tests (Task 13.3)', () => {
     describe('Profile selection dialog display and operation', () => {
-      it('should display all three profile options', () => {
+      it('should display all profile options', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
-        // Check that all three radio buttons exist (one for each profile)
+        // Check that all profile radio buttons exist (cc-sdd and cc-sdd-agent)
         const radioButtons = screen.getAllByRole('radio');
-        expect(radioButtons.length).toBe(3);
+        expect(radioButtons.length).toBe(2);
       });
 
       it('should show recommended label on cc-sdd profile', () => {
@@ -404,18 +403,18 @@ describe('CommandsetInstallDialog', () => {
       it('should allow switching between profiles', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
-        // Click on spec-manager profile
-        const specManagerOption = screen.getByRole('radio', { name: /spec-manager/ });
-        fireEvent.click(specManagerOption);
-        expect(specManagerOption).toBeChecked();
+        // Click on cc-sdd-agent profile
+        const ccSddAgentOption = screen.getByRole('radio', { name: /cc-sdd-agent/ });
+        fireEvent.click(ccSddAgentOption);
+        expect(ccSddAgentOption).toBeChecked();
 
         // Click on cc-sdd profile
         const ccSddOption = screen.getByRole('radio', { name: /^cc-sdd$/ });
         fireEvent.click(ccSddOption);
         expect(ccSddOption).toBeChecked();
 
-        // spec-manager should no longer be checked
-        expect(specManagerOption).not.toBeChecked();
+        // cc-sdd-agent should no longer be checked
+        expect(ccSddAgentOption).not.toBeChecked();
       });
     });
 

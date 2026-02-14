@@ -15,15 +15,15 @@ vi.mock('../../shared/stores/bugStore', () => ({
 
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 
-// Mock child components - BugPane now uses shared ArtifactEditor with testId="bug-artifact-editor"
-vi.mock('./ArtifactEditor', () => ({
-  ArtifactEditor: ({ testId }: { testId?: string }) => (
-    <div data-testid={testId || 'artifact-editor'}>ArtifactEditor</div>
+// Mock child components - BugPane now uses CenterPaneContainer instead of ArtifactEditor directly
+vi.mock('./CenterPaneContainer', () => ({
+  CenterPaneContainer: () => (
+    <div data-testid="bug-artifact-editor">CenterPaneContainer</div>
   ),
 }));
 
-vi.mock('./BugAgentListPanel', () => ({
-  BugAgentListPanel: () => <div data-testid="bug-agent-list-panel">BugAgentListPanel</div>,
+vi.mock('./AgentListPanel', () => ({
+  AgentListPanel: ({ testId }: { testId?: string }) => <div data-testid={testId || 'agent-list-panel'}>AgentListPanel</div>,
 }));
 
 vi.mock('./BugWorkflowView', () => ({

@@ -88,6 +88,15 @@ describe('Task 11.4: window.electronAPI全削除とIpcApiClient物理削除', ()
           ) {
             continue;
           }
+          // Skip lines where window.electronAPI only appears inside string literals
+          // (e.g., console.info('... window.electronAPI ...'))
+          const withoutStrings = trimmed
+            .replace(/'[^']*'/g, '')
+            .replace(/"[^"]*"/g, '')
+            .replace(/`[^`]*`/g, '');
+          if (!withoutStrings.includes('window.electronAPI')) {
+            continue;
+          }
           // Check for window.electronAPI in executable code
           if (line.includes('window.electronAPI')) {
             filesWithReference.push(

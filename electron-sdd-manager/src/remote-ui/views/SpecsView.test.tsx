@@ -204,7 +204,8 @@ describe('SpecsView', () => {
       );
 
       await waitFor(() => {
-        const selectedItem = screen.getByTestId('spec-item-user-authentication');
+        // remote-ui uses remote-spec-item-{name} testid wrapper
+        const selectedItem = screen.getByTestId('remote-spec-item-user-authentication');
         expect(selectedItem).toBeInTheDocument();
         // The item should have selected styling (check for blue background class)
         expect(selectedItem.querySelector('[class*="bg-blue"]')).toBeInTheDocument();

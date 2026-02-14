@@ -123,9 +123,9 @@ Protocol description.
         await createValidCommandFile(cmd);
       }
 
-      // Create all required agent files (must match CC_SDD_AGENTS - 14 types)
+      // Create all required agent files (must match CC_SDD_AGENTS - 15 types)
       const agents = [
-        'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
+        'spec-design', 'spec-impl', 'spec-auto-impl-worker', 'spec-requirements', 'spec-tasks',
         'steering', 'steering-custom', 'steering-verification',
         'generate-release',
         'spec-inspection',

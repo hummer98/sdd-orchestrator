@@ -615,6 +615,7 @@ describe('ArtifactEditor', () => {
           { start: 10, end: 14 },
         ];
 
+        // Prevent loadArtifact from resetting search state on mount
         useEditorStore.setState({
           mode: 'edit',
           searchVisible: true,
@@ -622,6 +623,8 @@ describe('ArtifactEditor', () => {
           matches: testMatches,
           activeMatchIndex: 1,
           content: 'test hello test',
+          currentPath: 'test-feature:requirements',
+          loadArtifact: vi.fn(),
         });
 
         render(

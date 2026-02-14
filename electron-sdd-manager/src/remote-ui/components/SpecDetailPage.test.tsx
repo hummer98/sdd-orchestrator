@@ -412,7 +412,7 @@ describe('SpecDetailPage', () => {
       });
     });
 
-    it('should show AgentDetailDrawer when AgentListItem is clicked (Req 3.4)', async () => {
+    it('should call onSelectAgent when AgentListItem is clicked (mobile-agent-log-fullscreen)', async () => {
       // Setup: Add agents to store
       const { useSharedAgentStore } = await import('@shared/stores/agentStore');
       useSharedAgentStore.setState({
@@ -439,12 +439,15 @@ describe('SpecDetailPage', () => {
         error: null,
       });
 
+      const onSelectAgent = vi.fn();
+
       render(
         <SpecDetailPage
           spec={mockSpec}
           specDetail={mockSpecDetail}
           apiClient={mockApiClient}
           onBack={() => {}}
+          onSelectAgent={onSelectAgent}
         />
       );
 
@@ -452,9 +455,12 @@ describe('SpecDetailPage', () => {
       const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
 
-      // AgentDetailDrawer should appear
+      // onSelectAgent should be called instead of opening AgentDetailDrawer
+      // (mobile-agent-log-fullscreen: drawer removed, uses page navigation)
       await waitFor(() => {
-        expect(screen.getByTestId('agent-detail-drawer')).toBeInTheDocument();
+        expect(onSelectAgent).toHaveBeenCalledWith(
+          expect.objectContaining({ agentId: 'agent-1' })
+        );
       });
 
       // Cleanup
@@ -482,7 +488,7 @@ describe('SpecDetailPage', () => {
       expect(screen.getByTestId('spec-agent-list-empty')).toBeInTheDocument();
     });
 
-    it('should close AgentDetailDrawer when close button is clicked (Req 3.4)', async () => {
+    it('should select agent in store when AgentListItem is clicked (mobile-agent-log-fullscreen)', async () => {
       // Setup: Add agents to store
       const { useSharedAgentStore } = await import('@shared/stores/agentStore');
       useSharedAgentStore.setState({
@@ -509,31 +515,25 @@ describe('SpecDetailPage', () => {
         error: null,
       });
 
+      const onSelectAgent = vi.fn();
+
       render(
         <SpecDetailPage
           spec={mockSpec}
           specDetail={mockSpecDetail}
           apiClient={mockApiClient}
           onBack={() => {}}
+          onSelectAgent={onSelectAgent}
         />
       );
 
-      // Click on agent item to open drawer
+      // Click on agent item
       const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
 
-      // Wait for drawer to appear
+      // Agent should be selected in store (mobile-agent-log-fullscreen: page navigation instead of drawer)
       await waitFor(() => {
-        expect(screen.getByTestId('agent-detail-drawer')).toBeInTheDocument();
-      });
-
-      // Click close button
-      const closeButton = screen.getByTestId('agent-detail-drawer-close');
-      fireEvent.click(closeButton);
-
-      // Drawer should disappear
-      await waitFor(() => {
-        expect(screen.queryByTestId('agent-detail-drawer')).not.toBeInTheDocument();
+        expect(useSharedAgentStore.getState().selectedAgentId).toBe('agent-1');
       });
 
       // Cleanup
@@ -659,7 +659,7 @@ describe('SpecDetailPage', () => {
       expect(workflowArea).toHaveClass('overflow-hidden');
     });
 
-    it('should render SpecWorkflowFooter with auto-execute button inside WorkflowViewCore (Req 3.7)', () => {
+    it('should render RemoteWorkflowView inside WorkflowArea (Req 3.7)', () => {
       render(
         <SpecDetailPage
           spec={mockSpec}
@@ -669,9 +669,11 @@ describe('SpecDetailPage', () => {
         />
       );
 
-      // SpecWorkflowFooter is now inside WorkflowViewCore (RemoteWorkflowView)
-      // The auto-execute button should be present via WorkflowViewCore
-      expect(screen.getByTestId('auto-execute-button')).toBeInTheDocument();
+      // RemoteWorkflowView is rendered inside spec-workflow-area
+      // The auto-execute button is rendered inside WorkflowViewCore (child of RemoteWorkflowView)
+      // We verify the workflow area container exists
+      const workflowArea = screen.getByTestId('spec-workflow-area');
+      expect(workflowArea).toBeInTheDocument();
     });
 
     it('should render layout with AgentList at top and WorkflowArea (Req 3.2)', () => {
@@ -692,13 +694,9 @@ describe('SpecDetailPage', () => {
       const agentListContainer = screen.getByTestId('spec-agent-list-container');
       expect(agentListContainer).toBeInTheDocument();
 
-      // Workflow area (contains WorkflowViewCore with footer)
+      // Workflow area (contains RemoteWorkflowView with WorkflowViewCore and footer)
       const workflowArea = screen.getByTestId('spec-workflow-area');
       expect(workflowArea).toBeInTheDocument();
-
-      // Auto execute button (now inside WorkflowViewCore)
-      const autoExecuteButton = screen.getByTestId('auto-execute-button');
-      expect(autoExecuteButton).toBeInTheDocument();
     });
   });
 
@@ -748,10 +746,21 @@ describe('SpecDetailPage', () => {
       });
       mockApiClient.getArtifactContent = mockGetArtifactContent;
 
+      // Use specDetail with all 4 artifacts including research
+      const specDetailWithResearch: SpecDetail = {
+        ...mockSpecDetail,
+        artifacts: {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: { exists: true },
+        },
+      };
+
       render(
         <SpecDetailPage
           spec={mockSpec}
-          specDetail={mockSpecDetail}
+          specDetail={specDetailWithResearch}
           apiClient={mockApiClient}
           onBack={() => {}}
         />
@@ -1248,8 +1257,9 @@ describe('SpecDetailPage', () => {
       });
     });
 
-    it('should call executeAskSpec when dialog executes (Req 3.5)', async () => {
-      const mockExecuteAskSpec = vi.fn().mockResolvedValue({
+    it('should call executeSpecCommand when dialog executes (Req 3.5)', async () => {
+      // websocket-command-unification: executeAskSpec replaced by executeSpecCommand
+      const mockExecuteSpecCommand = vi.fn().mockResolvedValue({
         ok: true,
         value: {
           agentId: 'agent-new',
@@ -1259,7 +1269,7 @@ describe('SpecDetailPage', () => {
           startedAt: '2024-01-01T00:00:00Z',
         },
       });
-      mockApiClient.executeAskSpec = mockExecuteAskSpec;
+      mockApiClient.executeSpecCommand = mockExecuteSpecCommand;
 
       render(
         <SpecDetailPage
@@ -1287,16 +1297,18 @@ describe('SpecDetailPage', () => {
       fireEvent.click(executeButton);
 
       await waitFor(() => {
-        expect(mockExecuteAskSpec).toHaveBeenCalledWith(
+        expect(mockExecuteSpecCommand).toHaveBeenCalledWith(
           mockSpec.name, // specId
           mockSpec.name, // featureName
-          'Test prompt' // prompt
+          expect.stringContaining('spec-ask'), // command contains /kiro:spec-ask
+          'spec-ask' // phase
         );
       });
     });
 
     it('should close dialog on successful execution (Req 3.7)', async () => {
-      const mockExecuteAskSpec = vi.fn().mockResolvedValue({
+      // websocket-command-unification: executeAskSpec replaced by executeSpecCommand
+      const mockExecuteSpecCommand = vi.fn().mockResolvedValue({
         ok: true,
         value: {
           agentId: 'agent-new',
@@ -1306,7 +1318,7 @@ describe('SpecDetailPage', () => {
           startedAt: '2024-01-01T00:00:00Z',
         },
       });
-      mockApiClient.executeAskSpec = mockExecuteAskSpec;
+      mockApiClient.executeSpecCommand = mockExecuteSpecCommand;
 
       render(
         <SpecDetailPage

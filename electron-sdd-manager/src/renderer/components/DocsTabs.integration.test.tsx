@@ -356,8 +356,9 @@ describe('DocsTabs Integration', () => {
     it('should have tab role on tabs', () => {
       render(<DocsTabsWrapper />);
 
+      // project-config-editor: Now includes Project tab (specs, bugs, project)
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(2);
+      expect(tabs).toHaveLength(3);
     });
 
     it('should have tabpanel role on content', () => {

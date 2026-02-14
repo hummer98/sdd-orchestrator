@@ -14,29 +14,26 @@ import { RemoteAccessServer } from './remoteAccessServer';
 import { WebSocketHandler } from './webSocketHandler';
 import { LogBuffer } from './logBuffer';
 import { RateLimiter } from '../utils/rateLimiter';
+import { AccessTokenService } from './accessTokenService';
 
 // Use unique port ranges per test suite to avoid conflicts
 let testPortOffset = 0;
 
 describe('Remote Access Integration Tests (Task 7.1)', () => {
   let server: RemoteAccessServer;
-  let wsHandler: WebSocketHandler;
-  let logBuffer: LogBuffer;
-  let rateLimiter: RateLimiter;
   let basePort: number;
+  let accessToken: string;
 
   beforeEach(() => {
     // Use unique port range per test to avoid conflicts
     basePort = 8765 + (testPortOffset++ % 5);
-    logBuffer = new LogBuffer({ maxEntries: 100 });
-    rateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
-    wsHandler = new WebSocketHandler({ logBuffer, rateLimiter });
+    // RemoteAccessServer now creates its own WebSocketHandler internally
+    // with requireTokenAuth: true and accessTokenService
     server = new RemoteAccessServer();
   });
 
   afterEach(async () => {
     try {
-      wsHandler.disconnectAll();
       await server.stop();
     } catch {
       // Ignore errors during cleanup
@@ -94,15 +91,11 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
-      // Initialize WebSocket handler
-      const wss = server.getWebSocketServer();
-      expect(wss).not.toBeNull();
-      if (wss) {
-        wsHandler.initialize(wss);
-      }
+      accessToken = startResult.value.accessToken;
+      const serverWsHandler = server.getWebSocketHandler();
 
-      // Connect a client
-      const client = new WebSocket(startResult.value.url);
+      // Connect a client with access token (requireTokenAuth: true)
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       await new Promise<void>((resolve, reject) => {
         client.on('open', () => resolve());
@@ -113,8 +106,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       // Wait for client count to update
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // WebSocketHandler tracks clients separately
-      expect(wsHandler.getClientCount()).toBeGreaterThanOrEqual(1);
+      // Server's internal WebSocketHandler tracks clients
+      expect(serverWsHandler.getClientCount()).toBeGreaterThanOrEqual(1);
 
       // Clean up
       client.close();
@@ -125,6 +118,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const startResult = await server.start(basePort);
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
+
+      accessToken = startResult.value.accessToken;
 
       // Set up state provider
       const stateProvider = {
@@ -138,8 +133,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const serverWsHandler = server.getWebSocketHandler();
       serverWsHandler.setStateProvider(stateProvider);
 
-      // Connect a client
-      const client = new WebSocket(startResult.value.url);
+      // Connect a client with access token
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       const initMessage = await new Promise<unknown>((resolve, reject) => {
         client.on('message', (data) => {
@@ -169,11 +164,13 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
+      accessToken = startResult.value.accessToken;
+
       // Use server's internal WebSocketHandler
       const serverWsHandler = server.getWebSocketHandler();
 
-      // Connect and then disconnect a client
-      const client = new WebSocket(startResult.value.url);
+      // Connect and then disconnect a client with access token
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       await new Promise<void>((resolve) => {
         client.on('open', () => resolve());
@@ -200,6 +197,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
+      accessToken = startResult.value.accessToken;
+
       const stateProvider = {
         getProjectPath: () => '/test/project',
         getSpecs: vi.fn().mockResolvedValue([
@@ -212,7 +211,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const serverWsHandler = server.getWebSocketHandler();
       serverWsHandler.setStateProvider(stateProvider);
 
-      const client = new WebSocket(startResult.value.url);
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       // Wait for connection and INIT message
       await new Promise<void>((resolve) => {
@@ -264,6 +263,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
+      accessToken = startResult.value.accessToken;
+
       const workflowController = {
         executePhase: vi.fn().mockResolvedValue({
           ok: true,
@@ -277,7 +278,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const serverWsHandler = server.getWebSocketHandler();
       serverWsHandler.setWorkflowController(workflowController);
 
-      const client = new WebSocket(startResult.value.url);
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       // Wait for connection and INIT
       await new Promise<void>((resolve) => {
@@ -331,6 +332,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
+      accessToken = startResult.value.accessToken;
+
       const workflowController = {
         executePhase: vi.fn(),
         stopAgent: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
@@ -341,7 +344,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const serverWsHandler = server.getWebSocketHandler();
       serverWsHandler.setWorkflowController(workflowController);
 
-      const client = new WebSocket(startResult.value.url);
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       // Wait for INIT
       await new Promise<void>((resolve) => {
@@ -387,6 +390,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
+      accessToken = startResult.value.accessToken;
+
       const workflowController = {
         executePhase: vi.fn(),
         stopAgent: vi.fn(),
@@ -400,7 +405,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       const serverWsHandler = server.getWebSocketHandler();
       serverWsHandler.setWorkflowController(workflowController);
 
-      const client = new WebSocket(startResult.value.url);
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       // Wait for INIT
       await new Promise<void>((resolve) => {
@@ -448,14 +453,12 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.initialize(wss);
-      }
+      accessToken = startResult.value.accessToken;
+      const serverWsHandler = server.getWebSocketHandler();
 
-      // Connect two clients
-      const client1 = new WebSocket(startResult.value.url);
-      const client2 = new WebSocket(startResult.value.url);
+      // Connect two clients with access token
+      const client1 = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
+      const client2 = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       // Wait for both to receive INIT
       await Promise.all([
@@ -494,8 +497,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         }
       });
 
-      // Broadcast agent output
-      wsHandler.broadcastAgentOutput('agent-test', 'stdout', 'Test log message', 'info');
+      // Broadcast agent output via server's internal handler
+      serverWsHandler.broadcastAgentOutput('agent-test', 'stdout', 'Test log message', 'info');
 
       // Wait for broadcast
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -521,17 +524,18 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.initialize(wss);
-      }
+      // Server's WebSocketHandler uses defaultLogBuffer singleton
+      const { defaultLogBuffer } = await import('./logBuffer');
+      // Clear any existing entries from previous tests
+      defaultLogBuffer.clear();
 
-      // Broadcast multiple logs
-      wsHandler.broadcastAgentOutput('agent-1', 'stdout', 'Log 1', 'info');
-      wsHandler.broadcastAgentOutput('agent-1', 'stderr', 'Error log', 'error');
-      wsHandler.broadcastAgentOutput('agent-2', 'stdout', 'Log 2', 'agent');
+      // Broadcast multiple logs via server's handler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.broadcastAgentOutput('agent-1', 'stdout', 'Log 1', 'info');
+      serverWsHandler.broadcastAgentOutput('agent-1', 'stderr', 'Error log', 'error');
+      serverWsHandler.broadcastAgentOutput('agent-2', 'stdout', 'Log 2', 'agent');
 
-      const logs = logBuffer.getAll();
+      const logs = defaultLogBuffer.getAll();
       expect(logs.length).toBe(3);
       expect(logs[0].data).toBe('Log 1');
       expect(logs[1].type).toBe('error');
@@ -650,12 +654,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.initialize(wss);
-      }
+      accessToken = startResult.value.accessToken;
 
-      const client = new WebSocket(startResult.value.url);
+      const client = new WebSocket(`${startResult.value.url}?token=${accessToken}`);
 
       await new Promise<void>((resolve) => {
         client.on('open', () => resolve());

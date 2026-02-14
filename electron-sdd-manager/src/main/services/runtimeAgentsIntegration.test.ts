@@ -17,14 +17,19 @@ import { determineCategory, getEntityIdFromSpecId } from './agentCategory';
 
 describe('Runtime Agents Restructure Integration', () => {
   let testDir: string;
+  let agentsBasePath: string;
   let agentRecordService: AgentRecordService;
   let logFileService: LogFileService;
 
   beforeEach(async () => {
+    // Create a proper project structure so legacy path resolution works correctly
+    // LogFileService.getLegacyDirPath derives .kiro from basePath by going up 2 directories
+    // basePath should be {projectPath}/.kiro/runtime/agents
     testDir = path.join(os.tmpdir(), `runtime-agents-integration-${Date.now()}`);
-    await fs.mkdir(testDir, { recursive: true });
-    agentRecordService = new AgentRecordService(testDir);
-    logFileService = new LogFileService(testDir);
+    agentsBasePath = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(agentsBasePath, { recursive: true });
+    agentRecordService = new AgentRecordService(agentsBasePath);
+    logFileService = new LogFileService(agentsBasePath);
   });
 
   afterEach(async () => {
@@ -136,8 +141,9 @@ describe('Runtime Agents Restructure Integration', () => {
     });
 
     it('should fall back to legacy path when new path has no logs', async () => {
-      // Create legacy log
-      const legacyDir = path.join(testDir, 'my-feature', 'logs');
+      // Legacy logs are under .kiro/specs/{specId}/logs/ (NOT under .kiro/runtime/agents/)
+      // LogFileService derives .kiro path from basePath (.kiro/runtime/agents -> .kiro)
+      const legacyDir = path.join(testDir, '.kiro', 'specs', 'my-feature', 'logs');
       await fs.mkdir(legacyDir, { recursive: true });
       const legacyEntry: LogEntry = {
         timestamp: '2025-11-26T09:00:00Z',
@@ -165,8 +171,8 @@ describe('Runtime Agents Restructure Integration', () => {
       };
       await logFileService.appendLogWithCategory('specs', 'my-feature', 'agent-001', newEntry);
 
-      // Create legacy log
-      const legacyDir = path.join(testDir, 'my-feature', 'logs');
+      // Create legacy log under .kiro/specs/{specId}/logs/
+      const legacyDir = path.join(testDir, '.kiro', 'specs', 'my-feature', 'logs');
       await fs.mkdir(legacyDir, { recursive: true });
       const legacyEntry: LogEntry = {
         timestamp: '2025-11-26T09:00:00Z',
@@ -188,8 +194,8 @@ describe('Runtime Agents Restructure Integration', () => {
       // No legacy logs
       expect(await logFileService.hasLegacyLogs('my-feature')).toBe(false);
 
-      // Create legacy log
-      const legacyDir = path.join(testDir, 'my-feature', 'logs');
+      // Create legacy log under .kiro/specs/{specId}/logs/
+      const legacyDir = path.join(testDir, '.kiro', 'specs', 'my-feature', 'logs');
       await fs.mkdir(legacyDir, { recursive: true });
       await fs.writeFile(path.join(legacyDir, 'agent-001.log'), '{"data":"test"}\n', 'utf-8');
 
@@ -197,8 +203,8 @@ describe('Runtime Agents Restructure Integration', () => {
     });
 
     it('should provide legacy log info via getLegacyLogInfo', async () => {
-      // Create legacy logs
-      const legacyDir = path.join(testDir, 'my-feature', 'logs');
+      // Create legacy logs under .kiro/specs/{specId}/logs/
+      const legacyDir = path.join(testDir, '.kiro', 'specs', 'my-feature', 'logs');
       await fs.mkdir(legacyDir, { recursive: true });
       await fs.writeFile(path.join(legacyDir, 'agent-001.log'), '{"data":"test1"}\n', 'utf-8');
       await fs.writeFile(path.join(legacyDir, 'agent-002.log'), '{"data":"test2"}\n', 'utf-8');
@@ -230,7 +236,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await agentRecordService.writeRecordWithCategory('specs', 'my-feature', record);
 
-      const specDir = path.join(testDir, 'specs', 'my-feature');
+      const specDir = path.join(agentsBasePath, 'specs', 'my-feature');
       const exists = await fs.access(specDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });
@@ -250,7 +256,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await agentRecordService.writeRecordWithCategory('bugs', 'login-error', record);
 
-      const bugDir = path.join(testDir, 'bugs', 'login-error');
+      const bugDir = path.join(agentsBasePath, 'bugs', 'login-error');
       const exists = await fs.access(bugDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });
@@ -270,7 +276,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await agentRecordService.writeRecordWithCategory('project', '', record);
 
-      const projectDir = path.join(testDir, 'project');
+      const projectDir = path.join(agentsBasePath, 'project');
       const exists = await fs.access(projectDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });
@@ -284,7 +290,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await logFileService.appendLogWithCategory('specs', 'my-feature', 'agent-001', entry);
 
-      const logsDir = path.join(testDir, 'specs', 'my-feature', 'logs');
+      const logsDir = path.join(agentsBasePath, 'specs', 'my-feature', 'logs');
       const exists = await fs.access(logsDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });
@@ -298,7 +304,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await logFileService.appendLogWithCategory('bugs', 'login-error', 'agent-002', entry);
 
-      const logsDir = path.join(testDir, 'bugs', 'login-error', 'logs');
+      const logsDir = path.join(agentsBasePath, 'bugs', 'login-error', 'logs');
       const exists = await fs.access(logsDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });
@@ -312,7 +318,7 @@ describe('Runtime Agents Restructure Integration', () => {
 
       await logFileService.appendLogWithCategory('project', '', 'agent-003', entry);
 
-      const logsDir = path.join(testDir, 'project', 'logs');
+      const logsDir = path.join(agentsBasePath, 'project', 'logs');
       const exists = await fs.access(logsDir).then(() => true).catch(() => false);
       expect(exists).toBe(true);
     });

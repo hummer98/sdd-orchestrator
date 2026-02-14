@@ -121,44 +121,10 @@ describe('Task 9: Remote UI App Integration', () => {
     });
 
     it('should render MobileLayout for mobile devices', async () => {
-      // Override the mock for this test
-      vi.doMock('../shared', async () => {
-        const React = await import('react');
-        const mockApiClient = {
-          getSpecs: () => Promise.resolve({ ok: true, value: [] }),
-          getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
-          executePhase: () => Promise.resolve({ ok: true, value: {} }),
-          updateApproval: () => Promise.resolve({ ok: true, value: undefined }),
-          getBugs: () => Promise.resolve({ ok: true, value: [] }),
-          getBugDetail: () => Promise.resolve({ ok: true, value: {} }),
-          executeBugPhase: () => Promise.resolve({ ok: true, value: {} }),
-          getAgents: () => Promise.resolve({ ok: true, value: [] }),
-          stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
-          resumeAgent: () => Promise.resolve({ ok: true, value: {} }),
-          sendAgentInput: () => Promise.resolve({ ok: true, value: undefined }),
-          getAgentLogs: () => Promise.resolve({ ok: true, value: [] }),
-          executeValidation: () => Promise.resolve({ ok: true, value: {} }),
-          executeDocumentReview: () => Promise.resolve({ ok: true, value: {} }),
-          executeInspection: () => Promise.resolve({ ok: true, value: {} }),
-          startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
-          stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
-          getAutoExecutionStatus: () => Promise.resolve({ ok: true, value: null }),
-          saveFile: () => Promise.resolve({ ok: true, value: undefined }),
-          onSpecsUpdated: () => () => {},
-          onBugsUpdated: () => () => {},
-          onAgentOutput: () => () => {},
-          onAgentStatusChange: () => () => {},
-          onAutoExecutionStatusChanged: () => () => {},
-        };
-        return {
-          ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
-            React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
-          PlatformProvider: ({ children }: { children: React.ReactNode }) =>
-            React.createElement('div', { 'data-testid': 'platform-provider' }, children),
-          useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
-          useApi: () => mockApiClient,
-        };
-      });
+      // Override the useDeviceType mock to return mobile
+      vi.doMock('../shared/hooks/useDeviceType', () => ({
+        useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
+      }));
 
       vi.resetModules();
       const { default: App } = await import('./App');
@@ -226,43 +192,9 @@ describe('Task 9: Remote UI App Integration', () => {
       vi.resetModules();
 
       // Re-establish the desktop mock
-      vi.doMock('../shared', async () => {
-        const React = await import('react');
-        const mockApiClient = {
-          getSpecs: () => Promise.resolve({ ok: true, value: [] }),
-          getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
-          executePhase: () => Promise.resolve({ ok: true, value: {} }),
-          updateApproval: () => Promise.resolve({ ok: true, value: undefined }),
-          getBugs: () => Promise.resolve({ ok: true, value: [] }),
-          getBugDetail: () => Promise.resolve({ ok: true, value: {} }),
-          executeBugPhase: () => Promise.resolve({ ok: true, value: {} }),
-          getAgents: () => Promise.resolve({ ok: true, value: [] }),
-          stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
-          resumeAgent: () => Promise.resolve({ ok: true, value: {} }),
-          sendAgentInput: () => Promise.resolve({ ok: true, value: undefined }),
-          getAgentLogs: () => Promise.resolve({ ok: true, value: [] }),
-          executeValidation: () => Promise.resolve({ ok: true, value: {} }),
-          executeDocumentReview: () => Promise.resolve({ ok: true, value: {} }),
-          executeInspection: () => Promise.resolve({ ok: true, value: {} }),
-          startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
-          stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
-          getAutoExecutionStatus: () => Promise.resolve({ ok: true, value: null }),
-          saveFile: () => Promise.resolve({ ok: true, value: undefined }),
-          onSpecsUpdated: () => () => {},
-          onBugsUpdated: () => () => {},
-          onAgentOutput: () => () => {},
-          onAgentStatusChange: () => () => {},
-          onAutoExecutionStatusChanged: () => () => {},
-        };
-        return {
-          ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
-            React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
-          PlatformProvider: ({ children }: { children: React.ReactNode }) =>
-            React.createElement('div', { 'data-testid': 'platform-provider' }, children),
-          useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
-          useApi: () => mockApiClient,
-        };
-      });
+      vi.doMock('../shared/hooks/useDeviceType', () => ({
+        useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
+      }));
 
       const { default: App } = await import('./App');
       render(<App />);

@@ -66,13 +66,14 @@ const mockProjectAgent3: AgentInfo = {
  * We update both stores to ensure reactivity works correctly
  */
 function setAgentsInStores(agents: Map<string, AgentInfo[]>) {
-  // Convert renderer AgentInfo (agentId) to shared AgentInfo (id) format
+  // Convert renderer AgentInfo to shared AgentInfo format
+  // agentId-unification: shared type now uses 'agentId' (not 'id')
   const sharedAgents = new Map();
   for (const [specId, agentList] of agents.entries()) {
     sharedAgents.set(
       specId,
       agentList.map((a) => ({
-        id: a.agentId,
+        agentId: a.agentId,
         specId: a.specId,
         phase: a.phase,
         status: a.status,
@@ -175,8 +176,9 @@ describe('ProjectAgentPanel', () => {
       expect(screen.getByText('(3)')).toBeInTheDocument();
     });
 
-    it('should sort agents by running status first, then by lastActivityAt descending', () => {
-      // Create agents with different lastActivityAt times
+    it('should sort agents by running status first, then by startedAt descending', () => {
+      // Create agents with different startedAt times
+      // zustand-agent-selector-hooks: Sorting is by startedAt descending (not lastActivityAt)
       const runningAgent: AgentInfo = {
         agentId: 'running-1',
         specId: '',
@@ -185,7 +187,7 @@ describe('ProjectAgentPanel', () => {
         sessionId: 'session-1',
         status: 'running',
         startedAt: '2024-01-01T00:00:00Z',
-        lastActivityAt: '2024-01-01T00:05:00Z', // Most recent
+        lastActivityAt: '2024-01-01T00:05:00Z',
         command: 'claude',
       };
 
@@ -196,8 +198,8 @@ describe('ProjectAgentPanel', () => {
         pid: 1002,
         sessionId: 'session-2',
         status: 'completed',
-        startedAt: '2024-01-01T00:01:00Z',
-        lastActivityAt: '2024-01-01T00:04:00Z', // Second most recent
+        startedAt: '2024-01-01T00:04:00Z', // Second most recent startedAt
+        lastActivityAt: '2024-01-01T00:04:00Z',
         command: 'claude',
       };
 
@@ -208,8 +210,8 @@ describe('ProjectAgentPanel', () => {
         pid: 1003,
         sessionId: 'session-3',
         status: 'completed',
-        startedAt: '2024-01-01T00:02:00Z',
-        lastActivityAt: '2024-01-01T00:03:00Z', // Third most recent
+        startedAt: '2024-01-01T00:02:00Z', // Oldest startedAt
+        lastActivityAt: '2024-01-01T00:03:00Z',
         command: 'claude',
       };
 
@@ -223,7 +225,7 @@ describe('ProjectAgentPanel', () => {
       // Get all agent items
       const agentItems = screen.getAllByTestId(/^agent-item-/);
 
-      // Expected order: running-1 (running), completed-1 (latest activity), completed-2 (oldest activity)
+      // Expected order: running-1 (running), completed-1 (latest startedAt), completed-2 (oldest startedAt)
       expect(agentItems[0]).toHaveAttribute('data-testid', 'agent-item-running-1');
       expect(agentItems[1]).toHaveAttribute('data-testid', 'agent-item-completed-1');
       expect(agentItems[2]).toHaveAttribute('data-testid', 'agent-item-completed-2');
@@ -369,14 +371,17 @@ describe('ProjectAgentPanel', () => {
       expect(panel).toHaveClass('flex', 'flex-col');
 
       // Agent list container should have flex-1 and overflow-y-auto for scrollability
-      // When empty, the testId is project-agent-list-empty, otherwise project-agent-list
-      // We query for either and check their parent
+      // The AgentList component wraps content in its own div, so the actual container
+      // with flex-1/overflow-y-auto is an ancestor of the testId element
       const agentListEmpty = screen.queryByTestId('project-agent-list-empty');
       const agentListFull = screen.queryByTestId('project-agent-list');
       const agentListElement = agentListEmpty || agentListFull;
       expect(agentListElement).toBeInTheDocument();
 
-      const agentListContainer = agentListElement!.parentElement;
+      // Navigate up to the container div with flex-1/overflow-y-auto classes
+      // Structure: panel > container(flex-1 overflow-y-auto) > AgentList wrapper > testId element
+      const agentListWrapper = agentListElement!.parentElement; // AgentList wrapper div
+      const agentListContainer = agentListWrapper!.parentElement; // container with flex-1
       expect(agentListContainer).toHaveClass('flex-1', 'overflow-y-auto');
 
       // Footer should have shrink-0 to stay fixed at bottom (not shrink when content overflows)
@@ -395,13 +400,15 @@ describe('ProjectAgentPanel', () => {
       const agentListElement = agentListEmpty || agentListFull;
       expect(agentListElement).toBeInTheDocument();
 
-      const agentListContainer = agentListElement!.parentElement;
+      // Navigate up to the container that is a direct child of panel
+      const agentListWrapper = agentListElement!.parentElement; // AgentList wrapper div
+      const agentListContainer = agentListWrapper!.parentElement; // container with flex-1
       const footer = screen.getByTestId('project-agent-footer');
 
       // Get all children of panel that are element nodes
       const panelChildren = Array.from(panel.children);
 
-      // Find indices - footer should come after agent list
+      // Find indices - footer should come after agent list container
       const agentListIndex = panelChildren.indexOf(agentListContainer!);
       const footerIndex = panelChildren.indexOf(footer);
 
@@ -463,7 +470,7 @@ describe('ProjectAgentPanel', () => {
       // release-auto-option Task 2.1: Changed from '/release' to '/release --auto'
       await vi.waitFor(() => {
         expect(mockExecuteProjectCommand).toHaveBeenCalledWith({
-          projectPath: '/test/project',
+          specId: '',
           command: '/release --auto',
           title: 'release',
         });
@@ -611,7 +618,7 @@ describe('ProjectAgentPanel', () => {
       // trpc-full-migration Task 5.3: Verify tRPC executeProjectCommand was called
       await vi.waitFor(() => {
         expect(mockExecuteProjectCommand).toHaveBeenCalledWith({
-          projectPath: '/test/project',
+          specId: '',
           command: '/kiro:project-ask "test prompt"',
           title: 'ask',
         });

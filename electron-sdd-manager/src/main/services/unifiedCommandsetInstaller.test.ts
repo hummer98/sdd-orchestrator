@@ -63,7 +63,7 @@ describe('UnifiedCommandsetInstaller', () => {
   async function createTemplateFiles(): Promise<void> {
     // CC-SDD commands (directory-based) - must match CC_SDD_COMMANDS minus bug/document-review
     const ccSddCommands = [
-      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
+      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-auto-impl', 'spec-status', 'spec-quick',
       'project-ask', 'spec-ask', 'spec-merge', 'spec-inspection',
       'steering', 'steering-custom', 'generate-release'
     ];
@@ -75,7 +75,7 @@ describe('UnifiedCommandsetInstaller', () => {
 
     // CC-SDD-Agent commands (directory-based) - same as cc-sdd but used for agent profile
     const ccSddAgentCommands = [
-      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
+      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-auto-impl', 'spec-status', 'spec-quick',
       'project-ask', 'spec-ask', 'spec-merge', 'spec-inspection',
       'steering', 'steering-custom', 'generate-release'
     ];
@@ -111,9 +111,9 @@ describe('UnifiedCommandsetInstaller', () => {
       await fs.writeFile(filePath, `# Template for ${cmd}`, 'utf-8');
     }
 
-    // Agents (14 types - must match CC_SDD_AGENTS)
+    // Agents (15 types - must match CC_SDD_AGENTS)
     const agents = [
-      'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
+      'spec-design', 'spec-impl', 'spec-auto-impl-worker', 'spec-requirements', 'spec-tasks',
       'steering', 'steering-custom', 'steering-verification',
       'generate-release', 'spec-inspection',
       // E2E Agents (5)

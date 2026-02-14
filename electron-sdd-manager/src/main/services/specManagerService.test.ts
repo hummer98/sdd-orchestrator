@@ -66,7 +66,7 @@ describe('SpecManagerService', () => {
       const result = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
       });
 
@@ -83,8 +83,9 @@ describe('SpecManagerService', () => {
       const result = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       expect(result.ok).toBe(true);
@@ -99,13 +100,14 @@ describe('SpecManagerService', () => {
       const result = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        const pidFilePath = path.join(pidDir, 'spec-a', `${result.value.agentId}.json`);
+        const pidFilePath = path.join(pidDir, 'specs', 'spec-a', `${result.value.agentId}.json`);
         const stat = await fs.stat(pidFilePath);
         expect(stat.isFile()).toBe(true);
       }
@@ -116,16 +118,18 @@ describe('SpecManagerService', () => {
       await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
+        engineId: 'gemini',
       });
 
       // Try to start another agent for same phase
       const result = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
+        engineId: 'gemini',
       });
 
       expect(result.ok).toBe(false);
@@ -139,9 +143,10 @@ describe('SpecManagerService', () => {
       const firstResult = await service.startAgent({
         specId: 'spec-a',
         phase: 'ask',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
         group: 'doc',
+        engineId: 'gemini',
       });
 
       expect(firstResult.ok).toBe(true);
@@ -150,9 +155,10 @@ describe('SpecManagerService', () => {
       const secondResult = await service.startAgent({
         specId: 'spec-a',
         phase: 'ask',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
         group: 'doc',
+        engineId: 'gemini',
       });
 
       expect(secondResult.ok).toBe(true);
@@ -165,8 +171,9 @@ describe('SpecManagerService', () => {
       const startResult = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(startResult.ok).toBe(true);
@@ -181,8 +188,9 @@ describe('SpecManagerService', () => {
       const startResult = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(startResult.ok).toBe(true);
@@ -211,8 +219,8 @@ describe('SpecManagerService', () => {
   // Task 24.3: セッション復元機能
   describe('restoreAgents', () => {
     it('should restore agents from PID files', async () => {
-      // Create a PID file manually
-      const specDir = path.join(pidDir, 'spec-a');
+      // Create a PID file manually (category-based path: specs/{specId}/)
+      const specDir = path.join(pidDir, 'specs', 'spec-a');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -240,8 +248,8 @@ describe('SpecManagerService', () => {
     });
 
     it('should mark dead processes as interrupted', async () => {
-      // Create a PID file with a non-existent PID
-      const specDir = path.join(pidDir, 'spec-a');
+      // Create a PID file with a non-existent PID (category-based path: specs/{specId}/)
+      const specDir = path.join(pidDir, 'specs', 'spec-a');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -281,8 +289,8 @@ describe('SpecManagerService', () => {
     });
 
     it('should return error for agent without sessionId', async () => {
-      // Create an interrupted agent without sessionId
-      const specDir = path.join(pidDir, 'spec-a');
+      // Create an interrupted agent without sessionId (category-based path: specs/{specId}/)
+      const specDir = path.join(pidDir, 'specs', 'spec-a');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -313,8 +321,8 @@ describe('SpecManagerService', () => {
     });
 
     it('should use custom prompt when provided', async () => {
-      // Create an interrupted agent with sessionId
-      const specDir = path.join(pidDir, 'spec-a');
+      // Create an interrupted agent with sessionId (category-based path: specs/{specId}/)
+      const specDir = path.join(pidDir, 'specs', 'spec-a');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -347,8 +355,8 @@ describe('SpecManagerService', () => {
     });
 
     it('should use default prompt when not provided', async () => {
-      // Create an interrupted agent with sessionId
-      const specDir = path.join(pidDir, 'spec-a');
+      // Create an interrupted agent with sessionId (category-based path: specs/{specId}/)
+      const specDir = path.join(pidDir, 'specs', 'spec-a');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -382,7 +390,7 @@ describe('SpecManagerService', () => {
     // Bug fix: agent-resume-cwd-mismatch
     it('should preserve cwd from agent record when resuming', async () => {
       // Create an interrupted agent with sessionId AND cwd (worktree path)
-      const specDir = path.join(pidDir, 'spec-worktree');
+      const specDir = path.join(pidDir, 'specs', 'spec-worktree');
       await fs.mkdir(specDir, { recursive: true });
 
       const worktreeCwd = '/path/to/worktree';
@@ -415,7 +423,7 @@ describe('SpecManagerService', () => {
     // Bug fix: Resume prompt should be added to log as user event
     it('should add resume prompt to log as user event', async () => {
       // Create an interrupted agent with sessionId
-      const specDir = path.join(pidDir, 'spec-prompt-log');
+      const specDir = path.join(pidDir, 'specs', 'spec-prompt-log');
       await fs.mkdir(specDir, { recursive: true });
 
       const pidFile = {
@@ -465,8 +473,9 @@ describe('SpecManagerService', () => {
       const startResult = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'cat',
+        commandOverride: 'cat',
         args: [],
+        engineId: 'gemini',
       });
 
       expect(startResult.ok).toBe(true);
@@ -496,9 +505,10 @@ describe('SpecManagerService', () => {
       const impl1Result = await service.startAgent({
         specId: 'spec-a',
         phase: 'impl-task-1',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
         group: 'impl',
+        engineId: 'gemini',
       });
 
       expect(impl1Result.ok).toBe(true);
@@ -507,9 +517,10 @@ describe('SpecManagerService', () => {
       const impl2Result = await service.startAgent({
         specId: 'spec-a',
         phase: 'impl-task-2',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['10'],
         group: 'impl',
+        engineId: 'gemini',
       });
 
       expect(impl2Result.ok).toBe(true);
@@ -530,9 +541,9 @@ describe('SpecManagerService', () => {
       });
 
       // unified-engine-command-resolution: command is now resolved internally via engineId
+      // execute() does not pass engineId (defaults handled inside startAgent)
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          engineId: 'claude',
           args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
         })
       );
@@ -684,15 +695,17 @@ describe('SpecManagerService', () => {
       await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       await service.startAgent({
         specId: 'spec-b',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       const specAAgents = await service.getAgents('spec-a');
@@ -704,15 +717,17 @@ describe('SpecManagerService', () => {
       await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       await service.startAgent({
         specId: 'spec-b',
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini',
       });
 
       const allAgents = await service.getAllAgents();
@@ -733,8 +748,9 @@ describe('SpecManagerService', () => {
         const result = await service.startAgent({
           specId: 'spec-a',
           phase: 'requirements',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
         expect(result.ok).toBe(true);
 
@@ -755,8 +771,9 @@ describe('SpecManagerService', () => {
         const result = await service.startAgent({
           specId: 'spec-a',
           phase: 'requirements',
-          command: 'echo',
+          commandOverride: 'echo',
           args: ['test'],
+          engineId: 'gemini',
         });
         expect(result.ok).toBe(true);
         if (!result.ok) return;
@@ -777,16 +794,18 @@ describe('SpecManagerService', () => {
         const result1 = await service.startAgent({
           specId: 'spec-a',
           phase: 'requirements',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
         expect(result1.ok).toBe(true);
 
         const result2 = await service.startAgent({
           specId: 'spec-b',
           phase: 'design',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
         expect(result2.ok).toBe(true);
 
@@ -800,8 +819,9 @@ describe('SpecManagerService', () => {
         await service.startAgent({
           specId: '',
           phase: 'steering',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
 
         const allAgents = await service.getAllAgents();
@@ -820,8 +840,9 @@ describe('SpecManagerService', () => {
         const result = await service.startAgent({
           specId: 'spec-a',
           phase: 'requirements',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
         expect(result.ok).toBe(true);
         if (!result.ok) return;
@@ -842,15 +863,17 @@ describe('SpecManagerService', () => {
         await service.startAgent({
           specId: 'spec-a',
           phase: 'requirements',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
 
         const result = await service.startAgent({
           specId: 'spec-b',
           phase: 'design',
-          command: 'sleep',
+          commandOverride: 'sleep',
           args: ['5'],
+          engineId: 'gemini',
         });
         expect(result.ok).toBe(true);
         if (!result.ok) return;
@@ -1243,7 +1266,7 @@ console.log(JSON.stringify(process.argv.slice(2)));
     const spawnArgs = await startAgentAndCaptureArgs(service, {
       specId: 'test-spec',
       phase: 'design',
-      command: mockScriptPath,
+      commandOverride: mockScriptPath,
       args,
       group: 'doc',
     });
@@ -1271,7 +1294,7 @@ console.log(JSON.stringify(process.argv.slice(2)));
     const spawnArgs = await startAgentAndCaptureArgs(service, {
       specId: 'test-spec',
       phase: 'impl',
-      command: mockScriptPath,
+      commandOverride: mockScriptPath,
       args,
       group: 'impl',
     });
@@ -1293,7 +1316,7 @@ console.log(JSON.stringify(process.argv.slice(2)));
     const spawnArgs = await startAgentAndCaptureArgs(service, {
       specId: 'test-spec',
       phase: 'impl',
-      command: mockScriptPath,
+      commandOverride: mockScriptPath,
       args,
       group: 'impl',
     });
@@ -1327,7 +1350,7 @@ console.log(JSON.stringify(process.argv.slice(2)));
     const spawnArgs = await startAgentAndCaptureArgs(serviceWithSkip, {
       specId: 'test-spec',
       phase: 'design',
-      command: mockScriptPath,
+      commandOverride: mockScriptPath,
       args,
       group: 'doc',
     });
@@ -2381,7 +2404,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: 'test-spec',
         phase: 'impl-1.1',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
         group: 'impl',
         // No worktreeCwd provided - should be auto-resolved
@@ -2412,7 +2435,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: 'test-spec',
         phase: 'requirements',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
         group: 'doc',
         // No worktreeCwd provided - should auto-resolve for doc group too (spec-worktree-early-creation)
@@ -2426,7 +2449,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: 'test-spec',
         phase: 'impl-1.1',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
         group: 'impl',
         worktreeCwd: explicitCwd,
@@ -2474,7 +2497,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId,
         phase: 'design',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
         group: 'doc',
         // No worktreeCwd provided - should auto-resolve from worktree spec.json
@@ -2526,7 +2549,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: `bug:${bugName}`,
         phase: 'analyze',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
       });
 
@@ -2558,7 +2581,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: `bug:${bugName}`,
         phase: 'analyze',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
       });
 
@@ -2642,7 +2665,7 @@ describe('executeDocumentReview - multi-engine support', () => {
       const result = await service.startAgent({
         specId: 'default-config-test',
         phase: 'requirements',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
         group: 'doc',
       });
@@ -2659,12 +2682,14 @@ describe('executeDocumentReview - multi-engine support', () => {
         layoutConfigService: mockLayoutConfigService,
       });
 
-      // Non-claude command (echo)
+      // Non-claude command: use engineId: 'gemini' with commandOverride: 'echo'
+      // skipPermissions check is based on engineId, not the actual command
       const result = await serviceWithMock.startAgent({
         specId: 'non-claude-test',
         phase: 'test',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test'],
+        engineId: 'gemini',
       });
 
       expect(result.ok).toBe(true);
@@ -2727,7 +2752,7 @@ describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phas
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'spec-merge',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'doc',
     });
@@ -2765,7 +2790,7 @@ describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phas
     const result = await service.startAgent({
       specId: 'bug:test-bug',
       phase: 'bug-merge',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'doc',
     });
@@ -2799,7 +2824,7 @@ describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phas
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'impl',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'impl',
     });
@@ -2833,7 +2858,7 @@ describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phas
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'requirements',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'doc',
     });
@@ -2884,9 +2909,10 @@ describe('handleAgentExit - error handling', () => {
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'requirements',
-      command: 'sleep',
+      commandOverride: 'sleep',
       args: ['1'], // Use sleep to ensure we can check 'running' before completion
       group: 'doc',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
@@ -2906,16 +2932,17 @@ describe('handleAgentExit - error handling', () => {
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'requirements',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'doc',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Wait for process to complete and handleAgentExit to be called
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait for process to complete and handleAgentExit async chain to finish
+    await new Promise((r) => setTimeout(r, 1000));
 
     // statusCallback should have been called with 'completed' status
     expect(statusCallback).toHaveBeenCalledWith(result.value.agentId, 'completed');
@@ -2928,16 +2955,17 @@ describe('handleAgentExit - error handling', () => {
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'requirements',
-      command: 'sh',
+      commandOverride: 'sh',
       args: ['-c', 'exit 1'],
       group: 'doc',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Wait for process to complete and handleAgentExit to be called
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait for process to complete and handleAgentExit async chain to finish
+    await new Promise((r) => setTimeout(r, 1000));
 
     // statusCallback should have been called with 'failed' status
     expect(statusCallback).toHaveBeenCalledWith(result.value.agentId, 'failed');
@@ -2947,16 +2975,17 @@ describe('handleAgentExit - error handling', () => {
     const result = await service.startAgent({
       specId: 'test-spec',
       phase: 'requirements',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['test'],
       group: 'doc',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Wait for process to complete
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait for process to complete and handleAgentExit async chain to finish
+    await new Promise((r) => setTimeout(r, 1000));
 
     // Process should be removed from internal map
     // We can't directly access processes map, but we can check via getAgentById
@@ -3090,16 +3119,17 @@ describe('startAgent executions support (Task 2.1, 7.1)', () => {
     const result = await service.startAgent({
       specId: 'spec-a',
       phase: 'requirements',
-      command: 'sleep',
+      commandOverride: 'sleep',
       args: ['5'],
       prompt: '/kiro:spec-requirements my-feature',
+      engineId: 'gemini',
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Read the agent record file directly
-    const pidFilePath = path.join(pidDir, 'spec-a', `${result.value.agentId}.json`);
+    // Read the agent record file directly (category-based path: specs/{specId}/)
+    const pidFilePath = path.join(pidDir, 'specs', 'spec-a', `${result.value.agentId}.json`);
     const content = await fs.readFile(pidFilePath, 'utf-8');
     const record = JSON.parse(content);
 
@@ -3114,14 +3144,15 @@ describe('startAgent executions support (Task 2.1, 7.1)', () => {
     const result = await service.startAgent({
       specId: 'spec-b',
       phase: 'design',
-      command: 'sleep',
+      commandOverride: 'sleep',
       args: ['5', '/kiro:spec-design another-feature'],
+      engineId: 'gemini',
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const pidFilePath = path.join(pidDir, 'spec-b', `${result.value.agentId}.json`);
+    const pidFilePath = path.join(pidDir, 'specs', 'spec-b', `${result.value.agentId}.json`);
     const content = await fs.readFile(pidFilePath, 'utf-8');
     const record = JSON.parse(content);
 
@@ -3133,14 +3164,15 @@ describe('startAgent executions support (Task 2.1, 7.1)', () => {
     const result = await service.startAgent({
       specId: 'spec-c',
       phase: 'tasks',
-      command: 'sleep',
+      commandOverride: 'sleep',
       args: ['-p', '--verbose'],  // Only flags, no command/prompt
+      engineId: 'gemini',
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const pidFilePath = path.join(pidDir, 'spec-c', `${result.value.agentId}.json`);
+    const pidFilePath = path.join(pidDir, 'specs', 'spec-c', `${result.value.agentId}.json`);
     const content = await fs.readFile(pidFilePath, 'utf-8');
     const record = JSON.parse(content);
 
@@ -3153,15 +3185,16 @@ describe('startAgent executions support (Task 2.1, 7.1)', () => {
     const result = await service.startAgent({
       specId: 'spec-d',
       phase: 'impl',
-      command: 'sleep',
+      commandOverride: 'sleep',
       args: ['5'],
       prompt: 'test prompt',
+      engineId: 'gemini',
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const pidFilePath = path.join(pidDir, 'spec-d', `${result.value.agentId}.json`);
+    const pidFilePath = path.join(pidDir, 'specs', 'spec-d', `${result.value.agentId}.json`);
     const content = await fs.readFile(pidFilePath, 'utf-8');
     const record = JSON.parse(content);
 
@@ -3198,7 +3231,7 @@ describe('handleAgentExit with executions (Task 3.1, 3.2, 3.3, 7.2)', () => {
     // Setup metrics services with DI
     const writer = new MetricsFileWriter(projectLogger);
     const reader = new MetricsFileReader(projectLogger);
-    const metricsService = new MetricsService(writer, reader);
+    const metricsService = new MetricsService(projectLogger, writer, reader);
     metricsService.setProjectPath(testDir);
 
     service = new SpecManagerService(testDir, { metricsService });
@@ -3222,19 +3255,20 @@ describe('handleAgentExit with executions (Task 3.1, 3.2, 3.3, 7.2)', () => {
     const result = await service.startAgent({
       specId: 'spec-exit-test',
       phase: 'requirements',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['hello'],
       prompt: '/kiro:spec-requirements test',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Wait for agent to complete
-    await new Promise((r) => setTimeout(r, 500));
+    // Wait for agent to complete and handleAgentExit async chain to finish
+    await new Promise((r) => setTimeout(r, 1000));
 
     // Read the agent record file
-    const pidFilePath = path.join(pidDir, 'spec-exit-test', `${result.value.agentId}.json`);
+    const pidFilePath = path.join(pidDir, 'specs', 'spec-exit-test', `${result.value.agentId}.json`);
     const content = await fs.readFile(pidFilePath, 'utf-8');
     const record = JSON.parse(content);
 
@@ -3251,16 +3285,17 @@ describe('handleAgentExit with executions (Task 3.1, 3.2, 3.3, 7.2)', () => {
     const result = await service.startAgent({
       specId: 'spec-metrics-test',
       phase: 'design',
-      command: 'echo',
+      commandOverride: 'echo',
       args: ['hello'],
       prompt: '/kiro:spec-design test',
+      engineId: 'gemini', // Use non-Claude engine to avoid args normalization
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Wait for agent to complete
-    await new Promise((r) => setTimeout(r, 500));
+    // Wait for agent to complete and handleAgentExit async chain to finish
+    await new Promise((r) => setTimeout(r, 1000));
 
     // Check metrics.jsonl
     const metricsPath = path.join(testDir, '.kiro', 'metrics.jsonl');

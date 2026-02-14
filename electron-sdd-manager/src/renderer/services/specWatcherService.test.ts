@@ -173,6 +173,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -186,6 +187,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/requirements.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -197,6 +199,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/design.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -208,6 +211,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/research.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -221,6 +225,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/tasks.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -235,6 +240,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/document-review-requirements.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -248,6 +254,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/inspection-1.md',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -263,6 +270,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-b', // Different from selected 'feature-a'
           path: '/project/.kiro/specs/feature-b/spec.json',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -278,6 +286,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/unknown-file.txt',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -291,6 +300,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: '',
           path: '/project/.kiro/specs/unknown/spec.json',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -308,6 +318,7 @@ describe('SpecWatcherService', () => {
         onSpecsChangedSubscribeCallback?.({
           specId: 'feature-a',
           path: '/project/.kiro/specs/feature-a/spec.json',
+          type: 'change',
         });
 
         await new Promise(resolve => setTimeout(resolve, 10));

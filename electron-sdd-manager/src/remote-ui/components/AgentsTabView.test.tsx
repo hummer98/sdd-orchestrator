@@ -164,8 +164,8 @@ describe('AgentsTabView', () => {
     it('displays agents with specId="" (project-level agents only)', () => {
       // Arrange
       const agents = [
-        createMockAgent({ id: 'project-agent', specId: '', phase: 'ask-project' }),
-        createMockAgent({ id: 'spec-agent', specId: 'my-feature', phase: 'spec-impl' }),
+        createMockAgent({ agentId: 'project-agent', specId: '', phase: 'ask-project' }),
+        createMockAgent({ agentId: 'spec-agent', specId: 'my-feature', phase: 'spec-impl' }),
       ];
       setupAgentStore(agents);
 
@@ -199,17 +199,17 @@ describe('AgentsTabView', () => {
       const now = new Date();
       const agents = [
         createMockAgent({
-          id: 'completed-old',
+          agentId: 'completed-old',
           status: 'completed',
           startedAt: new Date(now.getTime() - 3600000).toISOString(),
         }),
         createMockAgent({
-          id: 'running-new',
+          agentId: 'running-new',
           status: 'running',
           startedAt: new Date(now.getTime() - 1000).toISOString(),
         }),
         createMockAgent({
-          id: 'completed-new',
+          agentId: 'completed-new',
           status: 'completed',
           startedAt: new Date(now.getTime() - 1800000).toISOString(),
         }),
@@ -332,82 +332,62 @@ describe('AgentsTabView', () => {
   // Requirement 5.2: Agent tap opens AgentDetailDrawer
   // ===========================================================================
 
-  describe('Requirement 5.2: AgentListItemタップでDrawer表示', () => {
-    it('opens AgentDetailDrawer when agent is selected', async () => {
+  describe('Requirement 5.2: AgentListItemタップでAgent選択 (mobile-agent-log-fullscreen)', () => {
+    it('calls onSelectAgent when agent is selected', async () => {
       // Arrange
       const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan' });
       setupAgentStore([agent]);
+      const onSelectAgent = vi.fn();
 
       // Act
-      render(<AgentsTabView apiClient={mockApiClient} testId="agents-tab-view" />);
+      render(<AgentsTabView apiClient={mockApiClient} testId="agents-tab-view" onSelectAgent={onSelectAgent} />);
 
-      // Find and click the agent item (AgentListItem is a <li> element with data-testid)
+      // Find and click the agent item
       const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
 
-      // Assert
+      // Assert - onSelectAgent should be called with the agent info
       await waitFor(() => {
-        expect(screen.getByTestId('agent-detail-drawer')).toBeInTheDocument();
+        expect(onSelectAgent).toHaveBeenCalledWith(
+          expect.objectContaining({ agentId: 'agent-1' })
+        );
       });
     });
 
-    it('displays selected agent in AgentDetailDrawer', async () => {
+    it('selects agent in store when agent is clicked', async () => {
       // Arrange
       const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan', status: 'running' });
-      const logs = new Map<string, LogEntry[]>();
-      logs.set('agent-1', [createMockLogEntry({ data: 'Test log' })]);
-      setupAgentStore([agent], logs);
+      setupAgentStore([agent]);
 
       // Act
       render(<AgentsTabView apiClient={mockApiClient} testId="agents-tab-view" />);
 
-      // Simulate selecting the agent via the store
-      useSharedAgentStore.getState().selectAgent('agent-1');
+      // Click agent item
+      const agentItem = screen.getByTestId('agent-item-agent-1');
+      fireEvent.click(agentItem);
 
-      // Re-render or wait for state update
+      // Assert - agent should be selected in store
       await waitFor(() => {
-        const drawer = screen.queryByTestId('agent-detail-drawer');
-        // Drawer should eventually be rendered
+        expect(useSharedAgentStore.getState().selectedAgentId).toBe('agent-1');
       });
     });
 
-    it('closes AgentDetailDrawer when close is triggered', async () => {
+    it('works without onSelectAgent callback (store-only selection)', async () => {
       // Arrange
       const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan' });
       setupAgentStore([agent]);
 
-      // Act
+      // Act - render without onSelectAgent
       render(<AgentsTabView apiClient={mockApiClient} testId="agents-tab-view" />);
 
-      // Open drawer by selecting agent
-      useSharedAgentStore.getState().selectAgent('agent-1');
+      // Click agent item
+      const agentItem = screen.getByTestId('agent-item-agent-1');
+      fireEvent.click(agentItem);
 
+      // Assert - should not throw, agent is selected in store
       await waitFor(() => {
-        const drawer = screen.queryByTestId('agent-detail-drawer');
-        if (drawer) {
-          // Find and click close button
-          const closeButton = screen.getByTestId('agent-detail-drawer-close');
-          fireEvent.click(closeButton);
-        }
+        expect(useSharedAgentStore.getState().selectedAgentId).toBe('agent-1');
       });
-
-      // Assert - drawer should be closed
-      await waitFor(() => {
-        const drawer = screen.queryByTestId('agent-detail-drawer');
-        // Drawer should be hidden or removed
-      });
-    });
-
-    it('sends instruction through AgentDetailDrawer', async () => {
-      // Arrange
-      const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan', status: 'interrupted' });
-      setupAgentStore([agent]);
-
-      // Act
-      render(<AgentsTabView apiClient={mockApiClient} testId="agents-tab-view" />);
-
-      // This test validates that the onSendInstruction prop is correctly wired
-      // The actual drawer behavior is tested in AgentDetailDrawer.test.tsx
     });
   });
 
@@ -600,10 +580,10 @@ describe('AgentsTabView', () => {
       });
     });
 
-    it('calls apiClient.executeAskProject when prompt is submitted', async () => {
-      // Arrange
-      const agent = createMockAgent({ id: 'ask-agent-1', phase: 'ask-project' });
-      mockApiClient.executeAskProject = vi.fn().mockResolvedValue({ ok: true, value: agent });
+    it('calls apiClient.executeProjectCommand when prompt is submitted', async () => {
+      // websocket-command-unification: executeAskProject replaced by executeProjectCommand
+      const agent = createMockAgent({ agentId: 'ask-agent-1', phase: 'ask-project' });
+      mockApiClient.executeProjectCommand = vi.fn().mockResolvedValue({ ok: true, value: agent });
       setupAgentStore([]);
 
       // Act
@@ -624,16 +604,19 @@ describe('AgentsTabView', () => {
       const executeButton = screen.getByRole('button', { name: '実行' });
       fireEvent.click(executeButton);
 
-      // Assert
+      // Assert - executeProjectCommand receives formatted command and phase
       await waitFor(() => {
-        expect(mockApiClient.executeAskProject).toHaveBeenCalledWith('Test project question');
+        expect(mockApiClient.executeProjectCommand).toHaveBeenCalledWith(
+          expect.stringContaining('project-ask'), // command
+          'project-ask' // phase
+        );
       });
     });
 
     it('closes AskAgentDialog after successful execution', async () => {
-      // Arrange
-      const agent = createMockAgent({ id: 'ask-agent-1', phase: 'ask-project' });
-      mockApiClient.executeAskProject = vi.fn().mockResolvedValue({ ok: true, value: agent });
+      // websocket-command-unification: executeAskProject replaced by executeProjectCommand
+      const agent = createMockAgent({ agentId: 'ask-agent-1', phase: 'ask-project' });
+      mockApiClient.executeProjectCommand = vi.fn().mockResolvedValue({ ok: true, value: agent });
       setupAgentStore([]);
 
       // Act
@@ -661,9 +644,9 @@ describe('AgentsTabView', () => {
     });
 
     it('adds new agent to store after successful Ask execution', async () => {
-      // Arrange
-      const newAgent = createMockAgent({ id: 'new-ask-agent', phase: 'ask-project', status: 'running' });
-      mockApiClient.executeAskProject = vi.fn().mockResolvedValue({ ok: true, value: newAgent });
+      // websocket-command-unification: executeAskProject replaced by executeProjectCommand
+      const newAgent = createMockAgent({ agentId: 'new-ask-agent', phase: 'ask-project', status: 'running' });
+      mockApiClient.executeProjectCommand = vi.fn().mockResolvedValue({ ok: true, value: newAgent });
       setupAgentStore([]);
 
       // Act
@@ -685,7 +668,7 @@ describe('AgentsTabView', () => {
 
       // Assert - new agent should be added to the store
       await waitFor(() => {
-        expect(mockApiClient.executeAskProject).toHaveBeenCalled();
+        expect(mockApiClient.executeProjectCommand).toHaveBeenCalled();
       });
     });
 

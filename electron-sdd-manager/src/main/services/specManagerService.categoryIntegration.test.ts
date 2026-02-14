@@ -61,8 +61,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'requirements',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -90,8 +91,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'fix',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -119,8 +121,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'project',
-        command: 'sleep',
+        commandOverride: 'sleep',
         args: ['5'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -150,8 +153,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'requirements',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['test output'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -180,8 +184,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'fix',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['bug fix output'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -209,8 +214,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'project',
-        command: 'echo',
+        commandOverride: 'echo',
         args: ['project output'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);
@@ -242,8 +248,9 @@ describe('SpecManagerService - Category Integration', () => {
       const result = await service.startAgent({
         specId,
         phase: 'implementation',
-        command: 'bash',
+        commandOverride: 'bash',
         args: ['-c', 'echo "line 1" && sleep 0.1 && echo "line 2"'],
+        engineId: 'gemini', // Use non-Claude engine to avoid args normalization
       });
 
       expect(result.ok).toBe(true);

@@ -438,7 +438,7 @@ describe('Menu Module', () => {
       installCommandsetItem.click();
 
       // Verify the eventBus was used instead of webContents.send
-      expect(mockEmit).toHaveBeenCalledWith('events:menu-install-commandset', {});
+      expect(mockEmit).toHaveBeenCalledWith('events:menu-install-commandset', { _src: 'menu' });
     });
   });
 });

@@ -66,29 +66,33 @@ describe('AgentRecordWatcherService', () => {
       expect(service.projectAgentWatcher).toBeNull();
     });
 
-    it('should watch all category paths (specs/*/bugs/*/project/) for JSON files', () => {
+    it('should watch all category paths (specs/bugs/project/) as directory paths', () => {
       service.start();
 
-      // Should watch all categories with glob patterns
+      // chokidar v4+ removed glob pattern support
+      // Must use directory paths with depth option instead
       expect(chokidar.watch).toHaveBeenCalled();
       const firstCallArgs = (chokidar.watch as Mock).mock.calls[0];
       const watchedPaths = firstCallArgs[0];
 
-      // Should be an array of glob patterns
+      // Should be an array of directory paths (not glob patterns)
       expect(Array.isArray(watchedPaths)).toBe(true);
-      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs/*/*.json'));
-      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'bugs/*/*.json'));
-      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project/*.json'));
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs'));
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'bugs'));
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project'));
     });
 
-    it('should exclude log files from watching', () => {
+    it('should exclude log files from watching via function-based ignored', () => {
       service.start();
 
       const firstCallArgs = (chokidar.watch as Mock).mock.calls[0];
       const options = firstCallArgs[1];
 
-      // Should ignore logs directory
-      expect(options.ignored).toBe('**/logs/**');
+      // chokidar v4+ recommends function-based ignored
+      expect(typeof options.ignored).toBe('function');
+      // Should ignore paths containing /logs/
+      expect(options.ignored('/test/project/.kiro/runtime/agents/specs/my-spec/logs/agent.log')).toBe(true);
+      expect(options.ignored('/test/project/.kiro/runtime/agents/specs/my-spec/agent-123.json')).toBe(false);
     });
 
     it('should set projectAgentWatcher after start()', () => {
@@ -109,24 +113,25 @@ describe('AgentRecordWatcherService', () => {
       expect(chokidar.watch).toHaveBeenCalledTimes(1);
     });
 
-    it('should set projectAgentWatcher with ignoreInitial: false', () => {
+    it('should set projectAgentWatcher with ignoreInitial: true', () => {
       service.start();
 
       const callArgs = (chokidar.watch as Mock).mock.calls[0];
       const options = callArgs[1];
 
-      // ProjectAgent watcher should process existing files
-      expect(options.ignoreInitial).toBe(false);
+      // Skip existing files - only watch for new changes
+      expect(options.ignoreInitial).toBe(true);
     });
 
-    it('should not specify depth option (glob patterns control depth)', () => {
+    it('should specify depth: 2 for category/entity/file traversal', () => {
       service.start();
 
       const callArgs = (chokidar.watch as Mock).mock.calls[0];
       const options = callArgs[1];
 
-      // Depth is controlled by glob patterns, not depth option
-      expect(options.depth).toBeUndefined();
+      // chokidar v4+ uses depth option instead of glob patterns
+      // Sufficient for {category}/{entityId}/agent-*.json
+      expect(options.depth).toBe(2);
     });
 
     it('should warn and return if already running', () => {

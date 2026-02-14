@@ -486,15 +486,12 @@ describe('Task 8.2: Specs Tab SpecDetailPage Push Navigation', () => {
         },
       });
 
-      // Update mock API client
-      vi.doMock('../shared', async () => {
+      // Update mock API client via the correct module path
+      vi.doMock('../shared/api', async () => {
         const React = await import('react');
         return {
           ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
             React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
-          PlatformProvider: ({ children }: { children: React.ReactNode }) =>
-            React.createElement('div', { 'data-testid': 'platform-provider' }, children),
-          useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
           useApi: () => ({
             ...mockApiClient,
             getSpecDetail: mockGetSpecDetail,

@@ -1,0 +1,186 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-14T10:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: getLastCompletedPhase の第1引数が SpecPhase に変更されている。メソッドシグネチャは `getLastCompletedPhase(specPhase: SpecPhase, ...)` となっており、ApprovalsStatus は使用していない。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:982 - getLastCompletedPhase(specPhase: SpecPhase, documentReviewStatus?: ...): WorkflowPhase | null",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:16 - import type { SpecPhase } from '../../renderer/types'"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: 第2引数 documentReviewStatus は維持されている。型は `'pending' | 'in_progress' | 'approved'` でオプショナル。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:982 - documentReviewStatus?: 'pending' | 'in_progress' | 'approved'"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: 戻り値の型 WorkflowPhase | null は変更されていない。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:982 - ): WorkflowPhase | null {"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: SpecPhase -> WorkflowPhase マッピングが switch 文で完全に実装されている。initialized->null, requirements-generated->'requirements', design-generated->'design', tasks-generated->条件分岐(approved->'document-review', else->'tasks'), implementation-complete->'impl', inspection-complete->'inspection', deploy-complete->'inspection'。全てのマッピングが仕様通り。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:983-1005 - switch(specPhase) 全ケース実装",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:984-985 - case 'initialized': return null",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:986-987 - case 'requirements-generated': return 'requirements'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:988-989 - case 'design-generated': return 'design'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:990-995 - case 'tasks-generated': documentReviewStatus分岐",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:996-997 - case 'implementation-complete': return 'impl'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:998-999 - case 'inspection-complete': return 'inspection'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:1000-1001 - case 'deploy-complete': return 'inspection'"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: 未知の SpecPhase 値は default ケースで null を返す。テストでも 'unknown-phase' で確認済み。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:1002-1004 - default: return null",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3349-3351 - it('should return null for unknown SpecPhase value')"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: start() メソッドが spec.json から phase フィールドを読み取っている。既存の spec.json 読み取りブロック内で `specJson.phase` を取得。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:470 - let specPhase: SpecPhase = 'initialized'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:477-483 - if (specJson.phase) { specPhase = specJson.phase; }"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: 読み取った specPhase を getLastCompletedPhase(specPhase, documentReviewStatus) に渡している。approvals 条件分岐の外に移動済み。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:598 - const lastCompletedPhase = this.getLastCompletedPhase(specPhase, documentReviewStatus)"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: spec.json 読み取り失敗時、specPhase は 'initialized' フォールバック値を維持。変数宣言時に初期化されており、catch ブロック内でもそのまま。テストでも検証済み。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:470 - let specPhase: SpecPhase = 'initialized'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:514-520 - catch(err) { // specPhase = 'initialized' のまま }",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1813-1847 - it('should fallback to initialized when spec.json read fails')"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: 3つのシナリオが全てテストで確認済み。implementation-complete->inspection, inspection-complete/deploy-complete->inspection(テスト存在), tasks-generated->既存動作(document-review or impl)。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1897-1949 - it('should start from inspection when phase is implementation-complete (bug fix scenario)')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3334-3337 - implementation-complete -> 'impl'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3339-3342 - inspection-complete -> 'inspection'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3313-3321 - tasks-generated -> 'tasks' or 'document-review'"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: 既存テストが新シグネチャ(specPhase引数)に更新されている。全てのgetLastCompletedPhaseテストが SpecPhase 文字列を第1引数に使用。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3289-3294 - Task 3.1: 既存テストを新シグネチャに書き換え",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3298-3301 - coordinator.getLastCompletedPhase('initialized')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3303-3306 - coordinator.getLastCompletedPhase('requirements-generated')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3308-3311 - coordinator.getLastCompletedPhase('design-generated')"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: implementation-complete, inspection-complete, deploy-complete, initialized の全テストケースが追加されている。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3334-3337 - specPhase === 'implementation-complete' -> 'impl'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3339-3342 - specPhase === 'inspection-complete' -> 'inspection'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3344-3347 - specPhase === 'deploy-complete' -> 'inspection'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3298-3301 - specPhase === 'initialized' -> null"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: start() テストが新しいフェーズ判定ロジックで正常パスすることを確認するテストが複数存在。implementation-complete からの inspection 起動、fallback to initialized、phase フィールドなしのケースが全てテスト済み。",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1765-1811 - it('should read phase from spec.json and use it for getLastCompletedPhase')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1813-1847 - it('should fallback to initialized when spec.json read fails')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1849-1895 - it('should fallback to initialized when spec.json has no phase field')",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1897-1949 - it('should start from inspection when phase is implementation-complete (bug fix scenario)')"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: impl 完了済み状態からの E2E テストが追加されている。spec.json に phase='implementation-complete' を設定し、自動実行開始後に inspection が実行され impl が再実行されないことを検証。",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:47-61 - IMPL_COMPLETE_SPEC_JSON with phase: 'implementation-complete'",
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:248-312 - it('should start inspection (not impl) when phase is implementation-complete')",
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:283-289 - inspection 開始の検証",
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:296-305 - impl が再実行されないことの検証"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: 既存 E2E テストパターンに準拠している。auto-execution-impl-flow.e2e.spec.ts と同じパターン（Mock Claude CLI、fixture-based spec.json、waitForCondition パターン、helpers import）を使用。ファイルヘッダーにも明記。",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:10-13 - Follows existing E2E patterns from auto-execution-impl-flow.e2e.spec.ts",
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:18-33 - Same helpers import pattern",
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts:129-202 - Fixture setup functions matching existing patterns",
+        "electron-sdd-manager/e2e-wdio/auto-execution-impl-flow.e2e.spec.ts - Reference file exists"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "partial": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 14
+  }
+}

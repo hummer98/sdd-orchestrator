@@ -1,0 +1,191 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-14T09:30:00Z",
+  "checks": [
+    {
+      "id": "design-component-getLastCompletedPhase",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getLastCompletedPhase method found at expected location in autoExecutionCoordinator.ts (line 982)",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:982"
+      ]
+    },
+    {
+      "id": "design-interface-getLastCompletedPhase-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getLastCompletedPhase signature matches design specification: (specPhase: SpecPhase, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null",
+      "evidence": [
+        "Design: getLastCompletedPhase(specPhase: SpecPhase, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null",
+        "Actual: getLastCompletedPhase(specPhase: SpecPhase, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null"
+      ]
+    },
+    {
+      "id": "design-interface-getLastCompletedPhase-mapping",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecPhase -> WorkflowPhase mapping in switch statement matches design.md Data Models table exactly: initialized->null, requirements-generated->requirements, design-generated->design, tasks-generated->tasks/document-review (with documentReviewStatus check), implementation-complete->impl, inspection-complete->inspection, deploy-complete->inspection, default->null",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:983-1005"
+      ]
+    },
+    {
+      "id": "design-component-start-method",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "start() method correctly reads spec.json.phase and passes specPhase to getLastCompletedPhase, matching design specification",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:470 (specPhase initialization)",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:477-478 (phase read from spec.json)",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:598 (getLastCompletedPhase call with specPhase)"
+      ]
+    },
+    {
+      "id": "design-interface-start-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "start() method external signature is unchanged as specified in design.md",
+      "evidence": [
+        "Design: async start(projectPath, specPath, specId, options): Promise<Result<AutoExecutionState, AutoExecutionError>>",
+        "Actual: signature unchanged, only internal implementation modified"
+      ]
+    },
+    {
+      "id": "design-dd001-specphase-datasource",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-001 verified: getLastCompletedPhase data source changed from ApprovalsStatus to SpecPhase. First argument is now SpecPhase type, ApprovalsStatus is no longer used by this method",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:982 - specPhase: SpecPhase as first argument",
+        "ApprovalsStatus still used by other methods (isPreviousPhaseApproved, getUnapprovedGeneratedPhases) but not getLastCompletedPhase"
+      ]
+    },
+    {
+      "id": "design-dd002-approvals-branch-maintained",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-002 verified: approvals condition branch maintained in start() method, getLastCompletedPhase call moved outside the approvals block (line 598 is outside the 'if (approvals)' block that ends around line 592)",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:595-598 - getLastCompletedPhase called outside approvals block with comment referencing DD-002"
+      ]
+    },
+    {
+      "id": "design-dd003-specphase-import",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003 verified: SpecPhase imported from renderer/types/index.ts (the SSOT definition source), consistent with existing codebase pattern where 40+ main process files import from renderer/types",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:16 - import type { SpecPhase } from '../../renderer/types'",
+        "SpecPhase defined at electron-sdd-manager/src/renderer/types/index.ts:3"
+      ]
+    },
+    {
+      "id": "design-fallback-initialized",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Fallback behavior matches design: spec.json read failure sets specPhase to 'initialized' (Requirement 3.3). Both try-catch fallback and missing phase field fallback implemented",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:470 - let specPhase: SpecPhase = 'initialized'",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts:514-521 - catch block with fallback comment"
+      ]
+    },
+    {
+      "id": "design-component-unittest",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "autoExecutionCoordinator.test.ts updated with new SpecPhase-based tests. Contains 12 getLastCompletedPhase test cases covering all SpecPhase values, documentReviewStatus combinations, and unknown phase handling",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:3296-3360 - getLastCompletedPhase() test describe block",
+        "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts:1754-1949 - start() with specPhase tests (3 test cases: spec.json read, fallback, bug fix scenario)"
+      ]
+    },
+    {
+      "id": "design-component-e2e",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2E test file auto-execution-phase-ssot.e2e.spec.ts created at expected path, following auto-execution-impl-flow.e2e.spec.ts pattern. Tests impl-complete -> inspection execution scenario",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts - 314 lines, complete E2E test"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product.md goals: fixes auto-execution phase determination to correctly handle impl/inspection/deploy phases in the SDD workflow lifecycle (product.md Core Capability #1: Spec lifecycle management, #11: Inspection)",
+      "evidence": [
+        "product.md: 'spec-init -> requirements -> design -> tasks -> implementation -> inspection -> deploy'",
+        "Feature ensures correct phase transition from implementation to inspection"
+      ]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Technology stack matches tech.md: TypeScript 5.8+, Vitest for unit tests, WebdriverIO for E2E tests. Test files follow *.test.ts naming convention with co-location",
+      "evidence": [
+        "tech.md: 'Vitest によるユニットテスト', 'WebdriverIO による E2E テスト'",
+        "autoExecutionCoordinator.test.ts co-located with implementation",
+        "E2E test in e2e-wdio/ directory"
+      ]
+    },
+    {
+      "id": "steering-structure-file-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Files placed in correct directories per structure.md: service in src/main/services/, unit test co-located, E2E test in e2e-wdio/",
+      "evidence": [
+        "structure.md: 'main/services/ - バックエンドサービス'",
+        "structure.md: 'テストファイルは実装ファイルと同ディレクトリに配置'",
+        "autoExecutionCoordinator.ts and autoExecutionCoordinator.test.ts are co-located in src/main/services/"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No state management changes required for this feature. The change is entirely within Main Process service logic (getLastCompletedPhase), consistent with structure.md's Electron Process Boundary Rules",
+      "evidence": [
+        "structure.md: 'Main Processが保持すべきステート: プロセス管理'",
+        "AutoExecutionCoordinator is a Main Process service managing execution state"
+      ]
+    },
+    {
+      "id": "steering-tech-no-scope-creep",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No out-of-scope functionality added. Changes are strictly limited to getLastCompletedPhase signature, start() method call site, and corresponding tests as specified in design.md Non-Goals",
+      "evidence": [
+        "design.md Non-Goals: isPreviousPhaseApproved/getNextPermittedPhase/getImmediateNextPhase unchanged",
+        "ApprovalsStatus interface not modified",
+        "handleAgentCompleted() not modified"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 16
+  }
+}

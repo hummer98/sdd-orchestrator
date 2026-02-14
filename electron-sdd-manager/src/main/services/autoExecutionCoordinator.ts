@@ -13,6 +13,7 @@ import { EventEmitter } from 'events';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
 import type { WorkflowPhase } from './specManagerService';
+import type { SpecPhase } from '../../renderer/types';
 import { FileService } from './fileService';
 // spec-event-log: Event logging for auto-execution activities
 import { getDefaultEventLogService } from './eventLogService';
@@ -464,10 +465,22 @@ export class AutoExecutionCoordinator extends EventEmitter {
     let approvals = options.approvals;
     let effectiveOptions = options;
     let documentReviewStatus: 'pending' | 'in_progress' | 'approved' | undefined = undefined;
+    // auto-exec-phase-ssot Task 2.1: spec.json.phase を読み取り、フォールバックは 'initialized'
+    // Requirements: 3.1, 3.2, 3.3
+    let specPhase: SpecPhase = 'initialized';
     try {
       const specJsonPath = require('path').join(specPath, 'spec.json');
       const content = require('fs').readFileSync(specJsonPath, 'utf-8');
       const specJson = JSON.parse(content);
+
+      // auto-exec-phase-ssot Task 2.1: Read phase from spec.json (SSOT)
+      if (specJson.phase) {
+        specPhase = specJson.phase;
+        logger.info('[AutoExecutionCoordinator] Read phase from spec.json', {
+          specPath,
+          specPhase,
+        });
+      }
 
       // Merge permissions from spec.json (spec.json is SSOT)
       if (specJson.autoExecution?.permissions) {
@@ -499,7 +512,9 @@ export class AutoExecutionCoordinator extends EventEmitter {
         });
       }
     } catch (err) {
-      logger.warn('[AutoExecutionCoordinator] Failed to read spec.json', {
+      // auto-exec-phase-ssot Task 2.1: spec.json 読み取り失敗時は specPhase = 'initialized' のまま
+      // Requirements: 3.3
+      logger.warn('[AutoExecutionCoordinator] Failed to read spec.json, using specPhase=initialized fallback', {
         specPath,
         error: err,
       });
@@ -544,9 +559,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
                  effectiveOptions.permissions.impl ? 'impl' : undefined,
     });
 
-    // 初期フェーズを決定して実行イベントを発火
-    let lastCompletedPhase: WorkflowPhase | null = null;
-
+    // 自動承認ロジック（approvals に依存、DD-002: approvals 条件分岐を維持）
     if (approvals) {
       // Bug Fix: 未承認だが生成済みのフェーズを自動承認
       // 自動実行ボタンを押す = 現状の成果物を暗黙的に承認する意図と解釈
@@ -577,15 +590,18 @@ export class AutoExecutionCoordinator extends EventEmitter {
         }
         approvals = mutableApprovals;
       }
-
-      lastCompletedPhase = this.getLastCompletedPhase(approvals, documentReviewStatus);
-      logger.info('[AutoExecutionCoordinator] Last completed phase from approvals', {
-        specPath,
-        lastCompletedPhase,
-        approvals,
-        documentReviewStatus,
-      });
     }
+
+    // auto-exec-phase-ssot Task 2.1: specPhase ベースのフェーズ判定（approvals 条件分岐の外に移動）
+    // DD-002: getLastCompletedPhase は specPhase のみに依存するため、approvals の有無に関係なく呼び出せる
+    // Requirements: 3.1, 3.2
+    const lastCompletedPhase = this.getLastCompletedPhase(specPhase, documentReviewStatus);
+    logger.info('[AutoExecutionCoordinator] Last completed phase from specPhase', {
+      specPath,
+      lastCompletedPhase,
+      specPhase,
+      documentReviewStatus,
+    });
 
     // auto-execution-nogo-stop Task 1.1: getImmediateNextPhaseに変更
     // NOGOフェーズをスキップせず、即座に停止する動作に統一
@@ -954,24 +970,39 @@ export class AutoExecutionCoordinator extends EventEmitter {
   }
 
   /**
-   * Approvals状態から最後に完了したフェーズを取得
-   * 既に approved または generated のフェーズは完了済みとみなす
-   * @param approvals spec.jsonのapprovals状態
-   * @returns 最後に完了したフェーズ or null（なし）
+   * auto-exec-phase-ssot: SpecPhase から最後に完了したフェーズを取得
+   * spec.json.phase（SSOT）をデータソースとして全フェーズの完了状態を判定する
+   *
+   * @param specPhase spec.json の phase フィールド（SpecPhase）
+   * @param documentReviewStatus documentReview.status（tasks-generated 時のサブ判定にのみ使用）
+   * @returns 最後に完了した WorkflowPhase or null（なし）
+   *
+   * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2
    */
-  getLastCompletedPhase(approvals: ApprovalsStatus, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null {
-    // document-review-complete-detection: Check document-review completion
-    // If tasks are completed and documentReview.status is 'approved', return 'document-review'
-    if ((approvals.tasks.approved || approvals.tasks.generated) && documentReviewStatus === 'approved') {
-      return 'document-review';
+  getLastCompletedPhase(specPhase: SpecPhase, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null {
+    switch (specPhase) {
+      case 'initialized':
+        return null;
+      case 'requirements-generated':
+        return 'requirements';
+      case 'design-generated':
+        return 'design';
+      case 'tasks-generated':
+        // documentReviewStatus が 'approved' なら document-review 完了とみなす
+        if (documentReviewStatus === 'approved') {
+          return 'document-review';
+        }
+        return 'tasks';
+      case 'implementation-complete':
+        return 'impl';
+      case 'inspection-complete':
+        return 'inspection';
+      case 'deploy-complete':
+        return 'inspection';
+      default:
+        // 未知の SpecPhase 値に対しては null を返す（安全側に倒す）
+        return null;
     }
-
-    // requirements, design, tasks の順でチェック（逆順）
-    // approved または generated のフェーズは完了とみなす
-    if (approvals.tasks.approved || approvals.tasks.generated) return 'tasks';
-    if (approvals.design.approved || approvals.design.generated) return 'design';
-    if (approvals.requirements.approved || approvals.requirements.generated) return 'requirements';
-    return null;
   }
 
   /**

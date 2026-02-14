@@ -1643,8 +1643,9 @@ describe('AutoExecutionCoordinator', () => {
       /**
        * Task 3.2 (auto-execution-nogo-stop): 途中から再開時に次フェーズがNOGOの場合のテスト
        * Requirements: 3.3, 1.2
+       * auto-exec-phase-ssot: spec.json.phase を SSOT として使用するよう更新
        *
-       * Given: requirements完了、design=NOGO
+       * Given: spec.json.phase='requirements-generated'（requirements完了）、design=NOGO
        * When: start(specPath, options)
        * Then: execute-next-phaseイベントを発火しない、completeExecution()を呼び出す
        */
@@ -1668,6 +1669,24 @@ describe('AutoExecutionCoordinator', () => {
             tasks: { generated: false, approved: false },
           },
         };
+
+        // auto-exec-phase-ssot: spec.json.phase を SSOT として提供
+        const path = require('path');
+        const fs = require('fs');
+        const fsMock = vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: string) => {
+          if (filePath === path.join(specPath, 'spec.json')) {
+            return JSON.stringify({
+              phase: 'requirements-generated',
+              approvals: {
+                requirements: { generated: true, approved: true },
+                design: { generated: false, approved: false },
+                tasks: { generated: false, approved: false },
+              },
+            });
+          }
+          return '{}';
+        });
+
         const eventHandler = vi.fn();
 
         coordinator.on('execute-next-phase', eventHandler);
@@ -1679,6 +1698,8 @@ describe('AutoExecutionCoordinator', () => {
         // 即座に完了状態になる
         const state = coordinator.getStatus(specPath);
         expect(state?.status).toBe('completed');
+
+        fsMock.mockRestore();
       });
 
       /**
@@ -1722,6 +1743,209 @@ describe('AutoExecutionCoordinator', () => {
         // 状態は'running'
         const state = coordinator.getStatus(specPath);
         expect(state?.status).toBe('running');
+      });
+    });
+
+    /**
+     * auto-exec-phase-ssot Task 2.1 & 3.3: start() が spec.json.phase を使って
+     * getLastCompletedPhase を呼び出すテスト
+     * Requirements: 3.1, 3.2, 3.3, 3.4, 4.3
+     */
+    describe('start() with specPhase from spec.json (auto-exec-phase-ssot)', () => {
+      let fsMock: ReturnType<typeof vi.spyOn> | null = null;
+
+      afterEach(() => {
+        // Only restore the fs mock, not all mocks (to preserve eventLogService mock)
+        if (fsMock) {
+          fsMock.mockRestore();
+          fsMock = null;
+        }
+      });
+
+      it('should read phase from spec.json and use it for getLastCompletedPhase', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Mock fs to return spec.json with phase = 'implementation-complete'
+        const path = require('path');
+        const fs = require('fs');
+        fsMock = vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: string, encoding?: string) => {
+          if (filePath === path.join(specPath, 'spec.json')) {
+            return JSON.stringify({
+              phase: 'implementation-complete',
+              approvals: {
+                requirements: { generated: true, approved: true },
+                design: { generated: true, approved: true },
+                tasks: { generated: true, approved: true },
+              },
+              documentReview: { status: 'approved' },
+            });
+          }
+          return '{}';
+        });
+
+        const eventHandler = vi.fn();
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // phase='implementation-complete' -> lastCompleted='impl' -> next='inspection'
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'inspection',
+          expect.objectContaining({
+            specId: 'test-feature',
+          })
+        );
+      });
+
+      it('should fallback to initialized when spec.json read fails', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Mock fs to throw error when reading spec.json
+        const fs = require('fs');
+        fsMock = vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
+          throw new Error('File not found');
+        });
+
+        const eventHandler = vi.fn();
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // specPhase fallback to 'initialized' -> lastCompleted=null -> first phase='requirements'
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'requirements',
+          expect.objectContaining({
+            specId: 'test-feature',
+          })
+        );
+      });
+
+      it('should fallback to initialized when spec.json has no phase field', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Mock fs to return spec.json without phase field
+        const path = require('path');
+        const fs = require('fs');
+        fsMock = vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: string) => {
+          if (filePath === path.join(specPath, 'spec.json')) {
+            return JSON.stringify({
+              approvals: {
+                requirements: { generated: true, approved: true },
+                design: { generated: false, approved: false },
+                tasks: { generated: false, approved: false },
+              },
+            });
+          }
+          return '{}';
+        });
+
+        const eventHandler = vi.fn();
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // specPhase fallback to 'initialized' -> lastCompleted=null -> first='requirements'
+        // Note: approvals are still read so auto-approval may apply, but phase determination
+        // uses specPhase='initialized' so lastCompleted=null
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'requirements',
+          expect.objectContaining({
+            specId: 'test-feature',
+          })
+        );
+      });
+
+      it('should start from inspection when phase is implementation-complete (bug fix scenario)', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Mock spec.json with implementation-complete phase
+        const path = require('path');
+        const fs = require('fs');
+        fsMock = vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: string) => {
+          if (filePath === path.join(specPath, 'spec.json')) {
+            return JSON.stringify({
+              phase: 'implementation-complete',
+              approvals: {
+                requirements: { generated: true, approved: true },
+                design: { generated: true, approved: true },
+                tasks: { generated: true, approved: true },
+              },
+            });
+          }
+          return '{}';
+        });
+
+        const eventHandler = vi.fn();
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // The bug was: impl completed but auto-execution would restart from impl
+        // Now: phase='implementation-complete' -> lastCompleted='impl' -> next='inspection'
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'inspection',
+          expect.objectContaining({
+            specId: 'test-feature',
+          })
+        );
+        // Verify it did NOT trigger impl
+        expect(eventHandler).not.toHaveBeenCalledWith(
+          specPath,
+          'impl',
+          expect.anything()
+        );
       });
     });
   });
@@ -3064,94 +3288,74 @@ No tasks defined yet.
 
   /**
    * getLastCompletedPhase() tests
-   * Tests for document-review completion detection
+   * auto-exec-phase-ssot: SpecPhase ベースのマッピングテスト
+   * Task 3.1: 既存テストを新シグネチャ（SpecPhase 引数）に書き換え
+   * Task 3.2: implementation-complete, inspection-complete, deploy-complete, initialized のテストケース追加
+   * Requirements: 4.1, 4.2
    */
   describe('getLastCompletedPhase()', () => {
-    it('should return null when no phases are completed', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: false, approved: false },
-        design: { generated: false, approved: false },
-        tasks: { generated: false, approved: false },
-      };
-
-      const result = coordinator.getLastCompletedPhase(approvals);
+    // Task 3.1: 既存テストの SpecPhase ベース書き換え
+    it('should return null when specPhase is initialized', () => {
+      const result = coordinator.getLastCompletedPhase('initialized');
       expect(result).toBeNull();
     });
 
-    it('should return requirements when only requirements is completed', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: false, approved: false },
-        tasks: { generated: false, approved: false },
-      };
-
-      const result = coordinator.getLastCompletedPhase(approvals);
+    it('should return requirements when specPhase is requirements-generated', () => {
+      const result = coordinator.getLastCompletedPhase('requirements-generated');
       expect(result).toBe('requirements');
     });
 
-    it('should return design when requirements and design are completed', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: false, approved: false },
-      };
-
-      const result = coordinator.getLastCompletedPhase(approvals);
+    it('should return design when specPhase is design-generated', () => {
+      const result = coordinator.getLastCompletedPhase('design-generated');
       expect(result).toBe('design');
     });
 
-    it('should return tasks when all three phases are completed', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: true, approved: true },
-      };
-
-      const result = coordinator.getLastCompletedPhase(approvals);
+    it('should return tasks when specPhase is tasks-generated and documentReviewStatus is not approved', () => {
+      const result = coordinator.getLastCompletedPhase('tasks-generated');
       expect(result).toBe('tasks');
     });
 
-    it('should return document-review when tasks completed and documentReview.status is approved', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: true, approved: true },
-      };
-
-      // documentReview.status = 'approved' を追加パラメータとして渡す
-      const result = coordinator.getLastCompletedPhase(approvals, 'approved');
+    it('should return document-review when specPhase is tasks-generated and documentReviewStatus is approved', () => {
+      const result = coordinator.getLastCompletedPhase('tasks-generated', 'approved');
       expect(result).toBe('document-review');
     });
 
-    it('should return tasks when tasks completed but documentReview.status is not approved', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: true, approved: true },
-      };
-
-      // documentReview.status = 'pending'
-      const result = coordinator.getLastCompletedPhase(approvals, 'pending');
+    it('should return tasks when specPhase is tasks-generated and documentReviewStatus is pending', () => {
+      const result = coordinator.getLastCompletedPhase('tasks-generated', 'pending');
       expect(result).toBe('tasks');
     });
 
-    it('should return tasks when tasks completed and documentReview status is undefined', () => {
-      const coordinator = new AutoExecutionCoordinator();
-      const approvals: ApprovalsStatus = {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: true, approved: true },
-      };
-
-      // documentReview.status が存在しない（undefined）
-      const result = coordinator.getLastCompletedPhase(approvals, undefined);
+    it('should return tasks when specPhase is tasks-generated and documentReviewStatus is undefined', () => {
+      const result = coordinator.getLastCompletedPhase('tasks-generated', undefined);
       expect(result).toBe('tasks');
+    });
+
+    // Task 3.2: 新しい SpecPhase テストケース追加
+    it('should return impl when specPhase is implementation-complete', () => {
+      const result = coordinator.getLastCompletedPhase('implementation-complete');
+      expect(result).toBe('impl');
+    });
+
+    it('should return inspection when specPhase is inspection-complete', () => {
+      const result = coordinator.getLastCompletedPhase('inspection-complete');
+      expect(result).toBe('inspection');
+    });
+
+    it('should return inspection when specPhase is deploy-complete', () => {
+      const result = coordinator.getLastCompletedPhase('deploy-complete');
+      expect(result).toBe('inspection');
+    });
+
+    it('should return null for unknown SpecPhase value', () => {
+      const result = coordinator.getLastCompletedPhase('unknown-phase' as any);
+      expect(result).toBeNull();
+    });
+
+    // documentReviewStatus は tasks-generated 以外では無視される
+    it('should ignore documentReviewStatus when specPhase is not tasks-generated', () => {
+      // implementation-complete with documentReviewStatus=approved should still return 'impl'
+      const result = coordinator.getLastCompletedPhase('implementation-complete', 'approved');
+      expect(result).toBe('impl');
     });
   });
 });

@@ -1,0 +1,63 @@
+{
+  "spec_overview": "AutoExecutionCoordinator.getLastCompletedPhase() のデータソースを ApprovalsStatus から spec.json.phase (SpecPhase) に変更し、impl完了後の自動実行開始時にinspectionから正しく再開できるようにする修正。",
+  "key_components": [
+    {
+      "name": "getLastCompletedPhase",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts",
+      "requirements": ["1.1", "1.2", "1.3", "2.1", "2.2"]
+    },
+    {
+      "name": "start",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts",
+      "requirements": ["3.1", "3.2", "3.3", "3.4"]
+    },
+    {
+      "name": "autoExecutionCoordinator.test.ts",
+      "type": "component",
+      "path": "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts",
+      "requirements": ["4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "auto-execution-phase-ssot.e2e.spec.ts",
+      "type": "component",
+      "path": "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts",
+      "requirements": ["5.1", "5.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "start",
+      "target": "getLastCompletedPhase",
+      "type": "call"
+    },
+    {
+      "source": "start",
+      "target": "spec.json",
+      "type": "import"
+    },
+    {
+      "source": "getLastCompletedPhase",
+      "target": "SpecPhase",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/services/autoExecutionCoordinator.ts",
+      "action": "UPDATE",
+      "reason": "getLastCompletedPhase シグネチャ変更（ApprovalsStatus -> SpecPhase）、start()内の呼び出し修正"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/services/autoExecutionCoordinator.test.ts",
+      "action": "UPDATE",
+      "reason": "既存テストの新シグネチャ対応、新テストケース追加"
+    },
+    {
+      "target": "electron-sdd-manager/e2e-wdio/auto-execution-phase-ssot.e2e.spec.ts",
+      "action": "CREATE",
+      "reason": "impl完了状態からの自動実行再開E2Eテスト"
+    }
+  ]
+}

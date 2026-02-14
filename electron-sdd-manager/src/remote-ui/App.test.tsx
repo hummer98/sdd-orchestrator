@@ -63,6 +63,15 @@ vi.mock('../shared/hooks/useDeviceType', () => ({
   useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
 }));
 
+// Mock TRPCProvider (imports electron-trpc/renderer which is unavailable in test env)
+vi.mock('../shared/trpc/provider', async () => {
+  const React = await import('react');
+  return {
+    TRPCProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 // Mock the layouts
 vi.mock('./layouts', async () => {
   const React = await import('react');

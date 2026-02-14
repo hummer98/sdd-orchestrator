@@ -23,13 +23,19 @@ vi.mock('@shared/stores/bugAutoExecutionStore', () => ({
   })),
 }));
 
-vi.mock('@shared/stores/bugStore', () => ({
-  useSharedBugStore: vi.fn(() => ({
+vi.mock('@shared/stores/bugStore', () => {
+  const mockSetUseWorktree = vi.fn();
+  const state = {
     useWorktree: false,
-    setUseWorktree: vi.fn(),
-  })),
-  resetSharedBugStore: vi.fn(),
-}));
+    setUseWorktree: mockSetUseWorktree,
+  };
+  return {
+    useSharedBugStore: vi.fn((selector?: (s: typeof state) => unknown) =>
+      selector ? selector(state) : state
+    ),
+    resetSharedBugStore: vi.fn(),
+  };
+});
 
 // =============================================================================
 // Mock Data

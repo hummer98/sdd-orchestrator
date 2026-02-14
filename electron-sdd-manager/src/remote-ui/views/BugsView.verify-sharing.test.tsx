@@ -147,7 +147,7 @@ describe('Task 9.2: Bugs一覧とフィルタの共用を確認する', () => {
     it('should verify BugListItem exists in shared components', () => {
       // Verify BugListItem component exists
       const content = readFileSync(BUG_LIST_ITEM_PATH, 'utf-8');
-      expect(content).toContain('export function BugListItem');
+      expect(content).toContain('export const BugListItem');
     });
 
     it('should verify BugListContainer exists in shared components', () => {

@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Download, Loader2, CheckCircle, AlertCircle, FileWarning } from 'lucide-react';
 import { useProjectStore, type InstallError } from '../stores/projectStore';
 import { clsx } from 'clsx';
@@ -18,6 +19,7 @@ interface ErrorBannerProps {
 }
 
 export function ErrorBanner({ expanded, onExpandedChange }: ErrorBannerProps) {
+  // zustand-selector-optimization: useShallow for many state fields + actions
   const {
     currentProject,
     kiroValidation,
@@ -28,7 +30,19 @@ export function ErrorBanner({ expanded, onExpandedChange }: ErrorBannerProps) {
     installCommands,
     installSettings,
     clearInstallResult,
-  } = useProjectStore();
+  } = useProjectStore(
+    useShallow(s => ({
+      currentProject: s.currentProject,
+      kiroValidation: s.kiroValidation,
+      specManagerCheck: s.specManagerCheck,
+      installLoading: s.installLoading,
+      installResult: s.installResult,
+      installError: s.installError,
+      installCommands: s.installCommands,
+      installSettings: s.installSettings,
+      clearInstallResult: s.clearInstallResult,
+    }))
+  );
 
   const [internalExpanded, setInternalExpanded] = useState(false);
 

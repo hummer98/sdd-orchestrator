@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useSpecStore } from '../stores/specStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/workflowStore';
@@ -60,10 +61,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   // Store Subscriptions
   // ---------------------------------------------------------------------------
 
-  const { specDetail, isLoading, selectedSpec } = useSpecStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields
+  const { specDetail, isLoading, selectedSpec } = useSpecStore(
+    useShallow(s => ({ specDetail: s.specDetail, isLoading: s.isLoading, selectedSpec: s.selectedSpec }))
+  );
   // auto-execution-projectpath-fix Task 4.5: Get project path from store
   const currentProject = useProjectStore((state) => state.currentProject);
-  const workflowStore = useWorkflowStore();
+  // zustand-selector-optimization: individual selector for useWorkflowStore
+  const commandPrefix = useWorkflowStore(s => s.commandPrefix);
 
   /**
    * zustand-agent-selector-hooks Task 5.1: Use useAgentsBySpec hook
@@ -225,7 +230,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
           type: 'spec-merge',
           specId: specDetail.metadata.name,
           featureName: specDetail.metadata.name,
-          commandPrefix: workflowStore.commandPrefix,
+          commandPrefix: commandPrefix,
         });
         return;
       }
@@ -235,10 +240,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
           type: phase as 'requirements' | 'design' | 'tasks' | 'deploy',
           specId: specDetail.metadata.name,
           featureName: specDetail.metadata.name,
-          commandPrefix: workflowStore.commandPrefix,
+          commandPrefix: commandPrefix,
         });
     });
-  }, [specDetail, specJson?.worktree, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, specJson?.worktree, commandPrefix, wrapExecution]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
@@ -344,11 +349,11 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         type: 'document-review',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
         scheme: documentReviewScheme,
       } as any);
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution, documentReviewScheme]);
+  }, [specDetail, commandPrefix, wrapExecution, documentReviewScheme]);
 
   const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
@@ -360,10 +365,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         reviewNumber: roundNumber,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleApplyDocumentReviewFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
@@ -375,10 +380,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         reviewNumber: roundNumber,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleSchemeChange = useCallback(async (newScheme: ReviewerScheme) => {
     if (!specDetail) return;
@@ -417,10 +422,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         type: 'inspection',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleExecuteInspectionFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
@@ -432,10 +437,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         roundNumber,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   // auto-execution-ssot: Use handleToggleAutoPermission which updates spec.json directly
   const handleToggleInspectionAutoPermission = useCallback(() => {
@@ -454,7 +459,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
       const result = await getVanillaClient().spec.startImpl.mutate({
         specName,
         featureName,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
 
       if (!result.ok) {
@@ -462,7 +467,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         notify.error(message);
       }
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;
@@ -474,10 +479,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         taskId,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleParallelExecute = useCallback(async () => {
     if (!specDetail) return;
@@ -492,10 +497,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         type: 'auto-impl',
         specId: specName,
         featureName: specName,
-        commandPrefix: workflowStore.commandPrefix,
+        commandPrefix: commandPrefix,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, commandPrefix, wrapExecution]);
 
   const handleToggleParallelMode = useCallback(() => {
     toggleParallelMode();
@@ -630,7 +635,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
 
     // UI State
     launching,
-    commandPrefix: workflowStore.commandPrefix,
+    commandPrefix: commandPrefix,
   }), [
     selectedSpec,
     specDetail,
@@ -640,7 +645,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     autoExecutionRuntime,
     // auto-execution-ssot: Use permissions from spec.json (SSOT)
     autoExecutionPermissions,
-    workflowStore.commandPrefix,
+    commandPrefix,
     documentReviewState,
     documentReviewScheme,
     inspectionState,

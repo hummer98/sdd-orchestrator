@@ -48,8 +48,9 @@ const TAB_CONFIGS: TabConfig[] = [
 export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): React.ReactElement {
   const [isCreateSpecDialogOpen, setIsCreateSpecDialogOpen] = useState(false);
   const [isCreateBugDialogOpen, setIsCreateBugDialogOpen] = useState(false);
-  const { currentProject } = useProjectStore();
-  const { selectAgent } = useAgentStore();
+  // zustand-selector-optimization: individual selectors for 1 state field each
+  const currentProject = useProjectStore(s => s.currentProject);
+  const selectAgent = useAgentStore(s => s.selectAgent);
 
   /**
    * Handle tab change - preserve selection state per tab

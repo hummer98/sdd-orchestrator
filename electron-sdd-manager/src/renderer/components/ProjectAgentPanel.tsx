@@ -13,6 +13,7 @@
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectAgents } from '@shared/hooks';
 import { useProjectStore, notify } from '../stores';
@@ -49,8 +50,18 @@ function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
 }
 
 export function ProjectAgentPanel() {
-  const { selectedAgentId, stopAgent, selectAgent, removeAgent, addAgent, selectForProjectAgents, loadAgents, agents } = useAgentStore();
-  const { currentProject } = useProjectStore();
+  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
+  const { selectedAgentId, agents } = useAgentStore(
+    useShallow(s => ({ selectedAgentId: s.selectedAgentId, agents: s.agents }))
+  );
+  const stopAgent = useAgentStore(s => s.stopAgent);
+  const selectAgent = useAgentStore(s => s.selectAgent);
+  const removeAgent = useAgentStore(s => s.removeAgent);
+  const addAgent = useAgentStore(s => s.addAgent);
+  const selectForProjectAgents = useAgentStore(s => s.selectForProjectAgents);
+  const loadAgents = useAgentStore(s => s.loadAgents);
+  // zustand-selector-optimization: individual selector
+  const currentProject = useProjectStore(s => s.currentProject);
   // zustand-agent-selector-hooks: Use SharedAgentInfo since projectAgents returns shared type
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);

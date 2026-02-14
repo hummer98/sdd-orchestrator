@@ -1,0 +1,271 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-13T10:00:00Z",
+  "checks": [
+    {
+      "id": "design-component-selector-migration-renderer",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Selector Migration (Renderer) - All renderer components use selector patterns (useShallow for 3+ fields, individual selectors for 1-2 fields). Verified in App.tsx, BugList, SpecList, BugPane, SpecPane, BugWorkflowView, DocsTabs, SpecDetail, ErrorBanner, CreateBugDialog, CreateSpecDialog, ProjectSelectionView, RecentProjectList, ProjectValidationPanel, ProjectPane, McpSettingsPanel, RemoteAccessPanel, BugActionButtons, AgentListPanel, ProjectAgentPanel, NotificationProvider, ProjectFileEditor, ArtifactEditor, ToolSettingsPanel, RemoteAccessDialog.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx: useShallow for useProjectStore (3 fields), useRemoteAccessStore (4 fields), useConnectionStore (2 fields); individual selectors for remaining stores",
+        "electron-sdd-manager/src/renderer/components/BugList.tsx: useShallow for useSharedBugStore (4 fields), individual selector for selectBug action",
+        "electron-sdd-manager/src/renderer/components/SpecList.tsx: useShallow for useSpecStore (5 fields), individual selectors for actions"
+      ]
+    },
+    {
+      "id": "design-component-selector-migration-remote-ui",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Selector Migration (Remote UI) - All remote-ui components use selector patterns. Verified in App.tsx (LeftSidebar, RightSidebar, FooterContent), BugsView, BugDetailView, CreateBugDialogRemote, RemoteProjectEditor.",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx: Individual selectors for useSharedAgentStore (selectAgent, selectedAgentId, removeAgent, etc.)",
+        "electron-sdd-manager/src/remote-ui/views/BugsView.tsx: useShallow for useSharedBugStore (3 fields), individual selectors for actions",
+        "electron-sdd-manager/src/remote-ui/views/BugDetailView.tsx: individual selectors for useSharedBugStore (useWorktree, setUseWorktree)",
+        "electron-sdd-manager/src/remote-ui/components/CreateBugDialogRemote.tsx: individual selectors for useSharedBugStore (useWorktree, setUseWorktree, createBug)",
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx: useShallow for useProjectEditorStore (9 fields)"
+      ]
+    },
+    {
+      "id": "design-component-selector-migration-shared",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Selector Migration (Shared) - All shared components use selector patterns. Verified in ScheduleTaskSettingView, DocsTreeSection, GitView, GitDiffViewer, GitFileTree.",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/schedule/ScheduleTaskSettingView.tsx: useShallow for useScheduleTaskStore (4 fields), individual selectors for 9 action functions",
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx: individual selectors for useDocsTreeExpandedStore (2 fields)",
+        "electron-sdd-manager/src/shared/components/git/GitView.tsx: useShallow for useSharedGitViewStore (7+ fields), individual selectors for actions",
+        "electron-sdd-manager/src/shared/components/git/GitDiffViewer.tsx: useShallow for useSharedGitViewStore (5 fields), individual selector for setDiffMode",
+        "electron-sdd-manager/src/shared/components/git/GitFileTree.tsx: useShallow for useSharedGitViewStore (3 fields), individual selectors for actions"
+      ]
+    },
+    {
+      "id": "design-component-selector-migration-hook",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useElectronWorkflowState hook migrated to selector pattern. Uses useShallow for useSpecStore (3 fields), individual selectors for useProjectStore, useWorkflowStore.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useElectronWorkflowState.ts: useShallow for useSpecStore, individual selectors for useProjectStore and useWorkflowStore"
+      ]
+    },
+    {
+      "id": "design-memo-buglistitem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugListItem wrapped with React.memo as designed (DD-002).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/bug/BugListItem.tsx:77: export const BugListItem = React.memo(function BugListItem({"
+      ]
+    },
+    {
+      "id": "design-memo-speclistitem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecListItem wrapped with React.memo as designed (DD-002).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/spec/SpecListItem.tsx:109: export const SpecListItem = React.memo(function SpecListItem({"
+      ]
+    },
+    {
+      "id": "design-memo-agentlistitem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentListItem wrapped with React.memo as designed (DD-002).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/agent/AgentListItem.tsx:160: export const AgentListItem = React.memo(function AgentListItem({"
+      ]
+    },
+    {
+      "id": "design-memo-eventloglistitem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EventLogListItem wrapped with React.memo as designed (DD-002).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/eventLog/EventLogListItem.tsx:118: export const EventLogListItem = React.memo(function EventLogListItem({"
+      ]
+    },
+    {
+      "id": "design-memo-scheduletasklistitem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ScheduleTaskListItem wrapped with React.memo as designed (DD-002).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/schedule/ScheduleTaskListItem.tsx:248: export const ScheduleTaskListItem = React.memo(function ScheduleTaskListItem({"
+      ]
+    },
+    {
+      "id": "design-callback-buglistcontainer",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugListContainer uses BugListItemWrapper with useCallback to stabilize onSelect callback for React.memo (DD-005).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/bug/BugListContainer.tsx:97-113: BugListItemWrapper with React.memo and useCallback for handleSelect"
+      ]
+    },
+    {
+      "id": "design-callback-speclistcontainer",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecListContainer uses SpecListItemWrapper with useCallback to stabilize onSelect callback for React.memo (DD-005).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/spec/SpecListContainer.tsx:97-117: SpecListItemWrapper with React.memo and useCallback for handleSelect"
+      ]
+    },
+    {
+      "id": "design-callback-agentlist",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentList uses AgentListItemWrapper with useCallback to stabilize onSelect, onStop, and onRemove callbacks for React.memo (DD-005).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/agent/AgentList.tsx:72-92: AgentListItemWrapper with React.memo and useCallback for handleSelect, handleStop, handleRemove"
+      ]
+    },
+    {
+      "id": "design-callback-scheduletasksettingview",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ScheduleTaskSettingView uses ScheduleTaskListItemWrapper with useCallback to stabilize onClick callback for React.memo (DD-005).",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/schedule/ScheduleTaskSettingView.tsx:194-212: ScheduleTaskListItemWrapper with React.memo and useCallback for handleClick"
+      ]
+    },
+    {
+      "id": "design-dd001-useshallow-threshold",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-001 (useShallow for 3+ fields, individual selectors for 1-2 fields) is consistently applied across all components. All useShallow usages involve 3+ state fields; all individual selectors are for 1-2 state fields or action-only extractions.",
+      "evidence": [
+        "renderer/App.tsx: useShallow for useProjectStore (3 fields), individual selectors for isDirty (1 field), specDetail (1 field)",
+        "renderer/components/BugList.tsx: useShallow for useSharedBugStore (4 fields), individual selector for selectBug (action)",
+        "renderer/components/DocsTabs.tsx: individual selectors for useProjectStore (1 field), useAgentStore (1 field)",
+        "shared/components/project/DocsTreeSection.tsx: individual selectors for useDocsTreeExpandedStore (2 fields)"
+      ]
+    },
+    {
+      "id": "design-dd003-import-path",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003 (useShallow import from 'zustand/react/shallow') is consistently used. 25 files import useShallow from 'zustand/react/shallow'. Zero files import from 'zustand/shallow'.",
+      "evidence": [
+        "25 files with: import { useShallow } from 'zustand/react/shallow'",
+        "0 files with: import from 'zustand/shallow'"
+      ]
+    },
+    {
+      "id": "design-dd004-actions-no-selectors",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-004 (Action functions don't need selectors) is followed. Action-only subscriptions use individual selectors (e.g., `useStore(s => s.action)`) which is an acceptable pattern. No full-store subscriptions without selectors exist in component code.",
+      "evidence": [
+        "renderer/App.tsx: setCommandPrefix = useWorkflowStore(s => s.setCommandPrefix) -- action-only selector",
+        "renderer/App.tsx: fetchToolStatuses = useToolPathStore(s => s.fetchStatuses) -- action-only selector",
+        "renderer/App.tsx: clearEditor = useProjectEditorStore(s => s.clearEditor) -- action-only selector"
+      ]
+    },
+    {
+      "id": "design-dd005-no-inline-callbacks",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-005 (Replace inline callbacks with stable patterns) is implemented via Wrapper components in all 4 container targets. Each container uses a React.memo-wrapped Wrapper with useCallback to create stable references before passing to list items.",
+      "evidence": [
+        "BugListContainer: BugListItemWrapper with useCallback",
+        "SpecListContainer: SpecListItemWrapper with useCallback",
+        "AgentList: AgentListItemWrapper with useCallback",
+        "ScheduleTaskSettingView: ScheduleTaskListItemWrapper with useCallback"
+      ]
+    },
+    {
+      "id": "design-no-full-subscriptions",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No full store subscriptions (useStore() without selectors) exist in component code. All found occurrences are in test files (renderHook tests) or comments, which is acceptable.",
+      "evidence": [
+        "Regex pattern `use\\w+Store\\(\\)` found 0 matches in component source files",
+        "All matches are in .test.ts/.test.tsx files (store unit tests) or in JSDoc comments"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals. Performance optimization of the existing Zustand state management layer directly supports the product's core UI responsiveness without adding out-of-scope functionality. No new features outside the optimization scope.",
+      "evidence": [
+        "product.md: Core capabilities include Spec lifecycle management and Agent control - all require responsive UI",
+        "design.md Non-Goals: No new tools, no store restructuring, no SSR/RSC, no new E2E tests"
+      ]
+    },
+    {
+      "id": "steering-tech-zustand",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tech stack alignment verified. Uses Zustand (listed in tech.md as state management) with useShallow from zustand/react/shallow. Uses React.memo from React 19. No new dependencies added. TypeScript patterns followed.",
+      "evidence": [
+        "tech.md: 'Zustand: 軽量ステート管理（stores/に配置）'",
+        "design.md: 'Zustand 5.0.8 ... 既存依存、追加インストール不要'"
+      ]
+    },
+    {
+      "id": "steering-structure-shared-stores",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Structure compliance verified. All domain stores are in src/shared/stores/ (SSOT). UI stores remain in src/renderer/stores/. Shared components remain in src/shared/components/. No files moved to wrong directories.",
+      "evidence": [
+        "structure.md: 'Domain State (SSOT) Location: src/shared/stores/'",
+        "All 5 React.memo'd components are in src/shared/components/ subdirectories",
+        "All container components with callback stabilization are in src/shared/components/"
+      ]
+    },
+    {
+      "id": "steering-structure-naming",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Naming conventions followed. Components use PascalCase, hooks use 'use' prefix. No new files created (internal optimization only). No files deleted.",
+      "evidence": [
+        "structure.md: 'Components: PascalCase', 'Hooks: use prefix + camelCase'",
+        "design.md: '新規作成ファイル: なし', '削除対象ファイル: なし'"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management rules followed. Domain state accessed from shared/stores, UI state from renderer/stores. No new state introduced, only subscription patterns changed. Electron process boundary rules not violated.",
+      "evidence": [
+        "structure.md: 'Domain State (SSOT) Location: src/shared/stores/, Rule: 重複禁止'",
+        "Selector changes are internal to the subscription mechanism only - no new state fields added"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 23
+  }
+}

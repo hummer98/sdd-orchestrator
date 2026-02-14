@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Loader2 } from 'lucide-react';
 import { useSpecStore } from '../stores';
 import { useProjectStore } from '../stores/projectStore';
@@ -49,7 +50,10 @@ export function SpecPane({
   onAgentListResize,
   onResizeEnd,
 }: SpecPaneProps): React.ReactElement {
-  const { selectedSpec, specDetail, isDetailLoading } = useSpecStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields
+  const { selectedSpec, specDetail, isDetailLoading } = useSpecStore(
+    useShallow(s => ({ selectedSpec: s.selectedSpec, specDetail: s.specDetail, isDetailLoading: s.isDetailLoading }))
+  );
 
   // git-diff-viewer Task 9.1: View mode state (artifacts or git-diff)
   const [viewMode, setViewMode] = useState<'artifacts' | 'git-diff'>('artifacts');

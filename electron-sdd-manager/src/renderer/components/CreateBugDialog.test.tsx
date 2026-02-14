@@ -31,6 +31,15 @@ vi.mock('../stores', () => ({
   },
 }));
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<string, any>) {
+  store.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
+
 describe('CreateBugDialog', () => {
   const mockSelectForProjectAgents = vi.fn();
   const mockSelectAgent = vi.fn();
@@ -40,11 +49,11 @@ describe('CreateBugDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useProjectStore as unknown as ReturnType<typeof vi.fn>, {
       currentProject: '/test/project',
     });
 
-    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useAgentStore as unknown as ReturnType<typeof vi.fn>, {
       selectForProjectAgents: mockSelectForProjectAgents,
       selectAgent: mockSelectAgent,
       addAgent: mockAddAgent,

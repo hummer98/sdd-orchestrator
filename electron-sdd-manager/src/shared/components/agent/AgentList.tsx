@@ -8,7 +8,7 @@
  * Electron版とRemote UI版で共有可能。
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Bot } from 'lucide-react';
 import { AgentListItem, type AgentItemInfo } from './AgentListItem';
 
@@ -56,6 +56,40 @@ export interface AgentListProps {
   /** 追加のクラス名 */
   className?: string;
 }
+
+// =============================================================================
+// zustand-selector-optimization: Wrapper to stabilize callbacks for React.memo
+// =============================================================================
+
+interface AgentListItemWrapperProps {
+  agent: AgentItemInfo;
+  isSelected: boolean;
+  onSelect: (agentId: string) => void;
+  onStop: (e: React.MouseEvent, agentId: string) => void;
+  onRemove: (e: React.MouseEvent, agentId: string) => void;
+}
+
+const AgentListItemWrapper = React.memo(function AgentListItemWrapper({
+  agent,
+  isSelected,
+  onSelect,
+  onStop,
+  onRemove,
+}: AgentListItemWrapperProps) {
+  const handleSelect = useCallback(() => onSelect(agent.agentId), [onSelect, agent.agentId]);
+  const handleStop = useCallback((e: React.MouseEvent) => onStop(e, agent.agentId), [onStop, agent.agentId]);
+  const handleRemove = useCallback((e: React.MouseEvent) => onRemove(e, agent.agentId), [onRemove, agent.agentId]);
+
+  return (
+    <AgentListItem
+      agent={agent}
+      isSelected={isSelected}
+      onSelect={handleSelect}
+      onStop={handleStop}
+      onRemove={handleRemove}
+    />
+  );
+});
 
 // =============================================================================
 // Component
@@ -134,13 +168,13 @@ export function AgentList({
       {/* Agent list */}
       <ul data-testid={testId} className="space-y-2">
         {agents.map((agent) => (
-          <AgentListItem
+          <AgentListItemWrapper
             key={agent.agentId}
             agent={agent}
             isSelected={selectedAgentId === agent.agentId}
-            onSelect={() => onSelect(agent.agentId)}
-            onStop={(e) => onStop(e, agent.agentId)}
-            onRemove={(e) => onRemove(e, agent.agentId)}
+            onSelect={onSelect}
+            onStop={onStop}
+            onRemove={onRemove}
           />
         ))}
       </ul>

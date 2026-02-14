@@ -42,6 +42,7 @@ import {
 } from './components';
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useSharedBugStore } from './stores';
 import type { CommandPrefix, ProfileConfig } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
@@ -99,28 +100,36 @@ const DEFAULT_LAYOUT = {
 };
 
 export function App() {
-  const { currentProject, kiroValidation, loadRecentProjects, selectProject, checkSpecManagerFiles, installedProfile } = useProjectStore();
-  const { specDetail } = useSpecStore();
-  const { isDirty } = useEditorStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields, individual selectors for 1-2
+  const { currentProject, kiroValidation, installedProfile } = useProjectStore(
+    useShallow(s => ({ currentProject: s.currentProject, kiroValidation: s.kiroValidation, installedProfile: s.installedProfile }))
+  );
+  const loadRecentProjects = useProjectStore(s => s.loadRecentProjects);
+  const selectProject = useProjectStore(s => s.selectProject);
+  const checkSpecManagerFiles = useProjectStore(s => s.checkSpecManagerFiles);
+  const specDetail = useSpecStore(s => s.specDetail);
+  const isDirty = useEditorStore(s => s.isDirty);
   // bugs-view-unification Task 6.1: Use shared bugStore
   // Compute selectedBug from bugs + selectedBugId
-  const { bugs, selectedBugId } = useSharedBugStore();
+  const bugs = useSharedBugStore(s => s.bugs);
+  const selectedBugId = useSharedBugStore(s => s.selectedBugId);
   const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
-  const { setupEventListeners } = useAgentStore();
-  const { setCommandPrefix } = useWorkflowStore();
-  const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
+  const setupEventListeners = useAgentStore(s => s.setupEventListeners);
+  const setCommandPrefix = useWorkflowStore(s => s.setCommandPrefix);
+  const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore(
+    useShallow(s => ({ isRunning: s.isRunning, startServer: s.startServer, stopServer: s.stopServer, initialize: s.initialize }))
+  );
   // mcp-server-integration: MCP store initialization
-  const { initialize: initializeMcpStore } = useMcpStore();
-  const { addNotification } = useNotificationStore();
-  const {
-    connectSSH,
-    authDialog,
-    submitAuth,
-    cancelAuth,
-    projectSwitchConfirm,
-    confirmProjectSwitch,
-    cancelProjectSwitch,
-  } = useConnectionStore();
+  const initializeMcpStore = useMcpStore(s => s.initialize);
+  const addNotification = useNotificationStore(s => s.addNotification);
+  const { authDialog, projectSwitchConfirm } = useConnectionStore(
+    useShallow(s => ({ authDialog: s.authDialog, projectSwitchConfirm: s.projectSwitchConfirm }))
+  );
+  const connectSSH = useConnectionStore(s => s.connectSSH);
+  const submitAuth = useConnectionStore(s => s.submitAuth);
+  const cancelAuth = useConnectionStore(s => s.cancelAuth);
+  const confirmProjectSwitch = useConnectionStore(s => s.confirmProjectSwitch);
+  const cancelProjectSwitch = useConnectionStore(s => s.cancelProjectSwitch);
 
   // Use ref to track current remote server state for event handlers
   const isRemoteServerRunningRef = useRef(isRemoteServerRunning);
@@ -150,7 +159,7 @@ export function App() {
     error: null,
   });
   // project-config-editor: Project editor store for tab switching cleanup
-  const { clearEditor } = useProjectEditorStore();
+  const clearEditor = useProjectEditorStore(s => s.clearEditor);
 
   // ペインサイズの状態（pane-layout-persistence feature）
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LAYOUT.leftPaneWidth);
@@ -520,7 +529,7 @@ export function App() {
 
   // well-known-tool-paths feature Task 6.2: Fetch tool statuses and auto-show settings if claude is not resolved
   // Requirements: 3.1 - claude未検出時の設定画面自動表示
-  const { fetchStatuses: fetchToolStatuses } = useToolPathStore();
+  const fetchToolStatuses = useToolPathStore(s => s.fetchStatuses);
   const toolPathInitialized = useRef(false);
   useEffect(() => {
     if (toolPathInitialized.current) {
@@ -591,7 +600,7 @@ export function App() {
   }, []);
 
   // startup-project-selection-race-condition: applySelectProjectResult used by Pull useEffect
-  const { applySelectProjectResult } = useProjectStore();
+  const applySelectProjectResult = useProjectStore(s => s.applySelectProjectResult);
 
   // Menu event listeners
   // Task 9.2: Migrated to tRPC Subscription hooks (above)

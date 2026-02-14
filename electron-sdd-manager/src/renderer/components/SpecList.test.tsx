@@ -15,6 +15,14 @@ import type { SpecMetadata, SpecPhase } from '../types';
 vi.mock('../stores/specStore');
 vi.mock('../stores/agentStore');
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<string, any>) {
+  store.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
 const mockUseSpecStore = useSpecStore as unknown as ReturnType<typeof vi.fn>;
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 
@@ -42,7 +50,7 @@ describe('SpecList - Task 33.1', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockUseSpecStore.mockReturnValue({
+    mockStoreWithSelector(mockUseSpecStore, {
       selectedSpec: null,
       sortBy: 'name',
       sortOrder: 'asc',
@@ -59,7 +67,7 @@ describe('SpecList - Task 33.1', () => {
     });
 
     // agent-watcher-optimization: Use getRunningAgentCount mock
-    mockUseAgentStore.mockReturnValue({
+    mockStoreWithSelector(mockUseAgentStore, {
       getRunningAgentCount: mockGetRunningAgentCount.mockReturnValue(0),
     });
   });
@@ -79,7 +87,7 @@ describe('SpecList - Task 33.1', () => {
     // agent-watcher-optimization: Updated tests to use getRunningAgentCount
     it('should display running agent count badge when agents are running', () => {
       mockGetRunningAgentCount.mockReturnValue(1);
-      mockUseAgentStore.mockReturnValue({
+      mockStoreWithSelector(mockUseAgentStore, {
         getRunningAgentCount: mockGetRunningAgentCount,
       });
 
@@ -93,7 +101,7 @@ describe('SpecList - Task 33.1', () => {
 
     it('should display correct count for multiple running agents', () => {
       mockGetRunningAgentCount.mockReturnValue(2);
-      mockUseAgentStore.mockReturnValue({
+      mockStoreWithSelector(mockUseAgentStore, {
         getRunningAgentCount: mockGetRunningAgentCount,
       });
 
@@ -107,7 +115,7 @@ describe('SpecList - Task 33.1', () => {
     it('should only count running agents', () => {
       // getRunningAgentCount already returns only running agent count
       mockGetRunningAgentCount.mockReturnValue(1);
-      mockUseAgentStore.mockReturnValue({
+      mockStoreWithSelector(mockUseAgentStore, {
         getRunningAgentCount: mockGetRunningAgentCount,
       });
 
@@ -143,7 +151,7 @@ describe('SpecList - Task 33.1', () => {
       };
 
       mockGetSortedFilteredSpecs.mockReturnValue([inspectionCompleteSpec]);
-      mockUseSpecStore.mockReturnValue({
+      mockStoreWithSelector(mockUseSpecStore, {
         selectedSpec: null,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -177,7 +185,7 @@ describe('SpecList - Task 33.1', () => {
       };
 
       mockGetSortedFilteredSpecs.mockReturnValue([deployCompleteSpec]);
-      mockUseSpecStore.mockReturnValue({
+      mockStoreWithSelector(mockUseSpecStore, {
         selectedSpec: null,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -225,7 +233,7 @@ describe('SpecList - Task 33.1', () => {
         },
       });
 
-      mockUseSpecStore.mockReturnValue({
+      mockStoreWithSelector(mockUseSpecStore, {
         selectedSpec: null,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -262,7 +270,7 @@ describe('SpecList - Task 33.1', () => {
         },
       });
 
-      mockUseSpecStore.mockReturnValue({
+      mockStoreWithSelector(mockUseSpecStore, {
         selectedSpec: null,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -294,7 +302,7 @@ describe('SpecList - Task 33.1', () => {
       // No worktree field at all
       specJsonMap.set('no-worktree-feature', {});
 
-      mockUseSpecStore.mockReturnValue({
+      mockStoreWithSelector(mockUseSpecStore, {
         selectedSpec: null,
         sortBy: 'name',
         sortOrder: 'asc',

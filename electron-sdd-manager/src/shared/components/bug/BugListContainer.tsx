@@ -10,7 +10,7 @@
  * Requirements: 1.1-1.9
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Loader2, Filter, Search, Bug } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BugListItem } from './BugListItem';
@@ -82,6 +82,35 @@ export interface BugListContainerProps {
   /** Test ID prefix for E2E testing */
   testIdPrefix?: string;
 }
+
+// =============================================================================
+// zustand-selector-optimization: Wrapper to stabilize onSelect callback for React.memo
+// =============================================================================
+
+interface BugListItemWrapperProps {
+  bug: BugMetadata;
+  isSelected: boolean;
+  onSelectBug: (bug: BugMetadata) => void;
+  runningAgentCount: number;
+}
+
+const BugListItemWrapper = React.memo(function BugListItemWrapper({
+  bug,
+  isSelected,
+  onSelectBug,
+  runningAgentCount,
+}: BugListItemWrapperProps) {
+  const handleSelect = useCallback(() => onSelectBug(bug), [onSelectBug, bug]);
+
+  return (
+    <BugListItem
+      bug={bug}
+      isSelected={isSelected}
+      onSelect={handleSelect}
+      runningAgentCount={runningAgentCount}
+    />
+  );
+});
 
 // =============================================================================
 // Component
@@ -203,11 +232,11 @@ export function BugListContainer({
               const runningAgentCount = getRunningAgentCount?.(bug.name) ?? 0;
 
               return (
-                <BugListItem
+                <BugListItemWrapper
                   key={bug.name}
                   bug={bug}
                   isSelected={selectedBugName === bug.name}
-                  onSelect={() => onSelectBug(bug)}
+                  onSelectBug={onSelectBug}
                   runningAgentCount={runningAgentCount}
                 />
               );

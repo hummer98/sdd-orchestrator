@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Bot, GitBranch, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo as RendererAgentInfo } from '../stores/agentStore';
 import { useAgentsBySpec } from '@shared/hooks';
@@ -62,7 +63,17 @@ interface AgentListPanelProps {
 }
 
 export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false, worktreePath }: AgentListPanelProps) {
-  const { selectedAgentId, stopAgent, selectAgent, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions, addAgent } = useAgentStore();
+  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
+  const { selectedAgentId, agents, skipPermissions } = useAgentStore(
+    useShallow(s => ({ selectedAgentId: s.selectedAgentId, agents: s.agents, skipPermissions: s.skipPermissions }))
+  );
+  const stopAgent = useAgentStore(s => s.stopAgent);
+  const selectAgent = useAgentStore(s => s.selectAgent);
+  const getAgentById = useAgentStore(s => s.getAgentById);
+  const removeAgent = useAgentStore(s => s.removeAgent);
+  const loadAgents = useAgentStore(s => s.loadAgents);
+  const setSkipPermissions = useAgentStore(s => s.setSkipPermissions);
+  const addAgent = useAgentStore(s => s.addAgent);
   // zustand-agent-selector-hooks: Use SharedAgentInfo since filteredAgents returns shared type
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);

@@ -5,6 +5,7 @@
  */
 
 import { Folder } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectStore } from '../stores/projectStore';
 
 /**
@@ -14,7 +15,10 @@ import { useProjectStore } from '../stores/projectStore';
 const MAX_RECENT_PROJECTS = 6;
 
 export function RecentProjectList() {
-  const { recentProjects, selectProject, isLoading } = useProjectStore();
+  // zustand-selector-optimization: useShallow for 3 fields
+  const { recentProjects, selectProject, isLoading } = useProjectStore(
+    useShallow(s => ({ recentProjects: s.recentProjects, selectProject: s.selectProject, isLoading: s.isLoading }))
+  );
 
   // Requirement 3.4: 最近開いたプロジェクトが存在しない場合は非表示
   if (recentProjects.length === 0) {

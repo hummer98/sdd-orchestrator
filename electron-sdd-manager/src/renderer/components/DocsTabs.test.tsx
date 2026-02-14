@@ -17,6 +17,15 @@ vi.mock('../stores', () => ({
   useAgentStore: vi.fn(),
 }));
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<string, any>) {
+  store.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
+
 // Helper component to wrap DocsTabs with controlled state
 function DocsTabsWrapper({ initialTab = 'specs' as DocsTab }: { initialTab?: DocsTab }) {
   const [activeTab, setActiveTab] = useState<DocsTab>(initialTab);
@@ -53,10 +62,10 @@ vi.mock('./CreateBugDialog', () => ({
 describe('DocsTabs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useProjectStore as unknown as ReturnType<typeof vi.fn>, {
       currentProject: '/test/project',
     });
-    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useAgentStore as unknown as ReturnType<typeof vi.fn>, {
       selectAgent: mockSelectAgent,
     });
   });
@@ -164,7 +173,7 @@ describe('DocsTabs', () => {
     });
 
     it('should not display create button when no project is selected', () => {
-      (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockStoreWithSelector(useProjectStore as unknown as ReturnType<typeof vi.fn>, {
         currentProject: null,
       });
       render(<DocsTabsWrapper />);

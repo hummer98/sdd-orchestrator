@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectStore } from '../stores/projectStore';
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import {
@@ -50,6 +51,7 @@ export interface RemoteAccessPanelProps {
  * <RemoteAccessPanel />
  */
 export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
+  // zustand-selector-optimization: useShallow for many state + action fields
   const {
     isRunning,
     port,
@@ -72,7 +74,30 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
     hasTunnelToken,
     setPublishToCloudflare,
     refreshAccessToken,
-  } = useRemoteAccessStore();
+  } = useRemoteAccessStore(
+    useShallow(s => ({
+      isRunning: s.isRunning,
+      port: s.port,
+      url: s.url,
+      qrCodeDataUrl: s.qrCodeDataUrl,
+      clientCount: s.clientCount,
+      error: s.error,
+      localIp: s.localIp,
+      isLoading: s.isLoading,
+      startServer: s.startServer,
+      stopServer: s.stopServer,
+      clearError: s.clearError,
+      publishToCloudflare: s.publishToCloudflare,
+      tunnelUrl: s.tunnelUrl,
+      tunnelQrCodeDataUrl: s.tunnelQrCodeDataUrl,
+      tunnelStatus: s.tunnelStatus,
+      tunnelError: s.tunnelError,
+      accessToken: s.accessToken,
+      hasTunnelToken: s.hasTunnelToken,
+      setPublishToCloudflare: s.setPublishToCloudflare,
+      refreshAccessToken: s.refreshAccessToken,
+    }))
+  );
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [tunnelCopySuccess, setTunnelCopySuccess] = useState(false);
@@ -80,7 +105,8 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
 
   // remote-ui-auto-start Task 4.1: Auto-start setting state
   // Uses getVanillaClient() directly for consistency with project-wide pattern
-  const { currentProject } = useProjectStore();
+  // zustand-selector-optimization: individual selector
+  const currentProject = useProjectStore(s => s.currentProject);
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(false);
 

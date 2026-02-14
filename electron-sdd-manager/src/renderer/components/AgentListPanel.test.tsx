@@ -21,8 +21,15 @@ vi.mock('@shared/hooks', () => ({
 
 import { useAgentsBySpec } from '@shared/hooks';
 
-const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 const mockUseAgentsBySpec = useAgentsBySpec as unknown as ReturnType<typeof vi.fn>;
+
+// zustand-selector-optimization: Helper to mock store with selector support
+function mockAgentStoreState(state: Record<string, unknown>) {
+  (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
 
 describe('AgentListPanel - Task 30', () => {
   const mockStopAgent = vi.fn();
@@ -54,7 +61,7 @@ describe('AgentListPanel - Task 30', () => {
     // zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of getAgentsForSpec
     mockUseAgentsBySpec.mockReturnValue([baseAgentInfo]);
 
-    mockUseAgentStore.mockReturnValue({
+    mockAgentStoreState({
       selectedAgentId: null,
       stopAgent: mockStopAgent,
       resumeAgent: mockResumeAgent,
@@ -89,7 +96,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should display agent status icon for completed agent', () => {
       const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
       mockUseAgentsBySpec.mockReturnValue([completedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -108,7 +115,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should display agent status icon for interrupted agent', () => {
       const interruptedAgent = { ...baseAgentInfo, status: 'interrupted' as const };
       mockUseAgentsBySpec.mockReturnValue([interruptedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -127,7 +134,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should display agent status icon for hang agent', () => {
       const hangAgent = { ...baseAgentInfo, status: 'hang' as const };
       mockUseAgentsBySpec.mockReturnValue([hangAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -144,7 +151,7 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should highlight selected agent', () => {
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: 'agent-1',
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -172,7 +179,7 @@ describe('AgentListPanel - Task 30', () => {
 
     it('should show empty message when no agents', () => {
       mockUseAgentsBySpec.mockReturnValue([]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -208,7 +215,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should show delete button for non-running agent', () => {
       const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
       mockUseAgentsBySpec.mockReturnValue([completedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -234,7 +241,7 @@ describe('AgentListPanel - Task 30', () => {
       const mockRemoveAgent = vi.fn();
       const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
       mockUseAgentsBySpec.mockReturnValue([completedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -266,7 +273,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should auto-select running agent when spec is selected', () => {
       const runningAgent = { ...baseAgentInfo, agentId: 'agent-1', status: 'running' as const };
       mockUseAgentsBySpec.mockReturnValue([runningAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -286,7 +293,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should NOT auto-select completed agent', () => {
       const completedAgent = { ...baseAgentInfo, agentId: 'agent-1', status: 'completed' as const };
       mockUseAgentsBySpec.mockReturnValue([completedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -307,7 +314,7 @@ describe('AgentListPanel - Task 30', () => {
       const agent1 = { ...baseAgentInfo, agentId: 'agent-1' };
       const agent2 = { ...baseAgentInfo, agentId: 'agent-2' };
       mockUseAgentsBySpec.mockReturnValue([agent1, agent2]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: 'agent-1', // Already selected
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -326,7 +333,7 @@ describe('AgentListPanel - Task 30', () => {
 
     it('should clear selection when no agents exist for the spec', () => {
       mockUseAgentsBySpec.mockReturnValue([]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -349,7 +356,7 @@ describe('AgentListPanel - Task 30', () => {
 
       // Completed agent is listed first, but only running agent should be auto-selected
       mockUseAgentsBySpec.mockReturnValue([completedAgent, runningAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -375,7 +382,7 @@ describe('AgentListPanel - Task 30', () => {
         if (agentId === 'spec-agent-1') return specAgent;
         return undefined;
       });
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: 'project-agent-1', // Project agent is selected
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -403,7 +410,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should not show stop button for completed agent', () => {
       const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
       mockUseAgentsBySpec.mockReturnValue([completedAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -433,7 +440,7 @@ describe('AgentListPanel - Task 30', () => {
     it('should show stop button for hang agent', () => {
       const hangAgent = { ...baseAgentInfo, status: 'hang' as const };
       mockUseAgentsBySpec.mockReturnValue([hangAgent]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -459,7 +466,7 @@ describe('AgentListPanel - Task 30', () => {
     beforeEach(() => {
       // zustand-agent-selector-hooks: Set up hook mock separately
       mockUseAgentsBySpec.mockReturnValue([baseAgentInfo]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -489,7 +496,7 @@ describe('AgentListPanel - Task 30', () => {
 
     it('should be checked when skipPermissions is true', () => {
       mockUseAgentsBySpec.mockReturnValue([baseAgentInfo]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
@@ -519,7 +526,7 @@ describe('AgentListPanel - Task 30', () => {
 
     it('should call setSkipPermissions(false) when unchecking', () => {
       mockUseAgentsBySpec.mockReturnValue([baseAgentInfo]);
-      mockUseAgentStore.mockReturnValue({
+      mockAgentStoreState({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,

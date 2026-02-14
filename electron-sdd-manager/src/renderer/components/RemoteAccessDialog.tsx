@@ -59,7 +59,9 @@ export interface RemoteAccessDialogProps {
  * <RemoteAccessDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} />
  */
 export function RemoteAccessDialog({ isOpen, onClose }: RemoteAccessDialogProps) {
-  const { showInstallCloudflaredDialog, dismissInstallDialog } = useRemoteAccessStore();
+  // zustand-selector-optimization: individual selectors
+  const showInstallCloudflaredDialog = useRemoteAccessStore(s => s.showInstallCloudflaredDialog);
+  const dismissInstallDialog = useRemoteAccessStore(s => s.dismissInstallDialog);
 
   // Task 1.2: Tab state with useState, default to 'web-server'
   const [activeTab, setActiveTab] = useState<RemoteDialogTab>('web-server');

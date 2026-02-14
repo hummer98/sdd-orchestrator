@@ -8,7 +8,7 @@
  * spec-list-unification: Extracted common UI from SpecList and SpecsView
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Loader2, Filter, Search, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecListItem } from './SpecListItem';
@@ -80,6 +80,41 @@ export interface SpecListContainerProps {
   /** Test ID prefix for E2E testing */
   testIdPrefix?: string;
 }
+
+// =============================================================================
+// zustand-selector-optimization: Wrapper to stabilize onSelect callback for React.memo
+// =============================================================================
+
+interface SpecListItemWrapperProps {
+  spec: SpecMetadataWithPhase;
+  isSelected: boolean;
+  onSelectSpec: (spec: SpecMetadataWithPhase) => void;
+  runningAgentCount: number;
+  worktree?: SpecJson['worktree'];
+  documentReview?: DocumentReviewState | undefined;
+}
+
+const SpecListItemWrapper = React.memo(function SpecListItemWrapper({
+  spec,
+  isSelected,
+  onSelectSpec,
+  runningAgentCount,
+  worktree,
+  documentReview,
+}: SpecListItemWrapperProps) {
+  const handleSelect = useCallback(() => onSelectSpec(spec), [onSelectSpec, spec]);
+
+  return (
+    <SpecListItem
+      spec={spec}
+      isSelected={isSelected}
+      onSelect={handleSelect}
+      runningAgentCount={runningAgentCount}
+      worktree={worktree}
+      documentReview={documentReview}
+    />
+  );
+});
 
 // =============================================================================
 // Component
@@ -203,11 +238,11 @@ export function SpecListContainer({
               const runningAgentCount = getRunningAgentCount?.(spec.name) ?? 0;
 
               return (
-                <SpecListItem
+                <SpecListItemWrapper
                   key={spec.name}
                   spec={spec}
                   isSelected={selectedSpecName === spec.name}
-                  onSelect={() => onSelectSpec(spec)}
+                  onSelectSpec={onSelectSpec}
                   runningAgentCount={runningAgentCount}
                   worktree={specJson?.worktree}
                   documentReview={

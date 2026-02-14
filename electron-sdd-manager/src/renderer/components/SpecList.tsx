@@ -8,26 +8,24 @@
  * spec-list-unification: Refactored to use shared SpecListContainer
  */
 
+import { useShallow } from 'zustand/react/shallow';
 import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
 import { SpecListContainer } from '@shared/components/spec';
 import type { SpecMetadataWithPhase } from '@shared/types/spec';
 
 export function SpecList() {
-  const {
-    selectedSpec,
-    statusFilter,
-    isLoading,
-    error,
-    selectSpec,
-    setStatusFilter,
-    getSortedFilteredSpecs,
-    specJsonMap,
-  } = useSpecStore();
+  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
+  const { selectedSpec, statusFilter, isLoading, error, specJsonMap } = useSpecStore(
+    useShallow(s => ({ selectedSpec: s.selectedSpec, statusFilter: s.statusFilter, isLoading: s.isLoading, error: s.error, specJsonMap: s.specJsonMap }))
+  );
+  const selectSpec = useSpecStore(s => s.selectSpec);
+  const setStatusFilter = useSpecStore(s => s.setStatusFilter);
+  const getSortedFilteredSpecs = useSpecStore(s => s.getSortedFilteredSpecs);
 
   // Task 33.1: Get agent store for running agent counts
   // agent-watcher-optimization Task 5.1, 5.2: Use getRunningAgentCount for lightweight badge display
-  const { getRunningAgentCount } = useAgentStore();
+  const getRunningAgentCount = useAgentStore(s => s.getRunningAgentCount);
 
   const specs = getSortedFilteredSpecs();
 

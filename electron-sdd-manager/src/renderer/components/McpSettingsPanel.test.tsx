@@ -28,11 +28,13 @@ vi.mock('../../shared/trpc/vanillaClient', () => ({
 // Mock clipboard API
 const mockWriteText = vi.fn();
 
-// Mock projectStore
+// zustand-selector-optimization: Mock projectStore with selector support
 vi.mock('../stores/projectStore', () => ({
-  useProjectStore: vi.fn(() => ({
-    currentProject: '/path/to/my-project',
-  })),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useProjectStore: vi.fn((selector?: (s: any) => any) => {
+    const state = { currentProject: '/path/to/my-project' };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 import { McpSettingsPanel } from './McpSettingsPanel';

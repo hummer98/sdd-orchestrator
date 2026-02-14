@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import { Wrench, Check, X, AlertTriangle, Loader2 } from 'lucide-react';
 import { useToolPathStore } from '../../shared/stores/toolPathStore';
 
@@ -37,8 +38,17 @@ export interface ToolSettingsPanelProps {
  * <ToolSettingsPanel />
  */
 export function ToolSettingsPanel({ className }: ToolSettingsPanelProps) {
+  // zustand-selector-optimization: useShallow for state + action fields
   const { statuses, isLoading, error, fetchStatuses, setToolPath } =
-    useToolPathStore();
+    useToolPathStore(
+      useShallow(s => ({
+        statuses: s.statuses,
+        isLoading: s.isLoading,
+        error: s.error,
+        fetchStatuses: s.fetchStatuses,
+        setToolPath: s.setToolPath,
+      }))
+    );
 
   // Input state for each tool's path
   const [pathInputs, setPathInputs] = useState<Record<string, string>>({});

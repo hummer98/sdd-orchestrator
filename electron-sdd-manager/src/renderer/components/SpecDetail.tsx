@@ -21,6 +21,7 @@ import {
   FolderGit2,
 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
+import { useShallow } from 'zustand/react/shallow';
 import { useSpecStore, useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { Phase, ArtifactInfo } from '../types';
@@ -36,8 +37,11 @@ const PHASE_LABELS = {
 };
 
 export function SpecDetail() {
-  const { selectedSpec, specDetail, isLoading } = useSpecStore();
-  const { currentProject: projectPath } = useProjectStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields
+  const { selectedSpec, specDetail, isLoading } = useSpecStore(
+    useShallow(s => ({ selectedSpec: s.selectedSpec, specDetail: s.specDetail, isLoading: s.isLoading }))
+  );
+  const projectPath = useProjectStore(s => s.currentProject);
 
   // runtime-agents-restructure: Task 10.3 - MigrationDialog state management
   const [migrationDialogState, setMigrationDialogState] = useState<{

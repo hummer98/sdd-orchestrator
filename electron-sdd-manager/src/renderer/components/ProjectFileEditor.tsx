@@ -18,6 +18,7 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { Save, Eye, Edit, Circle, Loader2 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import { useNotificationStore } from '@shared/stores/notificationStore';
 import { MermaidCodeRenderer } from '@shared/components/markdown';
@@ -60,6 +61,7 @@ export interface ProjectFileEditorProps {
  * Supports .md (editable), .pdf (view only), .html (view only)
  */
 export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
+  // zustand-selector-optimization: useShallow for state + action fields
   const {
     currentFilePath,
     currentFileName,
@@ -70,9 +72,22 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
     error,
     setContent,
     setMode,
-  } = useProjectEditorStore();
+  } = useProjectEditorStore(
+    useShallow(s => ({
+      currentFilePath: s.currentFilePath,
+      currentFileName: s.currentFileName,
+      content: s.content,
+      isDirty: s.isDirty,
+      isSaving: s.isSaving,
+      mode: s.mode,
+      error: s.error,
+      setContent: s.setContent,
+      setMode: s.setMode,
+    }))
+  );
 
-  const { showNotification } = useNotificationStore();
+  // zustand-selector-optimization: individual selector (action-only)
+  const showNotification = useNotificationStore(s => s.showNotification);
 
   // project-docs-viewer Task 7.1: Detect file type for viewer switching
   const fileType = useMemo(() => detectFileType(currentFilePath), [currentFilePath]);

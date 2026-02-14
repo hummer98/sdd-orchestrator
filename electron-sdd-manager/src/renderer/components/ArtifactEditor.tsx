@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { Save, Eye, Edit, Loader2, Circle, Copy, Check } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
+import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore, notify } from '../stores';
 import type { ArtifactType } from '../stores/editorStore';
 import { clsx } from 'clsx';
@@ -62,6 +63,7 @@ export function ArtifactEditor({
   testId,
   entityType = 'spec',
 }: ArtifactEditorProps) {
+  // zustand-selector-optimization: useShallow for many state + action fields
   const {
     activeTab,
     content,
@@ -84,7 +86,31 @@ export function ArtifactEditor({
     clearSearch,
     navigateNext,
     navigatePrev,
-  } = useEditorStore();
+  } = useEditorStore(
+    useShallow(s => ({
+      activeTab: s.activeTab,
+      content: s.content,
+      isDirty: s.isDirty,
+      isSaving: s.isSaving,
+      mode: s.mode,
+      error: s.error,
+      searchVisible: s.searchVisible,
+      searchQuery: s.searchQuery,
+      caseSensitive: s.caseSensitive,
+      matches: s.matches,
+      activeMatchIndex: s.activeMatchIndex,
+      setActiveTab: s.setActiveTab,
+      setContent: s.setContent,
+      setMode: s.setMode,
+      save: s.save,
+      loadArtifact: s.loadArtifact,
+      clearEditor: s.clearEditor,
+      setSearchVisible: s.setSearchVisible,
+      clearSearch: s.clearSearch,
+      navigateNext: s.navigateNext,
+      navigatePrev: s.navigatePrev,
+    }))
+  );
 
   // Ref for preview container (used by PreviewHighlightLayer)
   const previewContainerRef = useRef<HTMLDivElement>(null);

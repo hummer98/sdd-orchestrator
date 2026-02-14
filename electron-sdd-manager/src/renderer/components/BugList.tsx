@@ -6,6 +6,7 @@
  * bugs-view-unification Task 4.1: 共有コンポーネントを使用するよう更新
  */
 
+import { useShallow } from 'zustand/react/shallow';
 // bugs-view-unification Task 6.1: Use shared bugStore
 // trpc-bug-migration: Removed useApi - Electron uses tRPC via bugStore (apiClient=null)
 import { useSharedBugStore } from '../../shared/stores/bugStore';
@@ -25,13 +26,11 @@ import type { BugMetadata } from '../types';
  */
 export function BugList(): React.ReactElement {
   // trpc-bug-migration: Electron uses tRPC via bugStore (apiClient=null)
-  const {
-    bugs,
-    selectedBugId,
-    isLoading,
-    error,
-    selectBug,
-  } = useSharedBugStore();
+  // zustand-selector-optimization: useShallow for 4 state fields, individual selector for action
+  const { bugs, selectedBugId, isLoading, error } = useSharedBugStore(
+    useShallow(s => ({ bugs: s.bugs, selectedBugId: s.selectedBugId, isLoading: s.isLoading, error: s.error }))
+  );
+  const selectBug = useSharedBugStore(s => s.selectBug);
 
   /**
    * zustand-agent-selector-hooks Task 5.3: Subscribe to agents Map directly

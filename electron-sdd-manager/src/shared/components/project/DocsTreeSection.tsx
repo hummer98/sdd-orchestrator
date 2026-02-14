@@ -119,8 +119,11 @@ function DirectoryNode({
   selectedFilePath,
   onSelectFile,
 }: DirectoryNodeProps): React.ReactElement {
-  const { isExpanded, toggleDir } = useDocsTreeExpandedStore();
-  const expanded = isExpanded(node.relativePath);
+  // zustand-selector-optimization: individual selectors
+  // Subscribe to the computed boolean value (not the isExpanded function)
+  // so component re-renders when expandedDirs changes for this path
+  const expanded = useDocsTreeExpandedStore(s => s.expandedDirs.get(node.relativePath) ?? false);
+  const toggleDir = useDocsTreeExpandedStore(s => s.toggleDir);
 
   const handleToggle = useCallback(() => {
     toggleDir(node.relativePath);

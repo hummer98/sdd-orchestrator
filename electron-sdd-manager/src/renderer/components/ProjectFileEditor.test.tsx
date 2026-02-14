@@ -34,11 +34,13 @@ vi.mock('@uiw/react-md-editor', () => ({
 }));
 
 // Mock notification store
+// zustand-selector-optimization: Support selector-based calls
 const mockShowNotification = vi.fn();
 vi.mock('@shared/stores/notificationStore', () => ({
-  useNotificationStore: () => ({
-    showNotification: mockShowNotification,
-  }),
+  useNotificationStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = { showNotification: mockShowNotification };
+    return selector ? selector(state) : state;
+  },
 }));
 
 describe('ProjectFileEditor', () => {

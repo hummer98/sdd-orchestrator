@@ -11,6 +11,7 @@
  */
 
 import { useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ProjectFileList } from './ProjectFileList';
 import { ProjectFileEditor } from './ProjectFileEditor';
 import { ExternalChangeDialog } from './ExternalChangeDialog';
@@ -33,7 +34,9 @@ export interface ProjectPaneProps {
  * ProjectPane - Main container for Project view
  */
 export function ProjectPane({ files, onRefreshFiles: _onRefreshFiles }: ProjectPaneProps) {
-  const { currentProject } = useProjectStore();
+  // zustand-selector-optimization: individual selector for 1 state field
+  const currentProject = useProjectStore(s => s.currentProject);
+  // zustand-selector-optimization: useShallow for 7+ fields
   const {
     currentFilePath,
     currentFileName,
@@ -42,7 +45,17 @@ export function ProjectPane({ files, onRefreshFiles: _onRefreshFiles }: ProjectP
     save,
     handleExternalChange,
     setExternalChangeDetected,
-  } = useProjectEditorStore();
+  } = useProjectEditorStore(
+    useShallow(s => ({
+      currentFilePath: s.currentFilePath,
+      currentFileName: s.currentFileName,
+      externalChangeDetected: s.externalChangeDetected,
+      loadFile: s.loadFile,
+      save: s.save,
+      handleExternalChange: s.handleExternalChange,
+      setExternalChangeDetected: s.setExternalChangeDetected,
+    }))
+  );
 
   // trpc-full-migration Task 11.4: Use tRPC vanilla client for file operations
   // Cast as any since projectEditorStore only uses readProjectFile/writeProjectFile

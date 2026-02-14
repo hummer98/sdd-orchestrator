@@ -46,8 +46,9 @@ export function BugActionButtons({
   onActionCompleted,
 }: BugActionButtonsProps): React.ReactElement {
   const [executingAction, setExecutingAction] = useState<BugAction | null>(null);
-  const { startAgent } = useAgentStore();
-  const { addNotification } = useNotificationStore();
+  // zustand-selector-optimization: individual selectors (action-only)
+  const startAgent = useAgentStore(s => s.startAgent);
+  const addNotification = useNotificationStore(s => s.addNotification);
 
   const handleAction = async (config: ActionConfig) => {
     if (executingAction) return; // Prevent multiple clicks

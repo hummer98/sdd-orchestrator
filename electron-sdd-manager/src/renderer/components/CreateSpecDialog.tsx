@@ -23,8 +23,11 @@ interface CreateSpecDialogProps {
 }
 
 export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
-  const { currentProject } = useProjectStore();
-  const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
+  // zustand-selector-optimization: individual selectors
+  const currentProject = useProjectStore(s => s.currentProject);
+  const selectForProjectAgents = useAgentStore(s => s.selectForProjectAgents);
+  const selectAgent = useAgentStore(s => s.selectAgent);
+  const addAgent = useAgentStore(s => s.addAgent);
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);

@@ -112,7 +112,9 @@ export function BugDetailView({
   const bugAutoExecRuntime = useBugAutoExecutionStore((state) =>
     state.getBugAutoExecutionRuntime(bug.path)
   );
-  const { useWorktree, setUseWorktree } = useSharedBugStore();
+  // zustand-selector-optimization: individual selectors
+  const useWorktree = useSharedBugStore(s => s.useWorktree);
+  const setUseWorktree = useSharedBugStore(s => s.setUseWorktree);
 
   // Load bug detail on mount or bug change
   useEffect(() => {

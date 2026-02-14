@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { BugListContainer } from '@shared/components/bug/BugListContainer';
 import { useBugListLogic } from '@shared/hooks/useBugListLogic';
 import { useSharedBugStore } from '@shared/stores/bugStore';
@@ -50,15 +51,14 @@ export function BugsView({
   deviceType = 'desktop',
 }: BugsViewProps): React.ReactElement {
   // bugs-view-unification Task 8.1: Use shared bugStore for state management (Requirements: 6.2)
-  const {
-    bugs,
-    isLoading,
-    error,
-    loadBugs,
-    selectBug,
-    startWatching,
-    stopWatching,
-  } = useSharedBugStore();
+  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
+  const { bugs, isLoading, error } = useSharedBugStore(
+    useShallow(s => ({ bugs: s.bugs, isLoading: s.isLoading, error: s.error }))
+  );
+  const loadBugs = useSharedBugStore(s => s.loadBugs);
+  const selectBug = useSharedBugStore(s => s.selectBug);
+  const startWatching = useSharedBugStore(s => s.startWatching);
+  const stopWatching = useSharedBugStore(s => s.stopWatching);
 
   /**
    * zustand-agent-selector-hooks Task 4.3: Subscribe to agents Map directly

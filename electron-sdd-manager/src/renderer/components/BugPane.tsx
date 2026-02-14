@@ -6,6 +6,7 @@
  */
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 // bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useProjectStore } from '../stores/projectStore';
@@ -54,8 +55,10 @@ export function BugPane({
   onResizeEnd,
 }: BugPaneProps): React.ReactElement {
   // bugs-view-unification Task 6.1: Use shared bugStore
-  // Compute selectedBug from bugs + selectedBugId
-  const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields
+  const { bugs, selectedBugId, bugDetail } = useSharedBugStore(
+    useShallow(s => ({ bugs: s.bugs, selectedBugId: s.selectedBugId, bugDetail: s.bugDetail }))
+  );
   const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
 
   // Bug fix: git-view-bugs-tab - View mode state (artifacts or git-diff)

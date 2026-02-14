@@ -15,6 +15,7 @@ import React, { useEffect, useCallback } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import { Save, AlertCircle, Edit, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import type { ApiClient, ProjectFileInfo } from '@shared/api/types';
 import { MermaidCodeRenderer } from '@shared/components/markdown';
@@ -52,6 +53,7 @@ export function RemoteProjectEditor({
   // ---------------------------------------------------------------------------
 
   // project-editor-dark-mode: Requirement 3.2 - ストアのmodeを使用するように変更
+  // zustand-selector-optimization: useShallow for state + action fields
   const {
     content,
     isDirty,
@@ -62,7 +64,19 @@ export function RemoteProjectEditor({
     setContent,
     setMode,
     save,
-  } = useProjectEditorStore();
+  } = useProjectEditorStore(
+    useShallow(s => ({
+      content: s.content,
+      isDirty: s.isDirty,
+      isSaving: s.isSaving,
+      error: s.error,
+      mode: s.mode,
+      loadFile: s.loadFile,
+      setContent: s.setContent,
+      setMode: s.setMode,
+      save: s.save,
+    }))
+  );
 
   // ---------------------------------------------------------------------------
   // Load File on Mount or File Change

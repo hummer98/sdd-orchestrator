@@ -1,0 +1,78 @@
+{
+  "feature_name": "zustand-selector-optimization",
+  "created_at": "2026-02-13T09:00:00Z",
+  "updated_at": "2026-02-14T01:35:16Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-02-13T07:13:41Z"
+      }
+    ]
+  },
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 5,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 4,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 3,
+        "status": "reply_complete",
+        "fixRequired": 2,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 4,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 5,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 6,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ],
+    "finalStatus": "passed"
+  }
+}

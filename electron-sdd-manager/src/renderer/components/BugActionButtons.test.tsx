@@ -33,11 +33,14 @@ describe('BugActionButtons', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      startAgent: mockStartAgent,
+    // zustand-selector-optimization: Support selector-based calls
+    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector?: (s: Record<string, unknown>) => unknown) => {
+      const state = { startAgent: mockStartAgent };
+      return selector ? selector(state) : state;
     });
-    (useNotificationStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      addNotification: mockAddNotification,
+    (useNotificationStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector?: (s: Record<string, unknown>) => unknown) => {
+      const state = { addNotification: mockAddNotification };
+      return selector ? selector(state) : state;
     });
   });
 

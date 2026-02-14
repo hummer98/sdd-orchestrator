@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 // trpc-full-migration Task 6.2: Use tRPC vanilla client for agent operations
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 import { ArrowDown } from 'lucide-react';
@@ -76,8 +77,10 @@ function calculatePhaseStatus(
 
 export function BugWorkflowView() {
   // trpc-bug-migration: Electron uses tRPC via bugStore (apiClient=null)
-  // Compute selectedBug from bugs + selectedBugId
-  const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
+  // zustand-selector-optimization: useShallow for 3+ state fields
+  const { bugs, selectedBugId, bugDetail } = useSharedBugStore(
+    useShallow(s => ({ bugs: s.bugs, selectedBugId: s.selectedBugId, bugDetail: s.bugDetail }))
+  );
   const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
 
   /**

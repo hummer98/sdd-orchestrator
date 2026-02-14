@@ -11,6 +11,7 @@
 import { useMemo, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronRight, ChevronDown, Plus, Circle, Minus, FileQuestion } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useApi } from '@shared/api/ApiClientProvider';
 import { useSharedGitViewStore } from '@shared/stores/gitViewStore';
 import type { GitFileStatus } from '@shared/api/types';
@@ -533,13 +534,12 @@ export interface GitFileTreeProps {
 export function GitFileTree({ workingPath }: GitFileTreeProps): React.ReactElement {
   const apiClient = useApi();
   const containerRef = useRef<HTMLDivElement>(null);
-  const {
-    cachedStatus,
-    selectedFilePath,
-    expandedDirs,
-    selectFile,
-    toggleDir,
-  } = useSharedGitViewStore();
+  // zustand-selector-optimization: useShallow for state, individual selectors for actions
+  const { cachedStatus, selectedFilePath, expandedDirs } = useSharedGitViewStore(
+    useShallow(s => ({ cachedStatus: s.cachedStatus, selectedFilePath: s.selectedFilePath, expandedDirs: s.expandedDirs }))
+  );
+  const selectFile = useSharedGitViewStore(s => s.selectFile);
+  const toggleDir = useSharedGitViewStore(s => s.toggleDir);
 
   // Build tree structure from flat file list
   const tree = useMemo(() => {

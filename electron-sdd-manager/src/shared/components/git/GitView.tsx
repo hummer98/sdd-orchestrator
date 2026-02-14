@@ -12,6 +12,7 @@
 
 import { useEffect, useCallback, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useApi } from '@shared/api/ApiClientProvider';
 import { useSharedGitViewStore } from '@shared/stores/gitViewStore';
 import { GitFileTree } from './GitFileTree';
@@ -57,20 +58,30 @@ export interface GitViewProps {
  */
 export function GitView({ workingPath, showDiffModeToggle = true }: GitViewProps): React.ReactElement {
   const apiClient = useApi();
+  // zustand-selector-optimization: useShallow for state, individual selectors for actions
   const {
     isLoading,
     error,
     cachedStatus,
     fileTreeWidth,
-    setFileTreeWidth,
-    refreshStatus,
-    clearError,
-    // git-view-source-mode: Extended state
     diffMode,
-    setDiffMode,
     selectedFilePath,
     cachedFileContent,
-  } = useSharedGitViewStore();
+  } = useSharedGitViewStore(
+    useShallow(s => ({
+      isLoading: s.isLoading,
+      error: s.error,
+      cachedStatus: s.cachedStatus,
+      fileTreeWidth: s.fileTreeWidth,
+      diffMode: s.diffMode,
+      selectedFilePath: s.selectedFilePath,
+      cachedFileContent: s.cachedFileContent,
+    }))
+  );
+  const setFileTreeWidth = useSharedGitViewStore(s => s.setFileTreeWidth);
+  const refreshStatus = useSharedGitViewStore(s => s.refreshStatus);
+  const clearError = useSharedGitViewStore(s => s.clearError);
+  const setDiffMode = useSharedGitViewStore(s => s.setDiffMode);
 
   // Resolve effective path: workingPath > apiClient.getProjectPath()
   const effectivePath = useMemo(() => {

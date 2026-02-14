@@ -36,6 +36,15 @@ import { useSharedBugStore } from '../../shared/stores/bugStore';
 // zustand-agent-selector-hooks: Use shared agentStore instead of renderer agentStore
 import { useSharedAgentStore } from '../../shared/stores/agentStore';
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockBugStoreState(state: Record<string, any>) {
+  (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
+
 // Mock BugListItem in shared components (used by BugListContainer)
 vi.mock('@shared/components/bug/BugListItem', () => ({
   BugListItem: ({ bug, isSelected, onSelect, runningAgentCount }: { bug: BugMetadata; isSelected: boolean; onSelect: () => void; runningAgentCount?: number }) => (
@@ -87,7 +96,7 @@ describe('BugList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultMockState);
+    mockBugStoreState(defaultMockState);
     // zustand-agent-selector-hooks: Mock useSharedAgentStore selector
     // The component calls useSharedAgentStore((state) => state.agents)
     // So the mock should execute the selector with state containing agents
@@ -117,7 +126,7 @@ describe('BugList', () => {
     });
 
     it('should display empty message when no bugs', () => {
-      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockBugStoreState({
         ...defaultMockState,
         bugs: [],
       });
@@ -129,7 +138,7 @@ describe('BugList', () => {
     });
 
     it('should display loading indicator when loading', () => {
-      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockBugStoreState({
         ...defaultMockState,
         isLoading: true,
       });
@@ -140,7 +149,7 @@ describe('BugList', () => {
     });
 
     it('should display error message when error', () => {
-      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockBugStoreState({
         ...defaultMockState,
         error: 'Failed to load bugs',
       });
@@ -190,7 +199,7 @@ describe('BugList', () => {
     });
 
     it('should show appropriate empty message when filtered phase has no bugs', () => {
-      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockBugStoreState({
         ...defaultMockState,
         // No bugs in fixed phase
         bugs: mockBugs.filter((b) => b.phase !== 'fixed'),
@@ -221,7 +230,7 @@ describe('BugList', () => {
     });
 
     it('should mark selected bug as selected', () => {
-      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockBugStoreState({
         ...defaultMockState,
         selectedBugId: 'bug-1',
       });

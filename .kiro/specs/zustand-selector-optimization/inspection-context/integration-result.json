@@ -1,0 +1,383 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-13T09:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: App.tsxのストア購読を全てセレクターパターンに変更する"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete: BugPane, BugWorkflowViewのセレクター適用"
+    },
+    {
+      "id": "task-1.3",
+      "checkType": "task-completion",
+      "target": "1.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.3 marked as complete: SpecPane, SpecDetail, ApprovalPanelのセレクター適用"
+    },
+    {
+      "id": "task-1.4",
+      "checkType": "task-completion",
+      "target": "1.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.4 marked as complete: BugList, SpecListのセレクター適用"
+    },
+    {
+      "id": "task-1.5",
+      "checkType": "task-completion",
+      "target": "1.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.5 marked as complete: useElectronWorkflowState フックのセレクター適用"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: DocsTabs, ErrorBanner, ProjectPaneのセレクター適用"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete: CreateSpecDialog, CreateBugDialog のセレクター適用"
+    },
+    {
+      "id": "task-2.3",
+      "checkType": "task-completion",
+      "target": "2.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.3 marked as complete: ProjectSelectionView, RecentProjectList, ProjectValidationPanelのセレクター適用"
+    },
+    {
+      "id": "task-2.4",
+      "checkType": "task-completion",
+      "target": "2.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.4 marked as complete: McpSettingsPanel, RemoteAccessPanel, RemoteAccessDialog, ArtifactEditor, ToolSettingsPanelのセレクター適用"
+    },
+    {
+      "id": "task-2.5",
+      "checkType": "task-completion",
+      "target": "2.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.5 marked as complete: BugActionButtons, AgentListPanel, ProjectAgentPanelのセレクター適用"
+    },
+    {
+      "id": "task-2.6",
+      "checkType": "task-completion",
+      "target": "2.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.6 marked as complete: NotificationProvider, ProjectFileEditorのセレクター適用"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: remote-ui/App.tsxのストア購読をセレクターパターンに変更する"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete: BugsView, BugDetailView, CreateBugDialogRemote, RemoteProjectEditorのセレクター適用"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete: ScheduleTaskSettingViewのセレクター適用"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete: DocsTreeSectionのセレクター適用"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 marked as complete: GitView, GitDiffViewer, GitFileTreeのセレクター適用"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete: BugListItem, SpecListItemをReact.memoでラップする"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete: AgentListItem, EventLogListItem, ScheduleTaskListItemをReact.memoでラップする"
+    },
+    {
+      "id": "task-5.3",
+      "checkType": "task-completion",
+      "target": "5.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.3 marked as complete: BugListContainer, SpecListContainerのインラインコールバックを安定化する"
+    },
+    {
+      "id": "task-5.4",
+      "checkType": "task-completion",
+      "target": "5.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.4 marked as complete: AgentListのインラインコールバックを安定化する"
+    },
+    {
+      "id": "task-5.5",
+      "checkType": "task-completion",
+      "target": "5.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.5 marked as complete: ScheduleTaskListのインラインコールバックを安定化する"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete: セレクター変更に伴うユニットテストのストアモック更新"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete: TypeScriptコンパイルチェックの通過を確認する"
+    },
+    {
+      "id": "task-6.3",
+      "checkType": "task-completion",
+      "target": "6.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.3 marked as complete: ユニットテスト全件パスを確認する"
+    },
+    {
+      "id": "task-6.4",
+      "checkType": "task-completion",
+      "target": "6.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.4 marked as complete: ビルド成功を確認する"
+    },
+    {
+      "id": "import-useShallow",
+      "checkType": "import",
+      "target": "useShallow (zustand/react/shallow)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useShallow is imported from 'zustand/react/shallow' in 25 files",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx",
+        "electron-sdd-manager/src/renderer/components/BugPane.tsx",
+        "electron-sdd-manager/src/renderer/components/BugWorkflowView.tsx",
+        "electron-sdd-manager/src/renderer/components/SpecPane.tsx",
+        "electron-sdd-manager/src/renderer/components/SpecDetail.tsx",
+        "electron-sdd-manager/src/renderer/components/BugList.tsx",
+        "electron-sdd-manager/src/renderer/components/SpecList.tsx",
+        "electron-sdd-manager/src/renderer/hooks/useElectronWorkflowState.ts",
+        "electron-sdd-manager/src/renderer/components/ErrorBanner.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectPane.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectSelectionView.tsx",
+        "electron-sdd-manager/src/renderer/components/RecentProjectList.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectValidationPanel.tsx",
+        "electron-sdd-manager/src/renderer/components/RemoteAccessPanel.tsx",
+        "electron-sdd-manager/src/renderer/components/ArtifactEditor.tsx",
+        "electron-sdd-manager/src/renderer/components/ToolSettingsPanel.tsx",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx",
+        "electron-sdd-manager/src/remote-ui/views/BugsView.tsx",
+        "electron-sdd-manager/src/remote-ui/components/RemoteProjectEditor.tsx",
+        "electron-sdd-manager/src/shared/components/schedule/ScheduleTaskSettingView.tsx",
+        "electron-sdd-manager/src/shared/components/git/GitView.tsx",
+        "electron-sdd-manager/src/shared/components/git/GitDiffViewer.tsx",
+        "electron-sdd-manager/src/shared/components/git/GitFileTree.tsx"
+      ]
+    },
+    {
+      "id": "usage-useShallow",
+      "checkType": "usage",
+      "target": "useShallow",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useShallow is actively used in all 25 importing files with useStore(useShallow(s => ...)) pattern"
+    },
+    {
+      "id": "usage-React.memo-BugListItem",
+      "checkType": "usage",
+      "target": "BugListItem React.memo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugListItem is wrapped with React.memo at electron-sdd-manager/src/shared/components/bug/BugListItem.tsx:77"
+    },
+    {
+      "id": "usage-React.memo-SpecListItem",
+      "checkType": "usage",
+      "target": "SpecListItem React.memo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecListItem is wrapped with React.memo at electron-sdd-manager/src/shared/components/spec/SpecListItem.tsx:109"
+    },
+    {
+      "id": "usage-React.memo-AgentListItem",
+      "checkType": "usage",
+      "target": "AgentListItem React.memo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentListItem is wrapped with React.memo at electron-sdd-manager/src/shared/components/agent/AgentListItem.tsx:160"
+    },
+    {
+      "id": "usage-React.memo-EventLogListItem",
+      "checkType": "usage",
+      "target": "EventLogListItem React.memo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EventLogListItem is wrapped with React.memo at electron-sdd-manager/src/shared/components/eventLog/EventLogListItem.tsx:118"
+    },
+    {
+      "id": "usage-React.memo-ScheduleTaskListItem",
+      "checkType": "usage",
+      "target": "ScheduleTaskListItem React.memo",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ScheduleTaskListItem is wrapped with React.memo at electron-sdd-manager/src/shared/components/schedule/ScheduleTaskListItem.tsx:248"
+    },
+    {
+      "id": "wiring-callback-BugListContainer",
+      "checkType": "wiring",
+      "target": "Task 5.3: BugListContainer callback stabilization",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugListItemWrapper created with React.memo at BugListContainer.tsx:97 to stabilize onSelect callback"
+    },
+    {
+      "id": "wiring-callback-SpecListContainer",
+      "checkType": "wiring",
+      "target": "Task 5.3: SpecListContainer callback stabilization",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecListItemWrapper created with React.memo at SpecListContainer.tsx:97 to stabilize onSelect callback"
+    },
+    {
+      "id": "wiring-callback-AgentList",
+      "checkType": "wiring",
+      "target": "Task 5.4: AgentList callback stabilization",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentListItemWrapper created with React.memo at AgentList.tsx:72 to stabilize onSelect/onStop/onRemove callbacks"
+    },
+    {
+      "id": "wiring-callback-ScheduleTaskSettingView",
+      "checkType": "wiring",
+      "target": "Task 5.5: ScheduleTaskList callback stabilization",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ScheduleTaskListItemWrapper created with React.memo at ScheduleTaskSettingView.tsx:194 to stabilize onClick callback"
+    },
+    {
+      "id": "wiring-selector-rendererApp",
+      "checkType": "wiring",
+      "target": "Task 1.1: renderer/App.tsx selector migration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/App.tsx uses useShallow selectors (confirmed at line 103), no full-store subscriptions remain"
+    },
+    {
+      "id": "wiring-selector-remoteApp",
+      "checkType": "wiring",
+      "target": "Task 3.1: remote-ui/App.tsx selector migration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "remote-ui/App.tsx uses individual selectors for LeftSidebar (line 149), RightSidebar (line 505), FooterContent (line 673)"
+    },
+    {
+      "id": "wiring-test-mocks",
+      "checkType": "wiring",
+      "target": "Task 6.1: Test mock updates for selector support",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "13+ test files updated with selector-aware mock pattern: (selector) => selector ? selector(state) : state",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/BugList.test.tsx",
+        "electron-sdd-manager/src/renderer/components/BugPane.test.tsx",
+        "electron-sdd-manager/src/renderer/components/SpecList.test.tsx",
+        "electron-sdd-manager/src/renderer/components/DocsTabs.test.tsx",
+        "electron-sdd-manager/src/renderer/components/DocsTabs.integration.test.tsx",
+        "electron-sdd-manager/src/renderer/components/CreateBugDialog.test.tsx",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.test.tsx",
+        "electron-sdd-manager/src/renderer/components/BugActionButtons.test.tsx",
+        "electron-sdd-manager/src/renderer/components/McpSettingsPanel.test.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.test.tsx",
+        "electron-sdd-manager/src/renderer/components/__tests__/ProjectPane.test.tsx"
+      ]
+    },
+    {
+      "id": "no-full-store-subscriptions",
+      "checkType": "usage",
+      "target": "Full store subscriptions elimination",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No remaining full-store subscriptions (useXxxStore()) found in implementation files. Only a JSDoc example in remoteAccessStore.ts."
+    },
+    {
+      "id": "placeholder-check",
+      "checkType": "placeholder",
+      "target": "Spec-related placeholders",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No spec-related TODO/FIXME/PLACEHOLDER comments found for zustand-selector-optimization. Existing TODOs are from other specs and unrelated."
+    }
+  ],
+  "stats": {
+    "total": 41,
+    "passed": 41,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 41
+  }
+}

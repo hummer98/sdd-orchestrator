@@ -73,7 +73,8 @@ const PHASE_COLORS: Record<BugPhase, string> = {
  * />
  * ```
  */
-export function BugListItem({
+// zustand-selector-optimization: React.memo for list item re-render optimization
+export const BugListItem = React.memo(function BugListItem({
   bug,
   isSelected,
   onSelect,
@@ -217,4 +218,4 @@ export function BugListItem({
       </div>
     </li>
   );
-}
+});

@@ -20,7 +20,9 @@ const PHASE_LABELS: Record<Phase, string> = {
 };
 
 export function ApprovalPanel() {
-  const { selectedSpec, specDetail } = useSpecStore();
+  // zustand-selector-optimization: individual selectors for 2 state fields
+  const selectedSpec = useSpecStore(s => s.selectedSpec);
+  const specDetail = useSpecStore(s => s.specDetail);
   // Note: refreshSpecs is no longer needed - File Watcher auto-updates spec state
   const [isLoading, setIsLoading] = useState<Phase | null>(null);
   const [rejectDialogPhase, setRejectDialogPhase] = useState<Phase | null>(null);

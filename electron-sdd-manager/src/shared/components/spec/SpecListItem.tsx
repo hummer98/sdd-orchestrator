@@ -105,7 +105,8 @@ const DISPLAY_PHASE_COLORS: Record<DisplayPhaseState, string> = {
   'deploy-complete': 'bg-emerald-100 text-emerald-700',
 };
 
-export function SpecListItem({
+// zustand-selector-optimization: React.memo for list item re-render optimization
+export const SpecListItem = React.memo(function SpecListItem({
   spec,
   isSelected,
   onSelect,
@@ -245,4 +246,4 @@ export function SpecListItem({
       </div>
     </li>
   );
-}
+});

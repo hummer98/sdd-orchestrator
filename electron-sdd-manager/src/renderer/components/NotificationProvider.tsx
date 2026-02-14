@@ -44,7 +44,9 @@ const COLORS = {
 };
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { notifications, removeNotification } = useNotificationStore();
+  // zustand-selector-optimization: individual selectors
+  const notifications = useNotificationStore(s => s.notifications);
+  const removeNotification = useNotificationStore(s => s.removeNotification);
 
   return (
     <>

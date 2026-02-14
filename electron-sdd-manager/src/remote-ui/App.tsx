@@ -146,7 +146,10 @@ function LeftSidebar({
    * - Hook returns sorted agents (running first, then by startedAt descending)
    * - Hook reactively subscribes to agents Map changes
    */
-  const { selectAgent, selectedAgentId, removeAgent } = useSharedAgentStore();
+  // zustand-selector-optimization: individual selectors
+  const selectAgent = useSharedAgentStore(s => s.selectAgent);
+  const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
+  const removeAgent = useSharedAgentStore(s => s.removeAgent);
   const projectAgents = useProjectAgents();
 
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
@@ -499,7 +502,9 @@ function RightSidebar({
   onAutoExecution,
 }: RightSidebarProps) {
   const apiClient = useApi();
-  const { selectAgent, selectedAgentId } = useSharedAgentStore();
+  // zustand-selector-optimization: individual selectors
+  const selectAgent = useSharedAgentStore(s => s.selectAgent);
+  const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
 
   // Spec Agents state (filtered by selected spec)
   const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
@@ -665,14 +670,18 @@ function RightSidebar({
  */
 function FooterContent() {
   const apiClient = useApi();
-  const agentStore = useSharedAgentStore();
+  // zustand-selector-optimization: individual selectors
+  const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
+  const getAgentById = useSharedAgentStore(s => s.getAgentById);
+  const logs = useSharedAgentStore(s => s.logs);
+  const ensureLogsLoaded = useSharedAgentStore(s => s.ensureLogsLoaded);
+  const clearLogs = useSharedAgentStore(s => s.clearLogs);
 
   // Get selected agent info
-  const selectedAgentId = agentStore.selectedAgentId;
-  const selectedAgent = selectedAgentId ? agentStore.getAgentById(selectedAgentId) : undefined;
+  const selectedAgent = selectedAgentId ? getAgentById(selectedAgentId) : undefined;
 
   // Get logs for selected agent
-  const logs = selectedAgentId ? agentStore.logs.get(selectedAgentId) ?? [] : [];
+  const agentLogs = selectedAgentId ? logs.get(selectedAgentId) ?? [] : [];
 
   /**
    * project-agent-store-unification Task 4.1: Remove selectedAgent from deps
@@ -685,9 +694,9 @@ function FooterContent() {
   useEffect(() => {
     if (selectedAgentId) {
       // project-agent-store-unification: Pass empty specIdHint for ProjectAgent fallback
-      agentStore.ensureLogsLoaded(apiClient, selectedAgentId, '');
+      ensureLogsLoaded(apiClient, selectedAgentId, '');
     }
-  }, [apiClient, selectedAgentId, agentStore]);
+  }, [apiClient, selectedAgentId, ensureLogsLoaded]);
 
   // Transform AgentInfo to AgentLogInfo
   const agentLogInfo: AgentLogInfo | undefined = selectedAgent ? {
@@ -714,14 +723,14 @@ function FooterContent() {
   // Handle clear logs
   const handleClear = useCallback(() => {
     if (selectedAgentId) {
-      agentStore.clearLogs(selectedAgentId);
+      clearLogs(selectedAgentId);
     }
-  }, [agentStore, selectedAgentId]);
+  }, [clearLogs, selectedAgentId]);
 
   return (
     <AgentLogPanel
       agent={agentLogInfo}
-      logs={logs}
+      logs={agentLogs}
       showTokens={true}
       onCopy={handleCopy}
       onClear={handleClear}

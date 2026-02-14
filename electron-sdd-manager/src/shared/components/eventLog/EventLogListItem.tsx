@@ -114,7 +114,8 @@ function formatLocalTime(timestamp: string): string {
  * <EventLogListItem event={entry} />
  * ```
  */
-export function EventLogListItem({
+// zustand-selector-optimization: React.memo for list item re-render optimization
+export const EventLogListItem = React.memo(function EventLogListItem({
   event,
   className,
 }: EventLogListItemProps): React.ReactElement {
@@ -160,4 +161,4 @@ export function EventLogListItem({
       </div>
     </div>
   );
-}
+});

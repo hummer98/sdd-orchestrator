@@ -13,9 +13,10 @@
  * Requirements: 1.1, 1.2, 1.4
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { X, Plus, ArrowLeft, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useScheduleTaskStore, type ScheduleTaskElectronAPI } from '../../stores/scheduleTaskStore';
@@ -179,6 +180,38 @@ function ScheduleTaskHeader({
 
 
 // =============================================================================
+// zustand-selector-optimization: Wrapper to stabilize onClick callback for React.memo
+// =============================================================================
+
+interface ScheduleTaskListItemWrapperProps {
+  task: ScheduleTask;
+  onTaskClick: (task: ScheduleTask) => void;
+  onToggleEnabled: (taskId: string) => void;
+  onDelete: (taskId: string) => void;
+  onExecuteImmediately: (taskId: string) => void;
+}
+
+const ScheduleTaskListItemWrapper = React.memo(function ScheduleTaskListItemWrapper({
+  task,
+  onTaskClick,
+  onToggleEnabled,
+  onDelete,
+  onExecuteImmediately,
+}: ScheduleTaskListItemWrapperProps) {
+  const handleClick = useCallback(() => onTaskClick(task), [onTaskClick, task]);
+
+  return (
+    <ScheduleTaskListItem
+      task={task}
+      onClick={handleClick}
+      onToggleEnabled={onToggleEnabled}
+      onDelete={onDelete}
+      onExecuteImmediately={onExecuteImmediately}
+    />
+  );
+});
+
+// =============================================================================
 // ScheduleTaskList Component
 // =============================================================================
 
@@ -233,10 +266,10 @@ function ScheduleTaskList({
       className="space-y-3 overflow-y-auto max-h-[60vh]"
     >
       {tasks.map((task) => (
-        <ScheduleTaskListItem
+        <ScheduleTaskListItemWrapper
           key={task.id}
           task={task}
-          onClick={() => onTaskClick(task)}
+          onTaskClick={onTaskClick}
           onToggleEnabled={onToggleEnabled}
           onDelete={onDelete}
           onExecuteImmediately={onExecuteImmediately}
@@ -320,21 +353,19 @@ export function ScheduleTaskSettingView({
   isOpen,
   onClose,
 }: ScheduleTaskSettingViewProps) {
-  const {
-    tasks,
-    editingTask,
-    isCreatingNew,
-    isLoading,
-    startEditing,
-    startNewTask,
-    cancelEditing,
-    loadTasks,
-    createTask,
-    updateTask,
-    deleteTask,
-    toggleTaskEnabled,
-    executeImmediately,
-  } = useScheduleTaskStore();
+  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
+  const { tasks, editingTask, isCreatingNew, isLoading } = useScheduleTaskStore(
+    useShallow(s => ({ tasks: s.tasks, editingTask: s.editingTask, isCreatingNew: s.isCreatingNew, isLoading: s.isLoading }))
+  );
+  const startEditing = useScheduleTaskStore(s => s.startEditing);
+  const startNewTask = useScheduleTaskStore(s => s.startNewTask);
+  const cancelEditing = useScheduleTaskStore(s => s.cancelEditing);
+  const loadTasks = useScheduleTaskStore(s => s.loadTasks);
+  const createTask = useScheduleTaskStore(s => s.createTask);
+  const updateTask = useScheduleTaskStore(s => s.updateTask);
+  const deleteTask = useScheduleTaskStore(s => s.deleteTask);
+  const toggleTaskEnabled = useScheduleTaskStore(s => s.toggleTaskEnabled);
+  const executeImmediately = useScheduleTaskStore(s => s.executeImmediately);
 
   // Local state for delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ScheduleTask | null>(null);

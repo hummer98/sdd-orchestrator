@@ -38,6 +38,15 @@ vi.mock('../../../shared/trpc/client', () => ({
   },
 }));
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<string, any>) {
+  store.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
+
 describe('ProjectPane', () => {
   const mockFiles: ProjectFilesState = {
     claudeMd: {
@@ -80,10 +89,10 @@ describe('ProjectPane', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useProjectEditorStore).mockReturnValue(mockStoreState);
-    vi.mocked(useProjectStore).mockReturnValue({
+    mockStoreWithSelector(vi.mocked(useProjectEditorStore) as unknown as ReturnType<typeof vi.fn>, mockStoreState);
+    mockStoreWithSelector(vi.mocked(useProjectStore) as unknown as ReturnType<typeof vi.fn>, {
       currentProject: '/test/project',
-    } as ReturnType<typeof useProjectStore>);
+    });
   });
 
   afterEach(() => {
@@ -105,9 +114,9 @@ describe('ProjectPane', () => {
   });
 
   it('renders placeholder when no project is selected', () => {
-    vi.mocked(useProjectStore).mockReturnValue({
+    mockStoreWithSelector(vi.mocked(useProjectStore) as unknown as ReturnType<typeof vi.fn>, {
       currentProject: null,
-    } as ReturnType<typeof useProjectStore>);
+    });
 
     render(<ProjectPane files={mockFiles} onRefreshFiles={vi.fn()} />);
 

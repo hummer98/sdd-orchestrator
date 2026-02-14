@@ -5,6 +5,7 @@
  */
 
 import { CheckCircle, AlertCircle, FolderPlus, Download, Loader2, FileWarning } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { InstallError } from '../stores/projectStore';
@@ -12,9 +13,9 @@ import { SteeringSection, ReleaseSection } from '@shared/components/project';
 import { JjInstallSection } from './JjInstallSection';
 
 export function ProjectValidationPanel() {
+  // zustand-selector-optimization: useShallow for many fields
   const {
     kiroValidation,
-    // spec-manager extensions
     specManagerCheck,
     installLoading,
     installResult,
@@ -22,26 +23,48 @@ export function ProjectValidationPanel() {
     installCommands,
     installSettings,
     clearInstallResult,
-    // permissions check
     permissionsCheck,
     permissionsFixLoading,
     fixPermissions,
-    // steering-verification-integration feature
     steeringCheck,
     steeringGenerateLoading,
     generateVerificationMd,
-    // steering-release-integration feature
     releaseCheck,
     releaseGenerateLoading,
     generateReleaseMd,
-    // jj-merge-support feature
     jjCheck,
     jjInstallIgnored,
     jjInstallLoading,
     jjInstallError,
     installJj,
     ignoreJjInstall,
-  } = useProjectStore();
+  } = useProjectStore(
+    useShallow(s => ({
+      kiroValidation: s.kiroValidation,
+      specManagerCheck: s.specManagerCheck,
+      installLoading: s.installLoading,
+      installResult: s.installResult,
+      installError: s.installError,
+      installCommands: s.installCommands,
+      installSettings: s.installSettings,
+      clearInstallResult: s.clearInstallResult,
+      permissionsCheck: s.permissionsCheck,
+      permissionsFixLoading: s.permissionsFixLoading,
+      fixPermissions: s.fixPermissions,
+      steeringCheck: s.steeringCheck,
+      steeringGenerateLoading: s.steeringGenerateLoading,
+      generateVerificationMd: s.generateVerificationMd,
+      releaseCheck: s.releaseCheck,
+      releaseGenerateLoading: s.releaseGenerateLoading,
+      generateReleaseMd: s.generateReleaseMd,
+      jjCheck: s.jjCheck,
+      jjInstallIgnored: s.jjInstallIgnored,
+      jjInstallLoading: s.jjInstallLoading,
+      jjInstallError: s.jjInstallError,
+      installJj: s.installJj,
+      ignoreJjInstall: s.ignoreJjInstall,
+    }))
+  );
 
   // Check if there's anything to display
   const hasKiroIssues = kiroValidation && !(kiroValidation.exists && kiroValidation.hasSpecs && kiroValidation.hasSteering);

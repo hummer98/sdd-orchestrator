@@ -12,6 +12,15 @@ import { useSpecStore } from '../stores/specStore';
 // bugs-view-unification Task 6.1: Updated to use useSharedBugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<string, any>) {
+  store.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
+
 // Helper component to wrap DocsTabs with controlled state
 function DocsTabsWrapper({ initialTab = 'specs' as DocsTab }: { initialTab?: DocsTab }) {
   const [activeTab, setActiveTab] = useState<DocsTab>(initialTab);
@@ -70,16 +79,22 @@ vi.mock('./CreateBugDialog', () => ({
 
 // zustand-agent-selector-hooks: Removed getAgentsForSpec from mock
 // DocsTabs only uses selectAgent from useAgentStore
+// zustand-selector-optimization: Support selector-based calls
 vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(() => ({
-    selectAgent: vi.fn(),
-  })),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useAgentStore: vi.fn((selector?: (s: any) => any) => {
+    const state = { selectAgent: vi.fn() };
+    return selector ? selector(state) : state;
+  }),
 }));
 
+// zustand-selector-optimization: Support selector-based calls
 vi.mock('../stores/notificationStore', () => ({
-  useNotificationStore: vi.fn(() => ({
-    addNotification: vi.fn(),
-  })),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useNotificationStore: vi.fn((selector?: (s: any) => any) => {
+    const state = { addNotification: vi.fn() };
+    return selector ? selector(state) : state;
+  }),
   notify: {
     success: vi.fn(),
     error: vi.fn(),
@@ -134,12 +149,12 @@ describe('DocsTabs Integration', () => {
     vi.clearAllMocks();
 
     // Default project mock
-    (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useProjectStore as unknown as ReturnType<typeof vi.fn>, {
       currentProject: '/Users/test/project',
     });
 
     // Default spec store mock
-    (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useSpecStore as unknown as ReturnType<typeof vi.fn>, {
       specs: mockSpecs,
       selectedSpec: null,
       isLoading: false,
@@ -150,7 +165,7 @@ describe('DocsTabs Integration', () => {
     });
 
     // Default bug store mock - bugs-view-unification Task 6.1
-    (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    mockStoreWithSelector(useSharedBugStore as unknown as ReturnType<typeof vi.fn>, {
       bugs: mockBugs,
       selectedBugId: null,
       bugDetail: null,
@@ -270,7 +285,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should not show create button when no project is selected', () => {
-      (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockStoreWithSelector(useProjectStore as unknown as ReturnType<typeof vi.fn>, {
         currentProject: null,
       });
 

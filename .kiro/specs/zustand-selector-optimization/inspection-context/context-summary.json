@@ -1,0 +1,155 @@
+{
+  "spec_overview": "プロジェクト全体の24+コンポーネントでZustandストア購読パターンをセレクターベースに最適化し、5つのリストアイテムコンポーネントにReact.memoを適用して不要な再レンダリングを根本的に排除する。",
+  "key_components": [
+    {
+      "name": "Selector Migration (Renderer)",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/",
+      "requirements": ["1.1", "1.2", "1.3", "3.1"]
+    },
+    {
+      "name": "Selector Migration (Remote UI)",
+      "type": "component",
+      "path": "electron-sdd-manager/src/remote-ui/",
+      "requirements": ["1.4", "3.2"]
+    },
+    {
+      "name": "Selector Migration (Shared)",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/",
+      "requirements": ["1.1"]
+    },
+    {
+      "name": "BugListItem",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/bug/BugListItem.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "SpecListItem",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/spec/SpecListItem.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "AgentListItem",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/agent/AgentListItem.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "EventLogListItem",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/eventLog/EventLogListItem.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "ScheduleTaskListItem",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/schedule/ScheduleTaskListItem.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "BugListContainer",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/bug/BugListContainer.tsx",
+      "requirements": ["2.2"]
+    },
+    {
+      "name": "SpecListContainer",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/spec/SpecListContainer.tsx",
+      "requirements": ["2.2"]
+    },
+    {
+      "name": "AgentList",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/agent/AgentList.tsx",
+      "requirements": ["2.2"]
+    },
+    {
+      "name": "renderer/App.tsx",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/App.tsx",
+      "requirements": ["1.1", "1.2", "1.3", "3.1", "4.1", "4.2"]
+    },
+    {
+      "name": "remote-ui/App.tsx",
+      "type": "component",
+      "path": "electron-sdd-manager/src/remote-ui/App.tsx",
+      "requirements": ["1.4", "3.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "Components (24+)",
+      "target": "Zustand Stores (shared/stores)",
+      "type": "import"
+    },
+    {
+      "source": "ListItem Components (5)",
+      "target": "React.memo",
+      "type": "call"
+    },
+    {
+      "source": "ListContainer Components",
+      "target": "ListItem Components",
+      "type": "call"
+    },
+    {
+      "source": "Components",
+      "target": "useShallow (zustand/react/shallow)",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "Root component subscribes to multiple stores without selectors"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/*.tsx",
+      "action": "UPDATE",
+      "reason": "All renderer components need selector pattern migration"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/App.tsx",
+      "action": "UPDATE",
+      "reason": "Remote UI root needs selector optimization"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/**/*.tsx",
+      "action": "UPDATE",
+      "reason": "Remote UI components need selector pattern migration"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/components/**/*.tsx",
+      "action": "UPDATE",
+      "reason": "Shared components need selector migration and React.memo wrapping"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/useElectronWorkflowState.ts",
+      "action": "UPDATE",
+      "reason": "Hook subscribes to stores without selectors"
+    }
+  ],
+  "selector_patterns": {
+    "individual": "1-2 state fields: const x = useStore(s => s.x)",
+    "useShallow": "3+ state fields: const { a, b, c } = useStore(useShallow(s => ({ a: s.a, b: s.b, c: s.c })))",
+    "actions_only": "Actions don't need selectors: const action = useStore(s => s.action)"
+  },
+  "memo_targets": [
+    "BugListItem",
+    "SpecListItem",
+    "AgentListItem",
+    "EventLogListItem",
+    "ScheduleTaskListItem"
+  ],
+  "callback_stabilization_targets": [
+    "BugListContainer",
+    "SpecListContainer",
+    "AgentList",
+    "ScheduleTaskSettingView"
+  ]
+}

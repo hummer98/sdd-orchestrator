@@ -7,7 +7,7 @@
  * props-driven設計で、ストア非依存。Electron版とRemote UI版で共有可能。
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, XCircle, AlertCircle, StopCircle, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -156,7 +156,8 @@ const STATUS_CONFIG: Record<
 // Component
 // =============================================================================
 
-export function AgentListItem({
+// zustand-selector-optimization: React.memo for list item re-render optimization
+export const AgentListItem = React.memo(function AgentListItem({
   agent,
   isSelected,
   onSelect,
@@ -282,4 +283,4 @@ export function AgentListItem({
       </div>
     </li>
   );
-}
+});

@@ -244,7 +244,8 @@ function ToggleSwitch({ checked, onChange, ariaLabel, disabled }: ToggleSwitchPr
 // Component
 // =============================================================================
 
-export function ScheduleTaskListItem({
+// zustand-selector-optimization: React.memo for list item re-render optimization
+export const ScheduleTaskListItem = React.memo(function ScheduleTaskListItem({
   task,
   onClick,
   onToggleEnabled,
@@ -407,4 +408,4 @@ export function ScheduleTaskListItem({
       </div>
     </div>
   );
-}
+});

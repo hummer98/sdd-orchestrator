@@ -54,7 +54,10 @@ export function CreateBugDialogRemote({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Store
-  const { useWorktree, setUseWorktree, createBug } = useSharedBugStore();
+  // zustand-selector-optimization: individual selectors
+  const useWorktree = useSharedBugStore(s => s.useWorktree);
+  const setUseWorktree = useSharedBugStore(s => s.setUseWorktree);
+  const createBug = useSharedBugStore(s => s.createBug);
 
   // Generate bug name from description (first 30 chars, sanitized)
   const generateBugName = useCallback((desc: string): string => {

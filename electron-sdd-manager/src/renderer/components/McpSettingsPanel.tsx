@@ -56,8 +56,10 @@ interface McpSettings {
  * <McpSettingsPanel />
  */
 export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
-  const { currentProject } = useProjectStore();
-  const { isRunning, port: runningPort } = useMcpStore();
+  // zustand-selector-optimization: individual selectors
+  const currentProject = useProjectStore(s => s.currentProject);
+  const isRunning = useMcpStore(s => s.isRunning);
+  const runningPort = useMcpStore(s => s.port);
 
   // Settings state
   const [settings, setSettings] = useState<McpSettings | null>(null);

@@ -5,6 +5,7 @@
  */
 
 import { useState, KeyboardEvent } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { FolderOpen } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { RecentProjectList } from './RecentProjectList';
@@ -12,7 +13,10 @@ import { RecentProjectList } from './RecentProjectList';
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
 export function ProjectSelectionView() {
-  const { selectProject, isLoading, error } = useProjectStore();
+  // zustand-selector-optimization: useShallow for 3 state fields (2 state + 1 action)
+  const { selectProject, isLoading, error } = useProjectStore(
+    useShallow(s => ({ selectProject: s.selectProject, isLoading: s.isLoading, error: s.error }))
+  );
   const [inputPath, setInputPath] = useState('');
 
   // Requirement 1.1, 5.3: フォルダ選択ダイアログを開く

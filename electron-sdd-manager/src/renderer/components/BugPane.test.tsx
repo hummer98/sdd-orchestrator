@@ -36,7 +36,14 @@ vi.mock('./ResizeHandle', () => ({
   ),
 }));
 
-const mockUseSharedBugStore = useSharedBugStore as unknown as ReturnType<typeof vi.fn>;
+// zustand-selector-optimization: Helper to mock store with selector support
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockBugStoreState(state: Record<string, any>) {
+  (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(state) : state
+  );
+}
 
 describe('BugPane', () => {
   const defaultProps = {
@@ -54,7 +61,7 @@ describe('BugPane', () => {
   describe('When no bug is selected', () => {
     beforeEach(() => {
       // bugs-view-unification Task 6.1: Use selectedBugId and bugs array
-      mockUseSharedBugStore.mockReturnValue({
+      mockBugStoreState({
         bugs: [],
         selectedBugId: null,
         bugDetail: null,
@@ -92,7 +99,7 @@ describe('BugPane', () => {
       const mockBugs = [
         { name: 'test-bug', path: '/path/to/bug', phase: 'reported' },
       ];
-      mockUseSharedBugStore.mockReturnValue({
+      mockBugStoreState({
         bugs: mockBugs,
         selectedBugId: 'test-bug',
         bugDetail: null,

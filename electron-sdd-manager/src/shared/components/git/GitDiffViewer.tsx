@@ -9,6 +9,7 @@
 import { useMemo, useCallback } from 'react';
 import { Loader2, SplitSquareHorizontal, FileText } from 'lucide-react';
 import { parseDiff, Diff, Hunk, HunkData } from 'react-diff-view';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useSharedGitViewStore } from '@shared/stores/gitViewStore';
 
@@ -34,14 +35,23 @@ function isBinaryDiff(diffContent: string): boolean {
  * - Scroll support
  */
 export function GitDiffViewer(): React.ReactElement {
+  // zustand-selector-optimization: useShallow for state, individual selector for action
   const {
     selectedFilePath,
     cachedDiffContent,
     isLoading,
     error,
     diffMode,
-    setDiffMode,
-  } = useSharedGitViewStore();
+  } = useSharedGitViewStore(
+    useShallow(s => ({
+      selectedFilePath: s.selectedFilePath,
+      cachedDiffContent: s.cachedDiffContent,
+      isLoading: s.isLoading,
+      error: s.error,
+      diffMode: s.diffMode,
+    }))
+  );
+  const setDiffMode = useSharedGitViewStore(s => s.setDiffMode);
 
   // Parse diff content
   const parsedDiff = useMemo(() => {

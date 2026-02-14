@@ -635,6 +635,9 @@ describe('AgentLifecycleManager', () => {
     });
 
     it('should work on reattached agents', async () => {
+      // Mock process.kill to prevent actually sending SIGKILL to the test worker process
+      const processKillSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
+
       // Create a reattached agent with current process PID (so we don't try to kill non-existent process)
       const record: AgentRecord = {
         agentId: 'reattached-agent',
@@ -660,17 +663,18 @@ describe('AgentLifecycleManager', () => {
 
       manager = new AgentLifecycleManager(testRegistry, processUtils, mockRecordStore as any);
 
-      // Note: We can't actually kill the current process, but we can verify the method doesn't error
-      // In a real scenario with a different PID, SIGKILL would work
       const result = await manager.killAgent('reattached-agent');
 
       expect(result.ok).toBe(true);
+      expect(processKillSpy).toHaveBeenCalledWith(process.pid, 'SIGKILL');
       expect(mockRecordStore.updateRecord).toHaveBeenCalledWith(
         'reattached-agent',
         expect.objectContaining({
           status: 'killing',
         })
       );
+
+      processKillSpy.mockRestore();
     });
 
     it('should return error for non-existent agent', async () => {

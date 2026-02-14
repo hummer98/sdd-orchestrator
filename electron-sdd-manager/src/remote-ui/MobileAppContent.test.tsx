@@ -90,6 +90,15 @@ vi.mock('../shared/hooks/useDeviceType', () => ({
   useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
 }));
 
+// Mock TRPCProvider (imports electron-trpc/renderer which is unavailable in test env)
+vi.mock('../shared/trpc/provider', async () => {
+  const React = await import('react');
+  return {
+    TRPCProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 // Track MobileLayout props
 let capturedMobileLayoutProps: {
   activeTab?: string;
@@ -147,6 +156,7 @@ vi.mock('./views', () => ({
   AgentView: () => null,
   ProjectAgentView: () => null,
   RemoteWorkflowView: () => null,
+  ProjectView: () => null,
 }));
 
 // Mock bugAutoExecutionStore
@@ -158,6 +168,87 @@ vi.mock('../shared/stores/bugAutoExecutionStore', () => ({
     lastFailedPhase: null,
   })),
   initBugAutoExecutionWebSocketListeners: () => () => {},
+}));
+
+// Mock hooks that set up WebSocket subscriptions (prevent hang from real subscriptions after vi.resetModules())
+vi.mock('./hooks/useAgentStoreInit', () => ({
+  useAgentStoreInit: () => ({ refreshAgents: vi.fn(), isLoading: false, error: null }),
+}));
+
+vi.mock('../shared/hooks/useAgentLogSubscription', () => ({
+  useAgentLogSubscription: vi.fn(),
+}));
+
+// Mock ToastContainer (rendered by App outside mobile/desktop conditional)
+vi.mock('./components/ToastContainer', () => ({
+  ToastContainer: () => null,
+}));
+
+// Mock detail page components (overridden by vi.doMock in specific Task 8.2 tests)
+vi.mock('./components/SpecDetailPage', () => ({
+  SpecDetailPage: () => null,
+}));
+
+vi.mock('./components/BugDetailPage', () => ({
+  BugDetailPage: () => null,
+}));
+
+vi.mock('./components/AgentLogPage', () => ({
+  AgentLogPage: () => null,
+}));
+
+vi.mock('./components/AgentsTabView', () => ({
+  AgentsTabView: () => null,
+}));
+
+vi.mock('./components/ProjectDetailPage', () => ({
+  ProjectDetailPage: () => null,
+}));
+
+// Mock DesktopAppContent dependencies (imported at module scope, not rendered in mobile mode)
+vi.mock('../shared/stores/agentStore', () => ({
+  useSharedAgentStore: Object.assign(vi.fn(() => ({})), { getState: () => ({}) }),
+}));
+
+vi.mock('../shared/hooks', () => ({
+  useProjectAgents: () => [],
+}));
+
+vi.mock('../shared/components/workflow', () => ({
+  SpecWorkflowFooter: () => null,
+}));
+
+vi.mock('../shared/components/agent', () => ({
+  AgentList: () => null,
+  AgentLogPanel: () => null,
+}));
+
+vi.mock('../shared/components/project', () => ({
+  AskAgentDialog: () => null,
+}));
+
+vi.mock('../shared/components/ui', () => ({
+  ResizeHandle: () => null,
+}));
+
+vi.mock('./components/RemoteArtifactEditor', () => ({
+  RemoteArtifactEditor: () => null,
+}));
+
+vi.mock('./components/RemoteProjectEditor', () => ({
+  RemoteProjectEditor: () => null,
+}));
+
+vi.mock('./components/RefreshButton', () => ({
+  RefreshButton: () => null,
+}));
+
+vi.mock('./components/CreateSpecDialogRemote', () => ({
+  CreateSpecDialogRemote: () => null,
+}));
+
+vi.mock('./components/CreateBugDialogRemote', () => ({
+  CreateBugDialogRemote: () => null,
 }));
 
 // =============================================================================

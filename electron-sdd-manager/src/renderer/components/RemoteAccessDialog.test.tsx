@@ -8,32 +8,56 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { RemoteAccessDialog } from './RemoteAccessDialog';
 import { useRemoteAccessStore } from '../stores/remoteAccessStore';
 
-// Mock the remoteAccessStore
+// Mock child components to avoid tRPC/electron-trpc dependencies
+// These components use getVanillaClient() which requires TRPCProvider (electron-trpc)
+vi.mock('./RemoteAccessPanel', () => ({
+  RemoteAccessPanel: ({ className }: { className?: string }) => (
+    <div className={className}>
+      <h2>Remote Access</h2>
+      <p>Server controls</p>
+    </div>
+  ),
+}));
+
+vi.mock('./CloudflareSettingsPanel', () => ({
+  CloudflareSettingsPanel: ({ className }: { className?: string }) => (
+    <div className={className}>
+      <h2>Cloudflare Tunnel 設定</h2>
+      <label htmlFor="mock-tunnel-token">Tunnel Token</label>
+      <input id="mock-tunnel-token" type="password" />
+    </div>
+  ),
+}));
+
+vi.mock('./McpSettingsPanel', () => ({
+  McpSettingsPanel: ({ className }: { className?: string }) => (
+    <div className={className}>
+      <h2>MCP Server 設定</h2>
+      <label>
+        <input type="checkbox" /> MCP Server を有効化
+      </label>
+      <label htmlFor="mock-port">ポート番号</label>
+      <input id="mock-port" type="number" />
+      <p>Claude CLI 登録コマンド</p>
+    </div>
+  ),
+}));
+
+vi.mock('./ToolSettingsPanel', () => ({
+  ToolSettingsPanel: ({ className }: { className?: string }) => (
+    <div className={className}>
+      <h2>ツール設定</h2>
+    </div>
+  ),
+}));
+
+// Mock the remoteAccessStore (supports zustand selector pattern)
 vi.mock('../stores/remoteAccessStore', () => ({
   useRemoteAccessStore: vi.fn(),
-}));
-
-// Mock toolPathStore (ToolSettingsPanel in MCP tab needs statuses array)
-vi.mock('../../shared/stores/toolPathStore', () => ({
-  useToolPathStore: vi.fn(() => ({
-    statuses: [],
-    isLoading: false,
-    error: null,
-    fetchStatuses: vi.fn(),
-    setToolPath: vi.fn(),
-  })),
-}));
-
-// Mock mcpStore (McpSettingsPanel in MCP tab)
-vi.mock('../../shared/stores/mcpStore', () => ({
-  useMcpStore: vi.fn(() => ({
-    isRunning: false,
-    port: null,
-  })),
 }));
 
 describe('RemoteAccessDialog', () => {
@@ -68,9 +92,16 @@ describe('RemoteAccessDialog', () => {
     loadCloudflareSettings: vi.fn(),
   };
 
+  const mockWithState = (state: typeof mockStoreState) => {
+    (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector?: (s: typeof mockStoreState) => unknown) =>
+        selector ? selector(state) : state
+    );
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockStoreState);
+    mockWithState(mockStoreState);
   });
 
   afterEach(() => {
@@ -138,10 +169,7 @@ describe('RemoteAccessDialog', () => {
   // ============================================================
   describe('Task 15.1.2: InstallCloudflaredDialog integration', () => {
     it('should render InstallCloudflaredDialog when showInstallCloudflaredDialog is true', () => {
-      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockStoreState,
-        showInstallCloudflaredDialog: true,
-      });
+      mockWithState({ ...mockStoreState, showInstallCloudflaredDialog: true });
 
       render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
 
@@ -150,10 +178,7 @@ describe('RemoteAccessDialog', () => {
     });
 
     it('should not render InstallCloudflaredDialog when showInstallCloudflaredDialog is false', () => {
-      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockStoreState,
-        showInstallCloudflaredDialog: false,
-      });
+      mockWithState({ ...mockStoreState, showInstallCloudflaredDialog: false });
 
       render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
 
@@ -162,7 +187,7 @@ describe('RemoteAccessDialog', () => {
 
     it('should call dismissInstallDialog when InstallCloudflaredDialog is closed', async () => {
       const mockDismissInstallDialog = vi.fn();
-      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockWithState({
         ...mockStoreState,
         showInstallCloudflaredDialog: true,
         dismissInstallDialog: mockDismissInstallDialog,
@@ -237,20 +262,21 @@ describe('RemoteAccessDialog', () => {
   // Requirements: 1.1, 4.1
   // ============================================================
   describe('Task 5.1: Tab display', () => {
-    it('should render two tabs (Webサーバー and MCP)', () => {
+    it('should render three tabs (Webサーバー, MCP, ツール)', () => {
       render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
 
       // Should have a tablist
       const tablist = screen.getByRole('tablist');
       expect(tablist).toBeInTheDocument();
 
-      // Should have two tabs
+      // Should have three tabs
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(2);
+      expect(tabs).toHaveLength(3);
 
       // Check tab labels
       expect(screen.getByRole('tab', { name: /Webサーバー/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /MCP/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /ツール/i })).toBeInTheDocument();
     });
 
     it('should have Webサーバー tab selected by default', () => {
@@ -408,14 +434,14 @@ describe('RemoteAccessDialog', () => {
       render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
 
       const webServerTab = screen.getByRole('tab', { name: /Webサーバー/i });
-      const mcpTab = screen.getByRole('tab', { name: /MCP/i });
+      const toolsTab = screen.getByRole('tab', { name: /ツール/i });
 
-      // Switch to MCP tab
-      fireEvent.click(mcpTab);
+      // Switch to ツール tab (last tab)
+      fireEvent.click(toolsTab);
 
-      // Press ArrowRight on MCP tab (last tab)
-      mcpTab.focus();
-      fireEvent.keyDown(mcpTab, { key: 'ArrowRight' });
+      // Press ArrowRight on ツール tab
+      toolsTab.focus();
+      fireEvent.keyDown(toolsTab, { key: 'ArrowRight' });
 
       // Should wrap around to Webサーバー tab
       expect(webServerTab).toHaveAttribute('aria-selected', 'true');
@@ -425,14 +451,14 @@ describe('RemoteAccessDialog', () => {
       render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
 
       const webServerTab = screen.getByRole('tab', { name: /Webサーバー/i });
-      const mcpTab = screen.getByRole('tab', { name: /MCP/i });
+      const toolsTab = screen.getByRole('tab', { name: /ツール/i });
 
       // Press ArrowLeft on Webサーバー tab (first tab)
       webServerTab.focus();
       fireEvent.keyDown(webServerTab, { key: 'ArrowLeft' });
 
-      // Should wrap around to MCP tab
-      expect(mcpTab).toHaveAttribute('aria-selected', 'true');
+      // Should wrap around to ツール tab (last tab)
+      expect(toolsTab).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

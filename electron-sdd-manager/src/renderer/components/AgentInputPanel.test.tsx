@@ -12,12 +12,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AgentInputPanel } from './AgentInputPanel';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import type { AgentInfo } from '@shared/api/types';
 
 // Mock the stores
 vi.mock('../stores/agentStore');
+vi.mock('@shared/stores/agentStore');
+
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
+const mockUseSharedAgentStore = useSharedAgentStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('AgentInputPanel', () => {
   const mockResumeAgent = vi.fn();
@@ -34,33 +39,39 @@ describe('AgentInputPanel', () => {
     command: 'claude -p "/kiro:spec-requirements"',
   };
 
-  // Helper to create mock store that supports Zustand selector pattern
-  const createMockStore = (agent: AgentInfo | undefined, selectedAgentId: string | null) => {
+  // agent-facade-action-only Task 6.4: Split state (SSOT) and actions (facade)
+  // State (selectedAgentId, agents) from useSharedAgentStore
+  // Actions (resumeAgent) from useAgentStore
+  const setupMockStore = (agent: AgentInfo | undefined, selectedAgentId: string | null) => {
     // Build agents Map from single agent (if provided)
     const agentsMap = new Map<string, AgentInfo[]>();
     if (agent) {
       agentsMap.set(agent.specId, [agent]);
     }
 
-    const mockState = {
+    const ssotState = {
       selectedAgentId,
       agents: agentsMap,
+    };
+
+    const facadeActions = {
       resumeAgent: mockResumeAgent,
     };
 
-    // Return a function that can handle selector pattern
-    return (selector: (state: typeof mockState) => unknown) => {
-      if (typeof selector === 'function') {
-        return selector(mockState);
-      }
-      return mockState;
-    };
+    mockUseSharedAgentStore.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: (s: any) => unknown) => typeof selector === 'function' ? selector(ssotState) : ssotState
+    );
+    mockUseAgentStore.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (selector: (s: any) => unknown) => typeof selector === 'function' ? selector(facadeActions) : facadeActions
+    );
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Default mock: completed agent with sessionId
-    mockUseAgentStore.mockImplementation(createMockStore(baseAgentInfo, 'agent-1'));
+    setupMockStore(baseAgentInfo, 'agent-1');
   });
 
   afterEach(() => {
@@ -145,7 +156,7 @@ describe('AgentInputPanel', () => {
     });
 
     it('should disable input when no agent is selected', () => {
-      mockUseAgentStore.mockImplementation(createMockStore(undefined, null));
+      setupMockStore(undefined, null);
 
       render(<AgentInputPanel />);
 
@@ -155,7 +166,7 @@ describe('AgentInputPanel', () => {
 
     it('should disable input when agent is running', () => {
       const runningAgent = { ...baseAgentInfo, status: 'running' as const };
-      mockUseAgentStore.mockImplementation(createMockStore(runningAgent, 'agent-1'));
+      setupMockStore(runningAgent, 'agent-1');
 
       render(<AgentInputPanel />);
 
@@ -165,7 +176,7 @@ describe('AgentInputPanel', () => {
 
     it('should enable input when agent is completed', () => {
       const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
-      mockUseAgentStore.mockImplementation(createMockStore(completedAgent, 'agent-1'));
+      setupMockStore(completedAgent, 'agent-1');
 
       render(<AgentInputPanel />);
 
@@ -175,7 +186,7 @@ describe('AgentInputPanel', () => {
 
     it('should enable input when agent has error', () => {
       const errorAgent = { ...baseAgentInfo, status: 'error' as const };
-      mockUseAgentStore.mockImplementation(createMockStore(errorAgent, 'agent-1'));
+      setupMockStore(errorAgent, 'agent-1');
 
       render(<AgentInputPanel />);
 
@@ -185,7 +196,7 @@ describe('AgentInputPanel', () => {
 
     it('should disable input when agent has no sessionId', () => {
       const noSessionAgent = { ...baseAgentInfo, status: 'completed' as const, sessionId: '' };
-      mockUseAgentStore.mockImplementation(createMockStore(noSessionAgent, 'agent-1'));
+      setupMockStore(noSessionAgent, 'agent-1');
 
       render(<AgentInputPanel />);
 

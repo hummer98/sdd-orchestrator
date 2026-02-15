@@ -9,8 +9,9 @@
  */
 
 import { useShallow } from 'zustand/react/shallow';
+import { useCallback } from 'react';
 import { useSpecStore } from '../stores/specStore';
-import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import { SpecListContainer } from '@shared/components/spec';
 import type { SpecMetadataWithPhase } from '@shared/types/spec';
 
@@ -23,9 +24,13 @@ export function SpecList() {
   const setStatusFilter = useSpecStore(s => s.setStatusFilter);
   const getSortedFilteredSpecs = useSpecStore(s => s.getSortedFilteredSpecs);
 
-  // Task 33.1: Get agent store for running agent counts
-  // agent-watcher-optimization Task 5.1, 5.2: Use getRunningAgentCount for lightweight badge display
-  const getRunningAgentCount = useAgentStore(s => s.getRunningAgentCount);
+  // agent-facade-action-only Task 4.5: Use SSOT getRunningAgentCount
+  // Subscribe to agents for reactivity (re-render when agents change)
+  const agents = useSharedAgentStore(s => s.agents);
+  const getRunningAgentCount = useCallback((specId: string) => {
+    const agentList = agents.get(specId) || [];
+    return agentList.filter((a) => a.status === 'running').length;
+  }, [agents]);
 
   const specs = getSortedFilteredSpecs();
 

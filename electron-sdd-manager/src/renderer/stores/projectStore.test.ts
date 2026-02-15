@@ -286,16 +286,17 @@ describe('useProjectStore', () => {
       // Mock loadSkipPermissions to return true for this project
       mockVanillaClient.config.loadSkipPermissions.query.mockResolvedValue(true);
 
-      // Ensure initial state is false
-      useAgentStore.setState({ skipPermissions: false });
+      // agent-facade-action-only: skipPermissions is on SSOT (useSharedAgentStore)
+      const { useSharedAgentStore } = await import('@shared/stores/agentStore');
+      useSharedAgentStore.setState({ skipPermissions: false });
 
       await useProjectStore.getState().selectProject('/test/project');
 
       // Verify loadSkipPermissions was called with the project path
       expect(mockVanillaClient.config.loadSkipPermissions.query).toHaveBeenCalledWith({ projectPath: '/test/project' });
 
-      // Verify skipPermissions was set in agentStore
-      expect(useAgentStore.getState().skipPermissions).toBe(true);
+      // Verify skipPermissions was set in SSOT
+      expect(useSharedAgentStore.getState().skipPermissions).toBe(true);
     });
   });
 

@@ -23,51 +23,9 @@ import type { Unsubscribable } from '@trpc/server/observable';
 
 // =============================================================================
 // Type Adapters
+// agent-facade-action-only Task 2.2: toSharedAgentInfo() and RendererAgentInfo
+// removed. Types are now unified (AgentInfo from shared/api/types is the SSOT).
 // =============================================================================
-
-/**
- * Convert renderer AgentInfo to shared AgentInfo format
- * agentId-unification: Both now use 'agentId', conversion is trivial
- * project-agent-release-footer: Task 2.3 - Map prompt to args for release detection
- */
-function toSharedAgentInfo(rendererAgent: RendererAgentInfo): SharedAgentInfo {
-  return {
-    agentId: rendererAgent.agentId,
-    specId: rendererAgent.specId,
-    phase: rendererAgent.phase,
-    status: rendererAgent.status as AgentStatus,
-    startedAt: rendererAgent.startedAt,
-    command: rendererAgent.command,
-    sessionId: rendererAgent.sessionId,
-    lastActivityAt: rendererAgent.lastActivityAt,
-    // project-agent-release-footer: Task 2.3 - Map prompt to args for release detection
-    // The main process stores the command string in 'prompt' field (via extractPromptFromArgs)
-    // We map it to 'args' in the renderer for release detection
-    args: rendererAgent.prompt,
-    engineId: rendererAgent.engineId,
-  };
-}
-
-/**
- * Renderer-side AgentInfo type (matches existing IPC response)
- * project-agent-release-footer: Task 2.3 - Added prompt field for release detection
- */
-interface RendererAgentInfo {
-  readonly agentId: string;
-  readonly specId: string;
-  readonly phase: string;
-  readonly pid?: number;
-  readonly sessionId: string;
-  readonly status: string;
-  // project-agent-release-footer: Task 2.3 - Prompt field from main process
-  // Contains the command string used to start the agent (e.g., "/kiro:project-ask \"/release\"")
-  readonly prompt?: string;
-  readonly startedAt: string;
-  readonly lastActivityAt: string;
-  readonly command: string;
-  // llm-stream-log-parser: engineId for UI display
-  readonly engineId: import('@shared/registry').LLMEngineId;
-}
 
 // =============================================================================
 // Agent Operations
@@ -104,7 +62,8 @@ export const agentOperations = {
         engineId: engineId ?? 'claude',
       });
 
-      const agentInfo = toSharedAgentInfo(newAgent as RendererAgentInfo);
+      // agent-facade-action-only Task 2.2: Types unified, no conversion needed
+      const agentInfo = newAgent as SharedAgentInfo;
       useSharedAgentStore.getState().addAgent(specId, agentInfo);
 
       // Also select the new agent

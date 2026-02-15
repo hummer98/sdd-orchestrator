@@ -8,12 +8,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SpecList } from './SpecList';
 import { useSpecStore } from '../stores/specStore';
-import { useAgentStore } from '../stores/agentStore';
 import type { SpecMetadata, SpecPhase } from '../types';
 
 // Mock the stores
 vi.mock('../stores/specStore');
-vi.mock('../stores/agentStore');
+vi.mock('@shared/stores/agentStore');
 
 // zustand-selector-optimization: Helper to mock store with selector support
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,7 +23,10 @@ function mockStoreWithSelector(store: ReturnType<typeof vi.fn>, state: Record<st
   );
 }
 const mockUseSpecStore = useSpecStore as unknown as ReturnType<typeof vi.fn>;
-const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
+
+// agent-facade-action-only Task 6.4: Mock useSharedAgentStore instead of useAgentStore
+import { useSharedAgentStore } from '@shared/stores/agentStore';
+const mockUseSharedAgentStore = useSharedAgentStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('SpecList - Task 33.1', () => {
   const mockSelectSpec = vi.fn();
@@ -32,8 +34,8 @@ describe('SpecList - Task 33.1', () => {
   const mockSetSortOrder = vi.fn();
   const mockSetStatusFilter = vi.fn();
   const mockGetSortedFilteredSpecs = vi.fn();
-  // agent-watcher-optimization: Updated to use getRunningAgentCount instead of getAgentsForSpec
-  const mockGetRunningAgentCount = vi.fn();
+  // agent-facade-action-only Task 6.4: No longer using getRunningAgentCount from facade
+  // Component computes running count from SSOT agents Map via useCallback
 
   const baseSpec: SpecMetadata = {
     name: 'feature-1',
@@ -66,9 +68,9 @@ describe('SpecList - Task 33.1', () => {
       specJsonMap: new Map(),
     });
 
-    // agent-watcher-optimization: Use getRunningAgentCount mock
-    mockStoreWithSelector(mockUseAgentStore, {
-      getRunningAgentCount: mockGetRunningAgentCount.mockReturnValue(0),
+    // agent-facade-action-only Task 6.4: SSOT provides agents Map (no running agents by default)
+    mockStoreWithSelector(mockUseSharedAgentStore, {
+      agents: new Map(),
     });
   });
 
@@ -84,44 +86,47 @@ describe('SpecList - Task 33.1', () => {
       expect(screen.queryByTestId('agent-count-feature-1')).not.toBeInTheDocument();
     });
 
-    // agent-watcher-optimization: Updated tests to use getRunningAgentCount
+    // agent-facade-action-only Task 6.4: Running count computed from SSOT agents Map
     it('should display running agent count badge when agents are running', () => {
-      mockGetRunningAgentCount.mockReturnValue(1);
-      mockStoreWithSelector(mockUseAgentStore, {
-        getRunningAgentCount: mockGetRunningAgentCount,
+      // Set up SSOT with 1 running agent for feature-1
+      mockStoreWithSelector(mockUseSharedAgentStore, {
+        agents: new Map([['feature-1', [{ agentId: 'a1', status: 'running' }]]]),
       });
 
       render(<SpecList />);
 
-      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
+      // SpecListItem uses 'running-agent-count' testid
       const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toBeInTheDocument();
       expect(agentCountBadge).toHaveTextContent('1');
     });
 
     it('should display correct count for multiple running agents', () => {
-      mockGetRunningAgentCount.mockReturnValue(2);
-      mockStoreWithSelector(mockUseAgentStore, {
-        getRunningAgentCount: mockGetRunningAgentCount,
+      // Set up SSOT with 2 running agents for feature-1
+      mockStoreWithSelector(mockUseSharedAgentStore, {
+        agents: new Map([['feature-1', [
+          { agentId: 'a1', status: 'running' },
+          { agentId: 'a2', status: 'running' },
+        ]]]),
       });
 
       render(<SpecList />);
 
-      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
       const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toHaveTextContent('2');
     });
 
     it('should only count running agents', () => {
-      // getRunningAgentCount already returns only running agent count
-      mockGetRunningAgentCount.mockReturnValue(1);
-      mockStoreWithSelector(mockUseAgentStore, {
-        getRunningAgentCount: mockGetRunningAgentCount,
+      // 1 running + 1 completed = count should be 1
+      mockStoreWithSelector(mockUseSharedAgentStore, {
+        agents: new Map([['feature-1', [
+          { agentId: 'a1', status: 'running' },
+          { agentId: 'a2', status: 'completed' },
+        ]]]),
       });
 
       render(<SpecList />);
 
-      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
       const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toHaveTextContent('1');
     });

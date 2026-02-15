@@ -1,32 +1,37 @@
 /**
- * Agent Store (Facade)
+ * Agent Store (Action-Only Facade) - DD-005
  *
  * agent-store-unification: Unified Interface for Electron Renderer
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+ * agent-facade-action-only Task 3.1: Converted to Action-Only Store
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.3, 5.3, 6.1, 6.2, 6.3
  *
- * This Facade provides a single access point for Electron renderer components
- * to interact with Agent state. It combines:
- * - shared/agentStore (SSOT for Agent state)
- * - agentStoreAdapter (IPC operations)
- * - Facade-specific state (skipPermissions, runningAgentCounts, UI state)
+ * This Action-Only Facade provides action methods for Electron renderer components
+ * to interact with Agent state. State is read directly from SSOT (useSharedAgentStore).
+ *
+ * Architecture:
+ * - State reads: Components use useSharedAgentStore directly
+ * - Actions: Components use useAgentStore for operations (IPC, tRPC, etc.)
+ * - Event listeners: setupEventListeners() sets up tRPC subscriptions
  *
  * Usage in components:
  * ```typescript
- * import { useAgentStore } from '@renderer/stores/agentStore';
+ * // State reads from SSOT
+ * import { useSharedAgentStore } from '@shared/stores/agentStore';
+ * const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
  *
- * const agents = useAgentStore((state) => state.getAgentsForSpec(specId));
+ * // Actions from facade
+ * import { useAgentStore } from '@renderer/stores/agentStore';
+ * const stopAgent = useAgentStore(s => s.stopAgent);
  * ```
  */
 
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
 import {
   useSharedAgentStore,
   type AgentInfo as SharedAgentInfo,
   type AgentStatus as SharedAgentStatus,
   type ParsedLogEntry,
 } from '@shared/stores/agentStore';
-import type { LLMEngineId } from '@shared/registry';
 import {
   agentOperations,
   setupAgentEventListeners,
@@ -55,40 +60,11 @@ import { useSharedBugStore } from '../../shared/stores/bugStore';
 export type AgentStatus = SharedAgentStatus;
 
 /**
- * AgentInfo interface for renderer
- * Uses 'agentId' for backward compatibility with existing components
- * The shared store uses 'id' internally
+ * AgentInfo type re-export from shared/api/types (SSOT)
+ * agent-facade-action-only Task 2.1: Removed renderer-specific AgentInfo interface
+ * Requirements: 3.1, 3.2, 3.3, 3.5
  */
-export interface AgentInfo {
-  readonly agentId: string;
-  readonly specId: string;
-  readonly phase: string;
-  readonly pid?: number;
-  readonly sessionId: string;
-  readonly status: AgentStatus;
-  readonly startedAt: string;
-  readonly lastActivityAt: string;
-  readonly command: string;
-
-  // execution-store-consolidation: Extended fields (Req 2.1, 2.2)
-  // Optional fields for backward compatibility
-  executionMode?: 'auto' | 'manual';
-  retryCount?: number;
-
-  // project-agent-release-footer: Task 2.3 - Args field for release detection
-  // Requirements: 6.1, 6.2, 6.3
-  // Contains the prompt/command string used to start the agent
-  // Used to detect release agents via args?.includes('/release')
-  args?: string;
-
-  /**
-   * LLM engine ID for parser selection and UI labels
-   * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
-   * Requirements: 4.1, 4.2
-   * Made optional for backward compatibility - defaults to 'claude'
-   */
-  engineId?: LLMEngineId;
-}
+export type { AgentInfo } from '@shared/api/types';
 
 /**
  * Re-export ParsedLogEntry type
@@ -97,81 +73,14 @@ export interface AgentInfo {
 export type { ParsedLogEntry };
 
 // =============================================================================
-// Type Conversion Helpers
-// =============================================================================
-
-/**
- * Convert shared AgentInfo to renderer AgentInfo
- * agentId-unification: Both now use 'agentId', conversion is trivial
- */
-function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
-  return {
-    agentId: shared.agentId,
-    specId: shared.specId,
-    phase: shared.phase,
-    sessionId: shared.sessionId || '',
-    status: shared.status,
-    startedAt: typeof shared.startedAt === 'number' ? new Date(shared.startedAt).toISOString() : shared.startedAt,
-    lastActivityAt: shared.lastActivityAt || '',
-    command: shared.command || '',
-    // execution-store-consolidation: Preserve extended fields
-    executionMode: shared.executionMode,
-    retryCount: shared.retryCount,
-    // project-agent-release-footer: Task 2.3 - Map args for release detection
-    args: shared.args,
-    // llm-stream-log-parser: Task 6.1 - Map engineId for parser selection
-    engineId: shared.engineId,
-  };
-}
-
-/**
- * Convert renderer AgentInfo to shared AgentInfo
- * agentId-unification: Both now use 'agentId', conversion is trivial
- */
-function toSharedAgentInfo(renderer: AgentInfo): SharedAgentInfo {
-  return {
-    agentId: renderer.agentId,
-    specId: renderer.specId,
-    phase: renderer.phase,
-    status: renderer.status,
-    startedAt: renderer.startedAt,
-    command: renderer.command,
-    sessionId: renderer.sessionId,
-    lastActivityAt: renderer.lastActivityAt,
-    // execution-store-consolidation: Preserve extended fields
-    executionMode: renderer.executionMode,
-    retryCount: renderer.retryCount,
-    // project-agent-release-footer: Task 2.3 - Preserve args for release detection
-    args: renderer.args,
-    // llm-stream-log-parser: Task 6.1 - Preserve engineId for parser selection
-    engineId: renderer.engineId,
-  };
-}
-
-// =============================================================================
 // Types
 // =============================================================================
 
-interface AgentState {
-  /** Agents map: specId -> AgentInfo[] */
-  agents: Map<string, AgentInfo[]>;
-  /** Selected agent ID */
-  selectedAgentId: string | null;
-  /**
-   * Logs per agent: agentId -> ParsedLogEntry[]
-   * main-process-log-parser Task 10.4: Changed from LogEntry[] to ParsedLogEntry[]
-   */
-  logs: Map<string, ParsedLogEntry[]>;
-  /** Loading state */
-  isLoading: boolean;
-  /** Error message */
-  error: string | null;
-  /** Skip permissions flag (--dangerously-skip-permissions) */
-  skipPermissions: boolean;
-  /** Running agent counts per spec (lightweight cache) */
-  runningAgentCounts: Map<string, number>;
-}
-
+/**
+ * Action-Only interface for Agent Store facade.
+ * agent-facade-action-only Task 3.1: All state fields removed.
+ * State is read directly from useSharedAgentStore (SSOT).
+ */
 interface AgentActions {
   // ===========================================================================
   // Agent Operations (delegate to adapter)
@@ -180,10 +89,6 @@ interface AgentActions {
 
   /** Load all agents from main process */
   loadAgents: () => Promise<void>;
-  /** Load running agent counts (lightweight) */
-  loadRunningAgentCounts: () => Promise<void>;
-  /** Get running agent count for a spec */
-  getRunningAgentCount: (specId: string) => number;
   /** Select an agent (selection only, no side effects) */
   selectAgent: (agentId: string | null) => Promise<void>;
   /**
@@ -193,10 +98,8 @@ interface AgentActions {
    * - Completed/failed agents: always load from file (may have more logs)
    */
   ensureLogsLoaded: (agentId: string) => Promise<void>;
-  /** Load agent logs */
-  loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
   /** Add an agent to the store */
-  addAgent: (specId: string, agent: AgentInfo) => void;
+  addAgent: (specId: string, agent: SharedAgentInfo) => void;
   /** Start a new agent
    * unified-engine-command-resolution: command parameter removed, engineId used instead
    */
@@ -245,13 +148,13 @@ interface AgentActions {
   // ===========================================================================
 
   /** Get agent by ID */
-  getAgentById: (agentId: string) => AgentInfo | undefined;
+  getAgentById: (agentId: string) => SharedAgentInfo | undefined;
   /** Get selected agent */
-  getSelectedAgent: () => AgentInfo | undefined;
+  getSelectedAgent: () => SharedAgentInfo | undefined;
   // zustand-agent-selector-hooks: getAgentsForSpec REMOVED (use useAgentsBySpec hook)
   // zustand-agent-selector-hooks: getProjectAgents REMOVED (use useProjectAgents hook)
   /** Find agent by ID (pure function for selectors) */
-  findAgentById: (agentId: string | null) => AgentInfo | undefined;
+  findAgentById: (agentId: string | null) => SharedAgentInfo | undefined;
   /** Clear error */
   clearError: () => void;
   /** Select for project agents panel */
@@ -266,49 +169,6 @@ interface AgentActions {
   setSkipPermissions: (enabled: boolean) => void;
   /** Load skip permissions from project */
   loadSkipPermissions: (projectPath: string) => Promise<void>;
-}
-
-type AgentStore = AgentState & AgentActions;
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Get agents from shared store and convert to renderer format
- */
-function getAgentsFromShared(): Map<string, AgentInfo[]> {
-  const sharedAgents = useSharedAgentStore.getState().agents;
-  const rendererAgents = new Map<string, AgentInfo[]>();
-
-  for (const [specId, agents] of sharedAgents.entries()) {
-    rendererAgents.set(specId, agents.map(toRendererAgentInfo));
-  }
-
-  return rendererAgents;
-}
-
-/**
- * Get logs from shared store
- * main-process-log-parser Task 10.4: Return ParsedLogEntry[]
- */
-function getLogsFromShared(): Map<string, ParsedLogEntry[]> {
-  return useSharedAgentStore.getState().logs;
-}
-
-/**
- * Calculate running agent counts from shared store
- */
-function calculateRunningCounts(): Map<string, number> {
-  const sharedState = useSharedAgentStore.getState();
-  const counts = new Map<string, number>();
-
-  for (const [specId, agents] of sharedState.agents.entries()) {
-    const runningCount = agents.filter((a) => a.status === 'running').length;
-    counts.set(specId, runningCount);
-  }
-
-  return counts;
 }
 
 // =============================================================================
@@ -358,89 +218,38 @@ function createTrpcAgentApiAdapter() {
 }
 
 // =============================================================================
-// Store
+// Store (Action-Only)
+// agent-facade-action-only Task 3.1: No state fields, only actions
 // =============================================================================
 
-export const useAgentStore = create<AgentStore>()(
-  subscribeWithSelector((set, get) => ({
-    // Initial state - synced from shared store
-    agents: getAgentsFromShared(),
-    selectedAgentId: useSharedAgentStore.getState().selectedAgentId,
-    logs: getLogsFromShared(),
-    isLoading: useSharedAgentStore.getState().isLoading,
-    error: useSharedAgentStore.getState().error,
-    skipPermissions: false,
-    runningAgentCounts: calculateRunningCounts(),
-
+export const useAgentStore = create<AgentActions>()(
+  (_set, get) => ({
     // ===========================================================================
     // Agent Operations (Requirements: 3.3)
     // ===========================================================================
 
     // trpc-full-migration Task 6.2: Uses tRPC agent.getAllAgents query
     loadAgents: async () => {
-      set({ isLoading: true, error: null });
+      useSharedAgentStore.getState().setLoading(true);
+      useSharedAgentStore.getState().clearError();
 
       try {
         const agentsRecord = await getVanillaClient().agent.getAllAgents.query();
-        const agentsMap = new Map<string, AgentInfo[]>();
 
-        // Record<string, AgentInfo[]> を Map に変換
+        // Update shared store directly (SSOT)
         for (const [specId, agentList] of Object.entries(agentsRecord)) {
-          agentsMap.set(specId, agentList as AgentInfo[]);
-        }
-
-        // Also update runningAgentCounts from full data
-        const runningCounts = new Map<string, number>();
-        for (const [specId, agentList] of agentsMap) {
-          const runningCount = agentList.filter((a) => a.status === 'running').length;
-          runningCounts.set(specId, runningCount);
-        }
-
-        // Update shared store with converted data
-        for (const [specId, agentList] of agentsMap) {
-          for (const agent of agentList) {
-            useSharedAgentStore.getState().addAgent(specId, toSharedAgentInfo(agent));
+          for (const agent of agentList as SharedAgentInfo[]) {
+            useSharedAgentStore.getState().addAgent(specId, agent);
           }
         }
 
-        set({
-          agents: agentsMap,
-          runningAgentCounts: runningCounts,
-          isLoading: false,
-        });
+        useSharedAgentStore.getState().setLoading(false);
       } catch (error) {
-        set({
-          error: error instanceof Error ? error.message : 'Agentの読み込みに失敗しました',
-          isLoading: false,
-        });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : 'Agentの読み込みに失敗しました'
+        );
+        useSharedAgentStore.getState().setLoading(false);
       }
-    },
-
-    // trpc-full-migration Task 6.2: Uses tRPC agent.getRunningAgentCounts query
-    loadRunningAgentCounts: async () => {
-      try {
-        const countsRecord = await getVanillaClient().agent.getRunningAgentCounts.query();
-        const countsMap = new Map<string, number>();
-
-        for (const [specId, count] of Object.entries(countsRecord)) {
-          countsMap.set(specId, count as number);
-        }
-
-        set({ runningAgentCounts: countsMap });
-        console.log('[agentStore] Loaded running agent counts:', countsMap.size, 'specs');
-      } catch (error) {
-        console.error('[agentStore] Failed to load running agent counts:', error);
-      }
-    },
-
-    getRunningAgentCount: (specId: string) => {
-      const cachedCount = get().runningAgentCounts.get(specId);
-      if (cachedCount !== undefined) {
-        return cachedCount;
-      }
-
-      const agents = get().agents.get(specId) || [];
-      return agents.filter((a) => a.status === 'running').length;
     },
 
     selectAgent: async (agentId: string | null) => {
@@ -448,7 +257,6 @@ export const useAgentStore = create<AgentStore>()(
       // selectAgent is now a pure selection action - no side effects
       // Log loading should be handled separately via ensureLogsLoaded()
       useSharedAgentStore.getState().selectAgent(agentId);
-      set({ selectedAgentId: agentId });
     },
 
     // trpc-full-migration Task 6.2: Uses tRPC-backed TrpcAgentApiAdapter
@@ -456,28 +264,12 @@ export const useAgentStore = create<AgentStore>()(
       // agent-log-store-unification Task 4.1: Delegate to shared ensureLogsLoaded
       // trpc-full-migration Task 6.2: Use tRPC-backed adapter instead of IpcApiClient
       const adapter = createTrpcAgentApiAdapter();
-
       await useSharedAgentStore.getState().ensureLogsLoaded(adapter, agentId);
-
-      // Sync logs from shared store after loading
-      set({ logs: getLogsFromShared() });
     },
 
-    loadAgentLogs: async (_specId: string, agentId: string) => {
-      // agent-log-store-unification Task 4.2: Delegate to shared ensureLogsLoaded
-      // trpc-full-migration Task 6.2: Use tRPC-backed adapter instead of IpcApiClient
-      const adapter = createTrpcAgentApiAdapter();
-
-      await useSharedAgentStore.getState().ensureLogsLoaded(adapter, agentId);
-      // Sync logs from shared store
-      set({ logs: getLogsFromShared() });
-    },
-
-    addAgent: (specId: string, agent: AgentInfo) => {
-      // Add to shared store
-      useSharedAgentStore.getState().addAgent(specId, toSharedAgentInfo(agent));
-      // Sync from shared store
-      set({ agents: getAgentsFromShared() });
+    addAgent: (specId: string, agent: SharedAgentInfo) => {
+      // Add to shared store directly (SSOT)
+      useSharedAgentStore.getState().addAgent(specId, agent);
     },
 
     // unified-engine-command-resolution: command parameter removed, engineId used instead
@@ -489,21 +281,20 @@ export const useAgentStore = create<AgentStore>()(
       sessionId?: string,
       engineId?: import('@shared/registry').LLMEngineId
     ) => {
-      set({ isLoading: true, error: null });
+      useSharedAgentStore.getState().setLoading(true);
+      useSharedAgentStore.getState().clearError();
       try {
         const agentId = await agentOperations.startAgent(specId, phase, args, group, sessionId, engineId);
-        set({
-          isLoading: false,
-          agents: getAgentsFromShared(),
-          selectedAgentId: agentId,
-          runningAgentCounts: calculateRunningCounts(),
-        });
+        useSharedAgentStore.getState().setLoading(false);
+        if (agentId) {
+          useSharedAgentStore.getState().selectAgent(agentId);
+        }
         return agentId;
       } catch (error) {
-        set({
-          error: error instanceof Error ? error.message : 'Agentの起動に失敗しました',
-          isLoading: false,
-        });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : 'Agentの起動に失敗しました'
+        );
+        useSharedAgentStore.getState().setLoading(false);
         return null;
       }
     },
@@ -512,7 +303,9 @@ export const useAgentStore = create<AgentStore>()(
       try {
         await agentOperations.stopAgent(agentId);
       } catch (error) {
-        set({ error: error instanceof Error ? error.message : 'Agentの停止に失敗しました' });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : 'Agentの停止に失敗しました'
+        );
       }
     },
 
@@ -521,23 +314,20 @@ export const useAgentStore = create<AgentStore>()(
         // main-process-log-parser Task 10.4: Removed duplicate log addition
         // The adapter (agentStoreAdapter.ts) already handles adding stdin log
         await agentOperations.resumeAgent(agentId, prompt);
-        // Sync from shared store
-        set({ agents: getAgentsFromShared() });
       } catch (error) {
-        set({ error: error instanceof Error ? error.message : 'Agentの再開に失敗しました' });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : 'Agentの再開に失敗しました'
+        );
       }
     },
 
     removeAgent: async (agentId: string) => {
       try {
         await agentOperations.removeAgent(agentId);
-        set({
-          agents: getAgentsFromShared(),
-          logs: getLogsFromShared(),
-          runningAgentCounts: calculateRunningCounts(),
-        });
       } catch (error) {
-        set({ error: error instanceof Error ? error.message : 'Agentの削除に失敗しました' });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : 'Agentの削除に失敗しました'
+        );
       }
     },
 
@@ -545,13 +335,14 @@ export const useAgentStore = create<AgentStore>()(
       try {
         await agentOperations.sendInput(agentId, input);
       } catch (error) {
-        set({ error: error instanceof Error ? error.message : '入力の送信に失敗しました' });
+        useSharedAgentStore.getState().setError(
+          error instanceof Error ? error.message : '入力の送信に失敗しました'
+        );
       }
     },
 
     updateAgentStatus: (agentId: string, status: AgentStatus) => {
       useSharedAgentStore.getState().updateAgentStatus(agentId, status);
-      set({ agents: getAgentsFromShared() });
     },
 
     // ===========================================================================
@@ -560,12 +351,10 @@ export const useAgentStore = create<AgentStore>()(
 
     appendLog: (agentId: string, entry: ParsedLogEntry) => {
       useSharedAgentStore.getState().addLog(agentId, entry);
-      set({ logs: getLogsFromShared() });
     },
 
     clearLogs: (agentId: string) => {
       useSharedAgentStore.getState().clearLogs(agentId);
-      set({ logs: getLogsFromShared() });
     },
 
     getLogsForAgent: (agentId: string) => {
@@ -574,6 +363,8 @@ export const useAgentStore = create<AgentStore>()(
 
     // ===========================================================================
     // Event Listeners (Requirements: 3.7)
+    // agent-facade-action-only Task 3.1: subscribe-and-sync removed
+    // tRPC event subscriptions and adapter event listeners maintained
     // ===========================================================================
 
     setupEventListeners: () => {
@@ -582,7 +373,7 @@ export const useAgentStore = create<AgentStore>()(
       // Setup IPC event listeners via adapter
       const cleanupAdapter = setupAgentEventListeners();
 
-      // Agent Record変更イベントリスナー（ファイル監視）
+      // Agent Record変更イベントリスナー(ファイル監視)
       // Note: The adapter handles basic add/change/unlink, but we need additional
       // handling for auto-selection which requires specStore/bugStore context
       // Task 9.2: window.electronAPI.onAgentRecordChanged -> tRPC Subscription
@@ -601,12 +392,7 @@ export const useAgentStore = create<AgentStore>()(
           }
 
           if (type === 'unlink') {
-            // File deletion - handled by adapter, just sync state
-            set({
-              agents: getAgentsFromShared(),
-              logs: getLogsFromShared(),
-              runningAgentCounts: calculateRunningCounts(),
-            });
+            // File deletion - handled by adapter, SSOT updated directly
           } else {
             // add/change - reload and auto-select
             get().loadAgents().then(() => {
@@ -615,9 +401,6 @@ export const useAgentStore = create<AgentStore>()(
                 if (specId === '') {
                   // Project Agent - only auto-select if running
                   // Bug fix: project-agent-auto-select-stale
-                  // On project selection, file watcher fires 'add' events for existing (stale) agents
-                  // due to ignoreInitial: false. Only auto-select running agents to avoid
-                  // selecting old, non-running agents on project switch.
                   const agent = get().getAgentById(agentId);
                   if (agent && agent.status === 'running') {
                     get().selectAgent(agentId);
@@ -643,23 +426,10 @@ export const useAgentStore = create<AgentStore>()(
       });
       facadeSubscriptions.push(recordChangedSub);
 
-      // Subscribe to shared store changes
-      const unsubscribeShared = useSharedAgentStore.subscribe(() => {
-        set({
-          agents: getAgentsFromShared(),
-          selectedAgentId: useSharedAgentStore.getState().selectedAgentId,
-          logs: getLogsFromShared(),
-          isLoading: useSharedAgentStore.getState().isLoading,
-          error: useSharedAgentStore.getState().error,
-          runningAgentCounts: calculateRunningCounts(),
-        });
-      });
-
       return () => {
         console.log('[agentStore] Cleaning up event listeners');
         cleanupAdapter();
         facadeSubscriptions.forEach((sub) => sub.unsubscribe());
-        unsubscribeShared();
       };
     },
 
@@ -668,12 +438,11 @@ export const useAgentStore = create<AgentStore>()(
     // ===========================================================================
 
     getAgentById: (agentId: string) => {
-      const shared = useSharedAgentStore.getState().getAgentById(agentId);
-      return shared ? toRendererAgentInfo(shared) : undefined;
+      return useSharedAgentStore.getState().getAgentById(agentId);
     },
 
     getSelectedAgent: () => {
-      const { selectedAgentId } = get();
+      const selectedAgentId = useSharedAgentStore.getState().selectedAgentId;
       if (!selectedAgentId) return undefined;
       return get().getAgentById(selectedAgentId);
     },
@@ -688,19 +457,20 @@ export const useAgentStore = create<AgentStore>()(
 
     clearError: () => {
       useSharedAgentStore.getState().clearError();
-      set({ error: null });
     },
 
     selectForProjectAgents: () => {
-      set({ selectedAgentId: null });
+      useSharedAgentStore.getState().selectAgent(null);
     },
 
     // ===========================================================================
     // Electron-specific Features (Requirements: 3.6)
+    // agent-facade-action-only Task 3.1: skipPermissions delegated to SSOT
     // ===========================================================================
 
     setSkipPermissions: async (enabled: boolean) => {
-      set({ skipPermissions: enabled });
+      // Update SSOT
+      useSharedAgentStore.getState().setSkipPermissions(enabled);
 
       // Persist to project config file
       const { useProjectStore } = await import('./projectStore');
@@ -712,9 +482,10 @@ export const useAgentStore = create<AgentStore>()(
 
     loadSkipPermissions: async (projectPath: string) => {
       const skipPermissions = await skipPermissionsOperations.loadSkipPermissions(projectPath);
-      set({ skipPermissions });
+      // Update SSOT
+      useSharedAgentStore.getState().setSkipPermissions(skipPermissions);
     },
-  }))
+  })
 );
 
 // =============================================================================
@@ -723,15 +494,10 @@ export const useAgentStore = create<AgentStore>()(
 
 /**
  * Reset store to initial state (for tests)
+ * agent-facade-action-only Task 3.1: Action-only store has no state to reset
+ * Reset SSOT instead via resetSharedAgentStore()
  */
 export function resetAgentStore(): void {
-  useAgentStore.setState({
-    agents: new Map(),
-    selectedAgentId: null,
-    logs: new Map(),
-    isLoading: false,
-    error: null,
-    skipPermissions: false,
-    runningAgentCounts: new Map(),
-  });
+  // No local state to reset - facade is action-only
+  // Tests should use resetSharedAgentStore() from '@shared/stores/agentStore'
 }

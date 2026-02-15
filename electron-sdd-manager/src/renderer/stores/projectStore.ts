@@ -233,9 +233,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Clear agent selection when switching projects to prevent stale agent logs
       useAgentStore.getState().selectAgent(null);
 
-      // agent-watcher-optimization Task 5.1: Load lightweight running agent counts for badge display
-      // This is called early so SpecList can show badges without waiting for full agent data
-      useAgentStore.getState().loadRunningAgentCounts();
+      // agent-facade-action-only Task 3.1: Load agents to populate SSOT
+      // Components read running agent counts directly from SSOT via useSharedAgentStore
+      useAgentStore.getState().loadAgents();
 
       // Register event listeners for file watchers (File as SSOT)
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler

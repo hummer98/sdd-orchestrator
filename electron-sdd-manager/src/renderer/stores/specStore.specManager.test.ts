@@ -226,11 +226,13 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
 
     describe('clearSpecManagerError action', () => {
       it('should clear error in agentStore', () => {
-        useAgentStore.setState({ error: 'Some error occurred' });
+        // agent-facade-action-only: error is now on SSOT (useSharedAgentStore)
+        useSharedAgentStore.setState({ error: 'Some error occurred' });
 
         useSpecStore.getState().clearSpecManagerError();
 
-        expect(useAgentStore.getState().error).toBeNull();
+        // clearError delegates to SSOT
+        expect(useSharedAgentStore.getState().error).toBeNull();
       });
     });
   });

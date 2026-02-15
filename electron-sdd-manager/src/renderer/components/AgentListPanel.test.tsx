@@ -8,10 +8,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentListPanel } from './AgentListPanel';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import type { AgentInfo } from '@shared/api/types';
 
 // Mock the stores
 vi.mock('../stores/agentStore');
+vi.mock('@shared/stores/agentStore');
 
 // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
 vi.mock('@shared/hooks', () => ({
@@ -20,14 +22,41 @@ vi.mock('@shared/hooks', () => ({
 }));
 
 import { useAgentsBySpec } from '@shared/hooks';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 
 const mockUseAgentsBySpec = useAgentsBySpec as unknown as ReturnType<typeof vi.fn>;
+const mockUseSharedAgentStore = useSharedAgentStore as unknown as ReturnType<typeof vi.fn>;
 
-// zustand-selector-optimization: Helper to mock store with selector support
-function mockAgentStoreState(state: Record<string, unknown>) {
+/**
+ * agent-facade-action-only Task 6.4: Split mocks - state from SSOT, actions from facade
+ *
+ * State fields (selectedAgentId, agents, skipPermissions) are read from useSharedAgentStore.
+ * Action functions (stopAgent, selectAgent, etc.) are read from useAgentStore.
+ *
+ * This helper auto-splits: functions go to facade mock, data goes to SSOT mock.
+ */
+// Known state field names that go to SSOT
+const SSOT_STATE_FIELDS = new Set(['selectedAgentId', 'agents', 'skipPermissions']);
+
+function mockAgentStoreState(combined: Record<string, unknown>) {
+  const ssotState: Record<string, unknown> = {};
+  const facadeActions: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(combined)) {
+    if (SSOT_STATE_FIELDS.has(key)) {
+      ssotState[key] = value;
+    } else {
+      facadeActions[key] = value;
+    }
+  }
+
+  mockUseSharedAgentStore.mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (selector?: (s: any) => any) => selector ? selector(ssotState) : ssotState
+  );
   (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (selector?: (s: any) => any) => selector ? selector(state) : state
+    (selector?: (s: any) => any) => selector ? selector(facadeActions) : facadeActions
   );
 }
 
@@ -61,6 +90,7 @@ describe('AgentListPanel - Task 30', () => {
     // zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of getAgentsForSpec
     mockUseAgentsBySpec.mockReturnValue([baseAgentInfo]);
 
+    // agent-facade-action-only Task 6.4: mockAgentStoreState auto-splits state/actions
     mockAgentStoreState({
       selectedAgentId: null,
       stopAgent: mockStopAgent,
@@ -69,9 +99,10 @@ describe('AgentListPanel - Task 30', () => {
       getAgentById: mockGetAgentById,
       removeAgent: vi.fn(),
       loadAgents: vi.fn(),
-      agents: new Map([['agent-1', baseAgentInfo]]),
+      agents: new Map([['spec-1', [baseAgentInfo]]]),
       skipPermissions: false,
       setSkipPermissions: vi.fn(),
+      addAgent: vi.fn(),
     });
   });
 

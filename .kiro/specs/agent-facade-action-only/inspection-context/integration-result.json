@@ -1,0 +1,374 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-15T00:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: skipPermissions field and setSkipPermissions action added to SSOT"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete: getRunningAgentCount() method added to SSOT"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: Renderer AgentInfo type deleted, re-export from shared"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete: toRendererAgentInfo/toSharedAgentInfo deleted"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: Facade state fields and subscribe-and-sync removed"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete: AgentListPanel SSOT migration"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete: AgentLogPanel SSOT migration"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 marked as complete: AgentInputPanel SSOT migration"
+    },
+    {
+      "id": "task-4.4",
+      "checkType": "task-completion",
+      "target": "4.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.4 marked as complete: ProjectAgentPanel SSOT migration"
+    },
+    {
+      "id": "task-4.5",
+      "checkType": "task-completion",
+      "target": "4.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.5 marked as complete: SpecList uses SSOT getRunningAgentCount via inline useCallback"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete: specStoreFacade SSOT migration"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete: AgentInfo type imports updated"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete: shared store tests for skipPermissions/getRunningAgentCount"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete: facade store tests updated for action-only"
+    },
+    {
+      "id": "task-6.3",
+      "checkType": "task-completion",
+      "target": "6.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.3 marked as complete: adapter tests updated"
+    },
+    {
+      "id": "task-6.4",
+      "checkType": "task-completion",
+      "target": "6.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.4 marked as complete: component tests updated"
+    },
+    {
+      "id": "task-6.5",
+      "checkType": "task-completion",
+      "target": "6.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.5 marked as complete: all tests pass"
+    },
+    {
+      "id": "import-useSharedAgentStore-AgentListPanel",
+      "checkType": "import",
+      "target": "useSharedAgentStore in AgentListPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in AgentListPanel.tsx",
+      "evidence": ["electron-sdd-manager/src/renderer/components/AgentListPanel.tsx"]
+    },
+    {
+      "id": "import-useSharedAgentStore-AgentLogPanel",
+      "checkType": "import",
+      "target": "useSharedAgentStore in AgentLogPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in AgentLogPanel.tsx",
+      "evidence": ["electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx"]
+    },
+    {
+      "id": "import-useSharedAgentStore-AgentInputPanel",
+      "checkType": "import",
+      "target": "useSharedAgentStore in AgentInputPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in AgentInputPanel.tsx",
+      "evidence": ["electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx"]
+    },
+    {
+      "id": "import-useSharedAgentStore-ProjectAgentPanel",
+      "checkType": "import",
+      "target": "useSharedAgentStore in ProjectAgentPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in ProjectAgentPanel.tsx",
+      "evidence": ["electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx"]
+    },
+    {
+      "id": "import-useSharedAgentStore-SpecList",
+      "checkType": "import",
+      "target": "useSharedAgentStore in SpecList",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in SpecList.tsx for SSOT agents access",
+      "evidence": ["electron-sdd-manager/src/renderer/components/SpecList.tsx"]
+    },
+    {
+      "id": "import-useSharedAgentStore-specStoreFacade",
+      "checkType": "import",
+      "target": "useSharedAgentStore in specStoreFacade",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedAgentStore is imported in specStoreFacade.ts",
+      "evidence": ["electron-sdd-manager/src/renderer/stores/spec/specStoreFacade.ts"]
+    },
+    {
+      "id": "usage-skipPermissions-SSOT",
+      "checkType": "usage",
+      "target": "skipPermissions in useSharedAgentStore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "skipPermissions field (line 54) and setSkipPermissions action (line 132) are defined in SSOT shared agentStore"
+    },
+    {
+      "id": "usage-getRunningAgentCount-SSOT",
+      "checkType": "usage",
+      "target": "getRunningAgentCount in useSharedAgentStore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getRunningAgentCount action (line 438-441) is defined in SSOT shared agentStore"
+    },
+    {
+      "id": "usage-skipPermissions-AgentListPanel",
+      "checkType": "usage",
+      "target": "skipPermissions read from SSOT in AgentListPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentListPanel reads skipPermissions from useSharedAgentStore (line 69)"
+    },
+    {
+      "id": "usage-selectedAgentId-components",
+      "checkType": "usage",
+      "target": "selectedAgentId read from SSOT in all components",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 4 components (AgentListPanel:67, AgentLogPanel:24, AgentInputPanel:19, ProjectAgentPanel:54) read selectedAgentId from useSharedAgentStore"
+    },
+    {
+      "id": "usage-agents-components",
+      "checkType": "usage",
+      "target": "agents read from SSOT in components",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentLogPanel (line 59), AgentInputPanel (line 25-31), and SpecList (line 29) read agents from useSharedAgentStore"
+    },
+    {
+      "id": "usage-logs-SSOT",
+      "checkType": "usage",
+      "target": "logs read from SSOT in AgentLogPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentLogPanel reads logs from useSharedAgentStore (lines 44-47) instead of facade"
+    },
+    {
+      "id": "verify-no-state-fields-facade",
+      "checkType": "wiring",
+      "target": "Facade has no state fields",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Facade agentStore.ts defines only AgentActions interface (no state fields). Test verifies: state.agents/selectedAgentId/logs/isLoading/error/skipPermissions/runningAgentCounts are all undefined"
+    },
+    {
+      "id": "verify-no-subscribe-sync",
+      "checkType": "wiring",
+      "target": "No subscribe-and-sync in facade",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Grep for 'subscribe.*useSharedAgentStore|getAgentsFromShared|calculateRunningCounts|getLogsFromShared' in agentStore.ts returned 0 matches"
+    },
+    {
+      "id": "verify-no-toRendererAgentInfo",
+      "checkType": "wiring",
+      "target": "toRendererAgentInfo/toSharedAgentInfo/RendererAgentInfo deleted",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Only 1 match found in agentStoreAdapter.ts, which is a comment explaining the removal (line 26-27)"
+    },
+    {
+      "id": "verify-no-renderer-agentinfo-interface",
+      "checkType": "wiring",
+      "target": "No renderer-specific AgentInfo interface",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Grep for 'interface AgentInfo' in renderer/stores/agentStore.ts returned 0 matches. AgentInfo is re-exported from @shared/api/types"
+    },
+    {
+      "id": "verify-agentinfo-reexport",
+      "checkType": "wiring",
+      "target": "AgentInfo re-exported from shared/api/types",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/stores/agentStore.ts line 67: export type { AgentInfo } from '@shared/api/types'"
+    },
+    {
+      "id": "verify-specStoreFacade-ssot-subscribe",
+      "checkType": "wiring",
+      "target": "specStoreFacade subscribes to SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "specStoreFacade.ts line 166: useSharedAgentStore.subscribe() used for state updates instead of useAgentStore.subscribe()"
+    },
+    {
+      "id": "verify-specStoreFacade-ssot-read",
+      "checkType": "wiring",
+      "target": "specStoreFacade reads from SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getSpecManagerExecution() on line 83: reads from useSharedAgentStore.getState() instead of useAgentStore"
+    },
+    {
+      "id": "verify-test-skipPermissions",
+      "checkType": "usage",
+      "target": "skipPermissions tests in shared store",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/stores/agentStore.test.ts has 3 test cases for skipPermissions (initial value, set true, set false) at lines 1248-1270"
+    },
+    {
+      "id": "verify-test-getRunningAgentCount",
+      "checkType": "usage",
+      "target": "getRunningAgentCount tests in shared store",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/stores/agentStore.test.ts has 4 test cases for getRunningAgentCount (no agents, all non-running, running only, cross-spec isolation) at lines 1276-1306"
+    },
+    {
+      "id": "verify-test-action-only-structure",
+      "checkType": "usage",
+      "target": "Action-only structure verification test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/stores/agentStore.test.ts has test verifying no state fields exist (agents, selectedAgentId, logs, isLoading, error, skipPermissions, runningAgentCounts all undefined)"
+    },
+    {
+      "id": "verify-test-component-mocks",
+      "checkType": "usage",
+      "target": "Component tests mock useSharedAgentStore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All component tests mock useSharedAgentStore: AgentListPanel.test.tsx (3 refs), AgentLogPanel.test.tsx (3 refs), AgentInputPanel.test.tsx (3 refs), ProjectAgentPanel.test.tsx (7 refs), SpecList.test.tsx (3 refs)"
+    },
+    {
+      "id": "verify-test-specStoreFacade-ssot",
+      "checkType": "usage",
+      "target": "specStoreFacade tests use SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "specStoreFacade.test.ts uses useSharedAgentStore for error state management (4 references)"
+    },
+    {
+      "id": "verify-getRunningAgentCount-speclist",
+      "checkType": "usage",
+      "target": "getRunningAgentCount in SpecList",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecList.tsx uses inline getRunningAgentCount via useCallback (line 30-33) reading from useSharedAgentStore agents Map. Functionally equivalent to useRunningAgentCount hook but implemented inline for direct SSOT access",
+      "evidence": ["electron-sdd-manager/src/renderer/components/SpecList.tsx"]
+    },
+    {
+      "id": "placeholder-agentInputPanel-ui",
+      "checkType": "placeholder",
+      "target": "electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx:97,108",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Matches for 'placeholder' are UI-related HTML attributes (placeholder text for textarea, placeholder CSS classes), not implementation placeholders"
+    },
+    {
+      "id": "placeholder-agentStore-comment",
+      "checkType": "placeholder",
+      "target": "electron-sdd-manager/src/renderer/stores/agentStore.ts:181",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Match for 'implements' is a JSDoc comment explaining API adapter purpose, not an implementation placeholder"
+    }
+  ],
+  "stats": {
+    "total": 42,
+    "passed": 42,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 42
+  }
+}

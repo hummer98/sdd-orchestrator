@@ -20,7 +20,8 @@ vi.mock('../../shared/trpc/vanillaClient', () => ({
 }));
 
 import { ProjectAgentPanel } from './ProjectAgentPanel';
-import { useAgentStore, type AgentInfo, type AgentStatus } from '../stores/agentStore';
+import { useAgentStore, type AgentStatus } from '../stores/agentStore';
+import type { AgentInfo } from '@shared/api/types';
 import { useSharedAgentStore } from '@shared/stores/agentStore';
 
 // Mock agent data
@@ -61,46 +62,18 @@ const mockProjectAgent3: AgentInfo = {
 };
 
 /**
- * Helper to set agents in both stores
- * zustand-agent-selector-hooks: useProjectAgents hook subscribes to sharedAgentStore.agents Map
- * We update both stores to ensure reactivity works correctly
+ * Helper to set agents in SSOT store
+ * agent-facade-action-only Task 6.4: Only set state on SSOT (useSharedAgentStore)
+ * useAgentStore is now action-only and holds no state fields
  */
 function setAgentsInStores(agents: Map<string, AgentInfo[]>) {
-  // Convert renderer AgentInfo to shared AgentInfo format
-  // agentId-unification: shared type now uses 'agentId' (not 'id')
-  const sharedAgents = new Map();
-  for (const [specId, agentList] of agents.entries()) {
-    sharedAgents.set(
-      specId,
-      agentList.map((a) => ({
-        agentId: a.agentId,
-        specId: a.specId,
-        phase: a.phase,
-        status: a.status,
-        startedAt: a.startedAt,
-        command: a.command,
-        sessionId: a.sessionId,
-        lastActivityAt: a.lastActivityAt,
-        // project-agent-release-footer: Task 2.3 - Include args for release detection
-        args: a.args,
-      }))
-    );
-  }
-  useSharedAgentStore.setState({ agents: sharedAgents });
-  useAgentStore.setState({ agents });
+  useSharedAgentStore.setState({ agents });
 }
 
 describe('ProjectAgentPanel', () => {
   beforeEach(() => {
-    // Reset store state
-    useAgentStore.setState({
-      agents: new Map(),
-      selectedAgentId: null,
-      logs: new Map(),
-      isLoading: false,
-      error: null,
-    });
-    // Also reset sharedAgentStore (the SSOT)
+    // agent-facade-action-only Task 6.4: Only reset SSOT state
+    // useAgentStore is action-only and has no state fields to reset
     useSharedAgentStore.setState({
       agents: new Map(),
       selectedAgentId: null,
@@ -275,15 +248,16 @@ describe('ProjectAgentPanel', () => {
       const agentItem = screen.getByTestId('agent-item-project-1');
       fireEvent.click(agentItem);
 
-      // selectAgentが呼ばれて、selectedAgentIdが更新される
-      expect(useAgentStore.getState().selectedAgentId).toBe('project-1');
+      // agent-facade-action-only: selectedAgentId is on SSOT (useSharedAgentStore)
+      expect(useSharedAgentStore.getState().selectedAgentId).toBe('project-1');
     });
 
     it('should highlight selected agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1, mockProjectAgent2]);
       setAgentsInStores(agents);
-      useAgentStore.setState({ selectedAgentId: 'project-1' });
+      // agent-facade-action-only: selectedAgentId is on SSOT
+      useSharedAgentStore.setState({ selectedAgentId: 'project-1' });
 
       render(<ProjectAgentPanel />);
 

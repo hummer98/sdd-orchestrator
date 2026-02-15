@@ -1240,4 +1240,68 @@ describe('SharedAgentStore', () => {
       });
     });
   });
+
+  // =============================================================================
+  // agent-facade-action-only: Task 1.1 - skipPermissions and setSkipPermissions
+  // Requirements: 4.1, 4.2
+  // =============================================================================
+  describe('Task 1.1: skipPermissions and setSkipPermissions (agent-facade-action-only)', () => {
+    it('should have skipPermissions with initial value false', () => {
+      const store = getSharedAgentStore();
+      expect(store.skipPermissions).toBe(false);
+    });
+
+    it('should update skipPermissions to true via setSkipPermissions', () => {
+      const store = getSharedAgentStore();
+      store.setSkipPermissions(true);
+
+      const freshState = getSharedAgentStore();
+      expect(freshState.skipPermissions).toBe(true);
+    });
+
+    it('should update skipPermissions to false via setSkipPermissions', () => {
+      const store = getSharedAgentStore();
+      store.setSkipPermissions(true);
+      store.setSkipPermissions(false);
+
+      const freshState = getSharedAgentStore();
+      expect(freshState.skipPermissions).toBe(false);
+    });
+  });
+
+  // =============================================================================
+  // agent-facade-action-only: Task 1.2 - getRunningAgentCount
+  // Requirements: 5.1
+  // =============================================================================
+  describe('Task 1.2: getRunningAgentCount (agent-facade-action-only)', () => {
+    it('should return 0 when no agents exist for specId', () => {
+      const store = getSharedAgentStore();
+      expect(store.getRunningAgentCount('non-existent')).toBe(0);
+    });
+
+    it('should return 0 when all agents for specId are not running', () => {
+      const store = getSharedAgentStore();
+      store.addAgent('spec-a', createAgent('agent-1', 'spec-a', 'completed'));
+      store.addAgent('spec-a', createAgent('agent-2', 'spec-a', 'failed'));
+
+      expect(store.getRunningAgentCount('spec-a')).toBe(0);
+    });
+
+    it('should count only running agents for the given specId', () => {
+      const store = getSharedAgentStore();
+      store.addAgent('spec-a', createAgent('agent-1', 'spec-a', 'running'));
+      store.addAgent('spec-a', createAgent('agent-2', 'spec-a', 'completed'));
+      store.addAgent('spec-a', createAgent('agent-3', 'spec-a', 'running'));
+
+      expect(store.getRunningAgentCount('spec-a')).toBe(2);
+    });
+
+    it('should not count running agents from other specIds', () => {
+      const store = getSharedAgentStore();
+      store.addAgent('spec-a', createAgent('agent-1', 'spec-a', 'running'));
+      store.addAgent('spec-b', createAgent('agent-2', 'spec-b', 'running'));
+
+      expect(store.getRunningAgentCount('spec-a')).toBe(1);
+    });
+  });
 });

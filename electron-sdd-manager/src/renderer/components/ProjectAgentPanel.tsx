@@ -13,8 +13,8 @@
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import { useProjectAgents } from '@shared/hooks';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
@@ -23,7 +23,7 @@ import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { ScheduleTaskSettingView } from '@shared/components/schedule';
 import { ProjectAgentFooter } from './ProjectAgentFooter';
-import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
+import type { AgentInfo } from '@shared/api/types';
 // trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
@@ -35,7 +35,7 @@ import { getVanillaClient } from '../../shared/trpc/vanillaClient';
  * zustand-agent-selector-hooks: Map shared AgentInfo to AgentItemInfo
  * Hook returns shared AgentInfo, convert to AgentItemInfo for AgentList component
  */
-function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
+function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
   const startedAt = typeof agent.startedAt === 'number'
     ? new Date(agent.startedAt).toISOString()
     : agent.startedAt as string;
@@ -50,10 +50,10 @@ function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
 }
 
 export function ProjectAgentPanel() {
-  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
-  const { selectedAgentId, agents } = useAgentStore(
-    useShallow(s => ({ selectedAgentId: s.selectedAgentId, agents: s.agents }))
-  );
+  // agent-facade-action-only Task 4.4: State reads from SSOT
+  const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
+  const agentsSize = useSharedAgentStore(s => s.agents.size);
+  // Actions from facade
   const stopAgent = useAgentStore(s => s.stopAgent);
   const selectAgent = useAgentStore(s => s.selectAgent);
   const removeAgent = useAgentStore(s => s.removeAgent);
@@ -62,8 +62,7 @@ export function ProjectAgentPanel() {
   const loadAgents = useAgentStore(s => s.loadAgents);
   // zustand-selector-optimization: individual selector
   const currentProject = useProjectStore(s => s.currentProject);
-  // zustand-agent-selector-hooks: Use SharedAgentInfo since projectAgents returns shared type
-  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
   // Task 8.1: Schedule Task Setting dialog state
   const [isScheduleTaskDialogOpen, setIsScheduleTaskDialogOpen] = useState(false);
@@ -79,10 +78,10 @@ export function ProjectAgentPanel() {
   // Load agents when component mounts or when agents map is empty
   // This ensures project agents are displayed immediately after project selection
   useEffect(() => {
-    if (agents.size === 0) {
+    if (agentsSize === 0) {
       loadAgents();
     }
-  }, [agents.size, loadAgents]);
+  }, [agentsSize, loadAgents]);
 
   /**
    * Task 6.3: isReleaseRunning判定ロジックを更新

@@ -8,15 +8,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { Bot, GitBranch, MessageSquare } from 'lucide-react';
-import { useAgentStore, type AgentInfo as RendererAgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import { useAgentsBySpec } from '@shared/hooks';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
-import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
+import type { AgentInfo } from '@shared/api/types';
 // trpc-full-migration Task 5.3: Use tRPC vanilla client for spec operations
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
 
@@ -28,7 +28,7 @@ import { getVanillaClient } from '../../shared/trpc/vanillaClient';
  * zustand-agent-selector-hooks: Map shared AgentInfo to AgentItemInfo
  * Hook returns shared AgentInfo, convert to AgentItemInfo for AgentList component
  */
-function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
+function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
   const startedAt = typeof agent.startedAt === 'number'
     ? new Date(agent.startedAt).toISOString()
     : agent.startedAt as string;
@@ -63,10 +63,11 @@ interface AgentListPanelProps {
 }
 
 export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false, worktreePath }: AgentListPanelProps) {
-  // zustand-selector-optimization: useShallow for state fields, individual selectors for actions
-  const { selectedAgentId, agents, skipPermissions } = useAgentStore(
-    useShallow(s => ({ selectedAgentId: s.selectedAgentId, agents: s.agents, skipPermissions: s.skipPermissions }))
-  );
+  // agent-facade-action-only Task 4.1: State reads from SSOT (useSharedAgentStore)
+  const selectedAgentId = useSharedAgentStore(s => s.selectedAgentId);
+  const agentsSize = useSharedAgentStore(s => s.agents.size);
+  const skipPermissions = useSharedAgentStore(s => s.skipPermissions);
+  // Actions from facade (useAgentStore)
   const stopAgent = useAgentStore(s => s.stopAgent);
   const selectAgent = useAgentStore(s => s.selectAgent);
   const getAgentById = useAgentStore(s => s.getAgentById);
@@ -74,8 +75,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
   const loadAgents = useAgentStore(s => s.loadAgents);
   const setSkipPermissions = useAgentStore(s => s.setSkipPermissions);
   const addAgent = useAgentStore(s => s.addAgent);
-  // zustand-agent-selector-hooks: Use SharedAgentInfo since filteredAgents returns shared type
-  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 
   /**
@@ -87,10 +87,10 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
 
   // Load agents when component mounts or when agents map is empty
   useEffect(() => {
-    if (agents.size === 0) {
+    if (agentsSize === 0) {
       loadAgents();
     }
-  }, [agents.size, loadAgents]);
+  }, [agentsSize, loadAgents]);
 
   /**
    * zustand-agent-selector-hooks Task 5.2: Auto-select using hook result
@@ -130,7 +130,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
     await stopAgent(agentId);
   };
 
-  const handleRemoveClick = (agent: SharedAgentInfo, e: React.MouseEvent) => {
+  const handleRemoveClick = (agent: AgentInfo, e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDeleteAgent(agent);
   };
@@ -161,7 +161,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
         specId,
         featureName,
         question: prompt,
-      }) as unknown as RendererAgentInfo;
+      }) as unknown as AgentInfo;
       addAgent(specId, agentInfo);
       selectAgent(agentInfo.agentId);
       notify.success('Spec Askを開始しました');

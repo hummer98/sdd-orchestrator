@@ -20,7 +20,9 @@ import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
 // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 1.1)
 // import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
-import { useAgentStore, type AgentInfo, type AgentStatus } from '../agentStore';
+import { useAgentStore } from '../agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
+import type { AgentInfo, AgentStatus } from '@shared/api/types';
 import { specSyncService } from '../../services/specSyncService';
 import { specWatcherService } from '../../services/specWatcherService';
 import type {
@@ -77,8 +79,9 @@ function getSpecManagerExecution(specId: string | null): SpecManagerExecutionSta
     return DEFAULT_SPEC_MANAGER_EXECUTION_STATE;
   }
 
-  const agentState = useAgentStore.getState();
-  const specAgents = agentState.agents.get(specId) || [];
+  // agent-facade-action-only Task 5.1: Read from SSOT instead of facade
+  const sharedAgentState = useSharedAgentStore.getState();
+  const specAgents = sharedAgentState.agents.get(specId) || [];
   const runningAgents = specAgents.filter((a: AgentInfo) => a.status === 'running');
 
   // Sort by startedAt to get the latest running agent (Req 3.4)
@@ -92,7 +95,7 @@ function getSpecManagerExecution(specId: string | null): SpecManagerExecutionSta
     currentPhase: latestRunningAgent?.phase as SpecManagerPhase | null,
     currentSpecId: runningAgents.length > 0 ? specId : null,
     // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
-    error: agentState.error,
+    error: sharedAgentState.error,
     implTaskStatus: mapAgentStatusToImplTaskStatus(latestRunningAgent?.status),
     retryCount: latestRunningAgent?.retryCount ?? 0,
     executionMode: latestRunningAgent?.executionMode ?? null,
@@ -159,7 +162,8 @@ export function setupAgentStoreSubscription(): void {
   if (isAgentStoreSubscribed) {
     return;
   }
-  useAgentStore.subscribe(() => {
+  // agent-facade-action-only Task 5.1: Subscribe to SSOT instead of facade
+  useSharedAgentStore.subscribe(() => {
     useSpecStoreFacade.setState(getAggregatedState());
   });
   isAgentStoreSubscribed = true;

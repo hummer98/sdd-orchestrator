@@ -11,7 +11,7 @@ import { useAutoExecutionStore } from './autoExecutionStore';
 // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
 // import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
 import { useAgentStore, resetAgentStore } from '../agentStore';
-import { resetSharedAgentStore } from '@shared/stores/agentStore';
+import { useSharedAgentStore, resetSharedAgentStore } from '@shared/stores/agentStore';
 import type { SpecMetadata } from '../../types';
 
 // trpc-full-migration Task 4.3: Mock tRPC vanilla client for file operations
@@ -286,11 +286,13 @@ describe('useSpecStoreFacade', () => {
       // Task completion state is managed via TaskProgress from tasks.md
 
       it('should clear error in agentStore via clearSpecManagerError', () => {
-        useAgentStore.setState({ error: 'Some error' });
+        // agent-facade-action-only: error is now on SSOT (useSharedAgentStore)
+        useSharedAgentStore.setState({ error: 'Some error' });
 
         useSpecStoreFacade.getState().clearSpecManagerError();
 
-        expect(useAgentStore.getState().error).toBeNull();
+        // clearError delegates to SSOT
+        expect(useSharedAgentStore.getState().error).toBeNull();
       });
     });
   });

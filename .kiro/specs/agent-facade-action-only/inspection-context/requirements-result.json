@@ -1,0 +1,333 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-15T10:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: useAgentStoreから状態フィールド(agents, logs, selectedAgentId, isLoading, error, runningAgentCounts)が削除されている。テストでもstate.agents/selectedAgentId/logs/isLoading/error/skipPermissions/runningAgentCountsがundefinedであることを確認済み。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:84 - AgentActions interface has no state fields",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:124-134 - Test verifies no state fields exist"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: useSharedAgentStore.subscribe()による状態同期メカニズムが完全に削除されている。ファサードストアにはsubscribe-and-syncコードは存在しない。tRPCイベントサブスクリプションのみ残っている(これは同期メカニズムではない)。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:366 - Comment: 'subscribe-and-sync removed'",
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts - No useSharedAgentStore.subscribe() call exists in facade"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: ファサードストアの初期化時にgetAgentsFromShared()、calculateRunningCounts()が呼ばれない。これらの関数はファサードストアに存在しない。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts - No getAgentsFromShared or calculateRunningCounts function exists"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: getAgentsFromShared()関数とcalculateRunningCounts()関数が削除されている。grepで検索しても存在しない。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts - No getAgentsFromShared or calculateRunningCounts function exists (confirmed via grep)"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: selectedAgentIdを読む4コンポーネント(AgentLogPanel, ProjectAgentPanel, AgentListPanel, AgentInputPanel)が全てuseSharedAgentStoreから直接読み取っている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:67 - useSharedAgentStore(s => s.selectedAgentId)",
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx:24 - useSharedAgentStore((state) => state.selectedAgentId)",
+        "electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx:19 - useSharedAgentStore((state) => state.selectedAgentId)",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:54 - useSharedAgentStore(s => s.selectedAgentId)"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: agentsを読む4コンポーネント(AgentLogPanel, ProjectAgentPanel, AgentListPanel, AgentInputPanel)が全てuseSharedAgentStoreから直接読み取っている。AgentListPanelとProjectAgentPanelはuseAgentsBySpec/useProjectAgentsフックを経由するが、これらはuseSharedAgentStoreをラップしたもの。AgentLogPanelとAgentInputPanelはuseSharedAgentStoreのagentsを直接サブスクライブ。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:68 - useSharedAgentStore(s => s.agents.size)",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:86 - useAgentsBySpec(specId) (SSOT hook)",
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx:59 - useSharedAgentStore((state) => state.agents)",
+        "electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx:25 - useSharedAgentStore((state) => ...state.agents...)",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:55 - useSharedAgentStore(s => s.agents.size)",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:75 - useProjectAgents() (SSOT hook)"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: logsを読むAgentLogPanelがuseSharedAgentStoreから直接読み取っている。rawLogsをuseSharedAgentStoreのlogs Mapから直接取得し、useMemoでソートしている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx:44-47 - useSharedAgentStore((state) => state.logs.get(selectedAgentId))"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: skipPermissionsを読むAgentListPanelがuseSharedAgentStoreから直接読み取っている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:69 - useSharedAgentStore(s => s.skipPermissions)"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.5: 移行後もコンポーネントの表示・動作が変わらない。コンポーネントテストがuseSharedAgentStoreをモックして検証しており、テストが更新済み。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.test.tsx:32 - Mock splits state (SSOT) and actions (facade)",
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx:29 - useSharedAgentStore mock",
+        "electron-sdd-manager/src/renderer/components/AgentInputPanel.test.tsx:22 - useSharedAgentStore mock",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.test.tsx:25 - useSharedAgentStore import"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: SharedAgentInfo(= AgentInfo in shared/api/types.ts)にretryCountフィールド(optional number)が追加されている。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/api/types.ts:177 - retryCount?: number"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: SharedAgentInfo(= AgentInfo in shared/api/types.ts)にexecutionModeフィールド(optional string)が追加されている。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/api/types.ts:175 - executionMode?: 'auto' | 'manual'"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: Renderer固有のAgentInfo型とそのtype exportが削除されている。ファサードストアではAgentInfoをshared/api/typesからre-exportしている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:67 - export type { AgentInfo } from '@shared/api/types'",
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts - No 'interface AgentInfo' defined"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: toRendererAgentInfo()変換関数とtoSharedAgentInfo()変換関数が削除されている。agentStoreAdapter.tsにはコメントのみ残っている(Task 2.2のコメント)。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStoreAdapter.ts:26-28 - Comment: 'toSharedAgentInfo() and RendererAgentInfo removed'",
+        "electron-sdd-manager/src/renderer/stores/agentStoreAdapter.ts - No toRendererAgentInfo or toSharedAgentInfo function"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.5: 全コンポーネントが統一されたAgentInfo型(shared/api/types)を使用している。stores/index.tsもagentStoreからre-exportし、agentStoreはshared/api/typesからre-exportしている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/index.ts:33 - export type { AgentInfo, AgentStatus, ParsedLogEntry } from './agentStore'",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:19 - import type { AgentInfo } from '@shared/api/types'",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:26 - import type { AgentInfo } from '@shared/api/types'",
+        "electron-sdd-manager/src/renderer/stores/projectStore.ts:15 - import { useAgentStore, type AgentInfo } from './agentStore' (re-exported from shared)"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: useSharedAgentStoreにskipPermissions: booleanフィールドが追加されている。初期値はfalse。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:54 - skipPermissions: boolean in SharedAgentState",
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:219 - skipPermissions: false (initial state)"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: useSharedAgentStoreにsetSkipPermissions(value: boolean)アクションが追加されている。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:132 - setSkipPermissions: (value: boolean) => void (interface)",
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:433-435 - setSkipPermissions implementation"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: ファサードストアからskipPermissionsフィールドとsetSkipPermissionsアクションが削除されている。ファサードのsetSkipPermissionsはSSOTに委譲するアクションとして残っており、フィールドとしては保持していない。テストで state.skipPermissions === undefined を確認済み。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:471-481 - setSkipPermissions delegates to SSOT",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:132 - expect(state.skipPermissions).toBeUndefined()"
+      ]
+    },
+    {
+      "id": "req-4.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.4: AgentListPanelがuseSharedAgentStoreからskipPermissionsを読み取っている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:69 - const skipPermissions = useSharedAgentStore(s => s.skipPermissions)"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: useSharedAgentStoreにgetRunningAgentCount(specId: string): numberメソッドが追加されている。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:139 - getRunningAgentCount: (specId: string) => number (interface)",
+        "electron-sdd-manager/src/shared/stores/agentStore.ts:438-441 - getRunningAgentCount implementation"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: SpecListがuseSharedAgentStoreのagentsを使用してrunning countを計算している。useCallbackで直接agents Mapからフィルタしている(getRunningAgentCountメソッドではなくインラインで同等の計算を行っている)。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/SpecList.tsx:29-33 - const agents = useSharedAgentStore(s => s.agents); useCallback with inline running count calculation"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: ファサードストアからrunningAgentCountsフィールドとgetRunningAgentCount()メソッドが削除されている。テストでrunningAgentCounts === undefinedを確認済み。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts - No runningAgentCounts or getRunningAgentCount in AgentActions interface",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:133 - expect(state.runningAgentCounts).toBeUndefined()"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: 要求されたアクション(setupEventListeners, startAgent, stopAgent, resumeAgent, selectAgent, addAgent, removeAgent, loadAgents, clearLogs, ensureLogsLoaded, selectForProjectAgents, getAgentById, sendInput, updateAgentStatus, appendLog, getLogsForAgent, getSelectedAgent, findAgentById, clearError)が全てファサードストアに残っている。loadAgentLogsは削除済み(ensureLogsLoadedに委譲済み)。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:84-172 - AgentActions interface with all required methods",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:137-159 - Test verifies all action methods exist"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: アクション内部でSSOTのメソッドを呼び出すパターンが維持されている。selectAgent, addAgent, updateAgentStatus, clearLogs, clearError等全てuseSharedAgentStore.getState()を経由。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:259 - selectAgent: useSharedAgentStore.getState().selectAgent(agentId)",
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:271-273 - addAgent: useSharedAgentStore.getState().addAgent(specId, agent)",
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:345-346 - updateAgentStatus: useSharedAgentStore.getState().updateAgentStatus()",
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:459 - clearError: useSharedAgentStore.getState().clearError()"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: setupEventListeners()がtRPCアダプタの初期化とイベントリスナー登録を引き続き担当している。setupAgentEventListeners()を呼び出し、tRPC Subscriptionも設定している。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.ts:370-434 - setupEventListeners implementation with setupAgentEventListeners() and tRPC subscriptions"
+      ]
+    },
+    {
+      "id": "req-7.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.1: ファサードストアのテスト(agentStore.test.ts)がアクション専用の構造に更新されている。テストファイルのヘッダーに'Action-Only Facade'と明記されており、状態フィールド不在の検証や、SSOTへの委譲パターンのテストが含まれている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:6 - 'agent-facade-action-only Task 6.2: Updated to action-only structure'",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:112 - describe('useAgentStore (Action-Only Facade)')",
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts:123-161 - Action-only structure verification tests"
+      ]
+    },
+    {
+      "id": "req-7.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.2: コンポーネントテストのモック構造がuseSharedAgentStore直接読み取りに対応している。AgentListPanel, AgentLogPanel, AgentInputPanel, ProjectAgentPanel, SpecListの各テストがuseSharedAgentStoreをモックしている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.test.tsx:16-17 - vi.mock('@shared/stores/agentStore')",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.test.tsx:37-60 - Split mocks: state from SSOT, actions from facade",
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx:20 - vi.mock('@shared/stores/agentStore')",
+        "electron-sdd-manager/src/renderer/components/AgentInputPanel.test.tsx:20 - vi.mock('@shared/stores/agentStore')",
+        "electron-sdd-manager/src/renderer/components/SpecList.test.tsx:15 - vi.mock('@shared/stores/agentStore')"
+      ]
+    },
+    {
+      "id": "req-7.3",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Requirement 7.3: 既存の全テストがパスすること。テストファイルは全て更新されているが、実際にテストを実行して全パスすることの確認はこの検査では行えない(テスト実行はスコープ外)。コードレビューの範囲ではテスト構造は適切に更新されている。",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/stores/agentStore.test.ts - Updated to action-only structure",
+        "electron-sdd-manager/src/shared/stores/agentStore.test.ts - Has tests for new fields/methods",
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.test.tsx - Updated mock structure",
+        "electron-sdd-manager/src/renderer/components/AgentLogPanel.test.tsx - Updated mock structure"
+      ]
+    },
+    {
+      "id": "req-7.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.4: 共有ストアのテスト(shared/stores/agentStore.test.ts)に新規追加フィールド・メソッドのテストが含まれている。skipPermissions/setSkipPermissionsのテスト(3件)とgetRunningAgentCountのテスト(4件)が存在する。",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/agentStore.test.ts:1248-1270 - Task 1.1: skipPermissions and setSkipPermissions tests (3 tests)",
+        "electron-sdd-manager/src/shared/stores/agentStore.test.ts:1276-1306 - Task 1.2: getRunningAgentCount tests (4 tests)"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "passed": 27,
+    "failed": 0,
+    "partial": 1,
+    "critical": 0,
+    "major": 1,
+    "minor": 0,
+    "info": 27
+  }
+}

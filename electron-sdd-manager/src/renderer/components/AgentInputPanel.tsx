@@ -11,14 +11,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Play } from 'lucide-react';
 import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import { clsx } from 'clsx';
 
 export function AgentInputPanel() {
-  const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
+  // agent-facade-action-only Task 4.3: State reads from SSOT
+  const selectedAgentId = useSharedAgentStore((state) => state.selectedAgentId);
+  // Actions from facade
   const resumeAgent = useAgentStore((state) => state.resumeAgent);
+  // agent-facade-action-only Task 4.3: agents read from SSOT
   // Bug fix: agent-log-textfield-inactive
   // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
-  const agent = useAgentStore((state) => {
+  const agent = useSharedAgentStore((state) => {
     if (!state.selectedAgentId) return undefined;
     for (const agentList of state.agents.values()) {
       const found = agentList.find((a) => a.agentId === state.selectedAgentId);

@@ -1,0 +1,349 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-15T09:45:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "subcategory": "DRY",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No significant code duplication found within the scope of this spec's changes. The mapAgentInfoToItemInfo function is duplicated across AgentListPanel.tsx and ProjectAgentPanel.tsx (and 5 remote-ui files), but this duplication predates this spec and is outside scope.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:31 - mapAgentInfoToItemInfo",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:38 - mapAgentInfoToItemInfo (identical function, pre-existing)"
+      ]
+    },
+    {
+      "id": "principle-dry-2",
+      "category": "principle",
+      "subcategory": "DRY",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Delete confirmation dialog JSX is duplicated between AgentListPanel and ProjectAgentPanel, but this is pre-existing and outside scope of this spec.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx:251 - 'セッションを削除しますか？'",
+        "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx:269 - 'セッションを削除しますか？'"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "subcategory": "SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All components read state from useSharedAgentStore (SSOT), not from useAgentStore. No state duplication between facade and SSOT. Verified: AgentListPanel, AgentLogPanel, AgentInputPanel, ProjectAgentPanel, SpecList all use useSharedAgentStore for state reads.",
+      "evidence": [
+        "AgentListPanel.tsx:67-69 - useSharedAgentStore for selectedAgentId, agents.size, skipPermissions",
+        "AgentLogPanel.tsx:24 - useSharedAgentStore for selectedAgentId",
+        "AgentLogPanel.tsx:44-46 - useSharedAgentStore for logs",
+        "AgentLogPanel.tsx:59 - useSharedAgentStore for agents",
+        "AgentInputPanel.tsx:19 - useSharedAgentStore for selectedAgentId",
+        "AgentInputPanel.tsx:25-32 - useSharedAgentStore for agents (agent derivation)",
+        "ProjectAgentPanel.tsx:54-55 - useSharedAgentStore for selectedAgentId, agents.size",
+        "SpecList.tsx:29 - useSharedAgentStore for agents"
+      ]
+    },
+    {
+      "id": "principle-ssot-2",
+      "category": "principle",
+      "subcategory": "SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useAgentStore (facade) contains no state fields - it is purely action-only. AgentActions interface has no state properties, only methods. The create() call uses _set (unused) confirming no local state mutations.",
+      "evidence": [
+        "agentStore.ts:84 - interface AgentActions has only methods, no state fields",
+        "agentStore.ts:226 - create<AgentActions>()((_set, get) => ({...})) - _set is unused"
+      ]
+    },
+    {
+      "id": "principle-ssot-3",
+      "category": "principle",
+      "subcategory": "SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "specStoreFacade.ts correctly reads state from useSharedAgentStore (SSOT) and subscribes to SSOT for reactivity. The only remaining useAgentStore.getState() call is for clearError() which is an action, not a state read.",
+      "evidence": [
+        "specStoreFacade.ts:83 - useSharedAgentStore.getState() for agent state reads",
+        "specStoreFacade.ts:166 - useSharedAgentStore.subscribe() for reactivity",
+        "specStoreFacade.ts:472 - useAgentStore.getState().clearError() (action call, correctly kept)"
+      ]
+    },
+    {
+      "id": "principle-ssot-4",
+      "category": "principle",
+      "subcategory": "SSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "skipPermissions is correctly managed in SSOT (useSharedAgentStore). The facade's setSkipPermissions delegates to SSOT and also persists via adapter. No state duplication.",
+      "evidence": [
+        "shared/stores/agentStore.ts:54 - skipPermissions: boolean in SharedAgentState",
+        "shared/stores/agentStore.ts:433-435 - setSkipPermissions setter in SSOT",
+        "renderer/stores/agentStore.ts:471-481 - Facade delegates to SSOT + persists via adapter",
+        "AgentListPanel.tsx:69 - reads skipPermissions from useSharedAgentStore"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "subcategory": "KISS",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "The refactoring simplifies the architecture by removing the subscribe-and-sync mechanism and state duplication. The resulting pattern (state from SSOT, actions from facade) is straightforward and well-documented in the JSDoc.",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "subcategory": "YAGNI",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unnecessary abstractions or premature generalizations found. setLoading() and setError() methods added to SSOT are used by the facade's action methods (loadAgents, startAgent, etc.).",
+      "evidence": [
+        "shared/stores/agentStore.ts:120,125 - setLoading/setError declarations",
+        "renderer/stores/agentStore.ts:233,248,251,284,294,297,306,318,328,338 - 12 usages in facade actions"
+      ]
+    },
+    {
+      "id": "impact-update-shared-agentstore",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/stores/agentStore.ts correctly updated with skipPermissions field, setSkipPermissions(), getRunningAgentCount(), setLoading(), setError()",
+      "evidence": [
+        "skipPermissions: boolean in SharedAgentState (line 54)",
+        "setSkipPermissions in SharedAgentActions (line 132)",
+        "getRunningAgentCount in SharedAgentActions (line 139)",
+        "setLoading in SharedAgentActions (line 120)",
+        "setError in SharedAgentActions (line 125)"
+      ]
+    },
+    {
+      "id": "impact-update-renderer-agentstore",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/stores/agentStore.ts correctly converted to action-only store. State fields removed, subscribe-and-sync removed, conversion functions removed, AgentInfo re-exported from shared.",
+      "evidence": [
+        "Line 7 - JSDoc documents 'Action-Only Store'",
+        "Line 67 - export type { AgentInfo } from '@shared/api/types'",
+        "Line 84 - AgentActions interface (no state fields)",
+        "No subscribe-and-sync code found (only comment reference at line 366)"
+      ]
+    },
+    {
+      "id": "impact-update-adapter",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentStoreAdapter.ts correctly updated. toSharedAgentInfo()/RendererAgentInfo type removed. Only a historical comment remains at line 26-28.",
+      "evidence": [
+        "Grep for 'toSharedAgentInfo|RendererAgentInfo' found only comment at line 26-28",
+        "No interface/type definition for RendererAgentInfo exists"
+      ]
+    },
+    {
+      "id": "impact-update-stores-index",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "renderer/stores/index.ts correctly re-exports AgentInfo from ./agentStore (which re-exports from shared/api/types)",
+      "evidence": [
+        "index.ts:33 - export type { AgentInfo, AgentStatus, ParsedLogEntry } from './agentStore'"
+      ]
+    },
+    {
+      "id": "impact-update-agentlistpanel",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentListPanel correctly reads state from useSharedAgentStore and uses facade for actions only",
+      "evidence": [
+        "Line 13 - import useSharedAgentStore",
+        "Lines 67-69 - state reads from SSOT",
+        "Lines 71-77 - actions from facade"
+      ]
+    },
+    {
+      "id": "impact-update-agentlogpanel",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentLogPanel correctly reads state from useSharedAgentStore including logs via SSOT direct read pattern",
+      "evidence": [
+        "Line 12 - import useSharedAgentStore",
+        "Line 24 - selectedAgentId from SSOT",
+        "Lines 44-47 - logs from SSOT directly",
+        "Lines 59-67 - agents from SSOT for agent derivation"
+      ]
+    },
+    {
+      "id": "impact-update-agentinputpanel",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AgentInputPanel correctly reads state from useSharedAgentStore with agents traversal pattern for selected agent derivation",
+      "evidence": [
+        "Line 14 - import useSharedAgentStore",
+        "Line 19 - selectedAgentId from SSOT",
+        "Lines 25-32 - agent derivation from SSOT agents map"
+      ]
+    },
+    {
+      "id": "impact-update-projectagentpanel",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectAgentPanel correctly reads state from useSharedAgentStore and imports AgentInfo from shared/api/types",
+      "evidence": [
+        "Line 17 - import useSharedAgentStore",
+        "Line 26 - import AgentInfo from @shared/api/types",
+        "Lines 54-55 - state reads from SSOT"
+      ]
+    },
+    {
+      "id": "impact-update-speclist",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SpecList correctly uses SSOT agents map for getRunningAgentCount via inline useCallback (not useRunningAgentCount hook, but functionally equivalent and reactive).",
+      "evidence": [
+        "Line 14 - import useSharedAgentStore",
+        "Lines 29-33 - agents from SSOT, getRunningAgentCount via useCallback"
+      ]
+    },
+    {
+      "id": "impact-update-specstorefacade",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "specStoreFacade correctly updated: getState() reads from SSOT (line 83), subscribe() uses SSOT (line 166), clearError() uses facade action (line 472). All 3 changes from design.md verified.",
+      "evidence": [
+        "Line 83 - useSharedAgentStore.getState() for agent state reads",
+        "Line 166 - useSharedAgentStore.subscribe() for reactivity",
+        "Line 472 - useAgentStore.getState().clearError() (action, correctly kept)"
+      ]
+    },
+    {
+      "id": "impact-update-projectstore",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectStore.ts imports AgentInfo via re-export from ./agentStore which sources from shared/api/types",
+      "evidence": [
+        "Line 15 - import { useAgentStore, type AgentInfo } from './agentStore'"
+      ]
+    },
+    {
+      "id": "impact-no-deletions",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Design.md states 'No files to delete' and no files were deleted. Confirmed.",
+      "evidence": [
+        "design.md line 489: '削除対象のファイルはない'"
+      ]
+    },
+    {
+      "id": "dead-code-subscribe-sync",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "subscribe-and-sync mechanism fully removed. No remnants of getAgentsFromShared, calculateRunningCounts, getLogsFromShared functions.",
+      "evidence": [
+        "Grep for 'getAgentsFromShared|calculateRunningCounts|getLogsFromShared' found 0 code matches (only 1 comment reference in agentStoreAdapter.ts:26)"
+      ]
+    },
+    {
+      "id": "dead-code-renderer-agentinfo",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Renderer-specific AgentInfo type and RendererAgentInfo type fully removed. No interface/type definitions found.",
+      "evidence": [
+        "Grep for 'interface RendererAgentInfo|type RendererAgentInfo' found 0 matches"
+      ]
+    },
+    {
+      "id": "dead-code-conversion-functions",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "toRendererAgentInfo() and toSharedAgentInfo() fully removed. No function definitions found.",
+      "evidence": [
+        "Grep for 'toRendererAgentInfo|toSharedAgentInfo' found only comment reference at agentStoreAdapter.ts:26-28"
+      ]
+    },
+    {
+      "id": "dead-code-getrunningagentcount-ssot",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getRunningAgentCount() on SSOT is used only in test files in this codebase. However, SpecList.tsx inlines the same logic (subscribing to agents Map and filtering). The SSOT method is still consumed by useRunningAgentCount hook (shared/hooks/useAgentsBySpec.ts:109) which is used by other components (BugList, remote-ui). Not dead code.",
+      "evidence": [
+        "shared/hooks/useAgentsBySpec.ts:109 - useRunningAgentCount uses useSharedAgentStore(s => s.getRunningAgentCount(specId))",
+        "renderer/components/BugList.tsx:55 - inline equivalent used in BugList",
+        "SpecList.tsx:30-33 - inlines the logic instead of using hook or SSOT method"
+      ]
+    },
+    {
+      "id": "dead-code-resetagentstore",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "resetAgentStore() is exported and used in test files. The function body is now a no-op (action-only store has no state), but it maintains backward compatibility for test cleanup. Used by 2 test files.",
+      "evidence": [
+        "agentStore.test.ts:116 - resetAgentStore() usage",
+        "specStoreFacade.test.ts:123 - resetAgentStore() usage"
+      ]
+    },
+    {
+      "id": "placeholder-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No placeholder comments (TODO/FIXME/PLACEHOLDER/実装予定) found in files modified by this spec. The TODOs found are all in unrelated files (webSocketHandler, specsWatcherService, remote-ui, shared/components/schedule, etc.) that predate this spec.",
+      "evidence": [
+        "0 TODO/FIXME matches in agentStore.ts, agentStoreAdapter.ts, AgentListPanel.tsx, AgentLogPanel.tsx, AgentInputPanel.tsx, ProjectAgentPanel.tsx, SpecList.tsx, specStoreFacade.ts"
+      ]
+    },
+    {
+      "id": "logging-console-usage",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "Multiple console.log/warn/error calls in renderer store files instead of using rendererLogger. Per logging.md, console.* direct usage should be avoided in favor of the logger. However, this is a pre-existing pattern throughout the store files and not introduced by this spec.",
+      "evidence": [
+        "renderer/stores/agentStore.ts: 4 console.log/warn calls (lines 371, 386, 390, 430)",
+        "renderer/stores/agentStoreAdapter.ts: 16 console.log/warn/error calls",
+        "shared/stores/agentStore.ts: 8 console.log/error calls in ensureLogsLoaded",
+        "Note: This is pre-existing and pervasive across the codebase, not introduced by this spec"
+      ]
+    },
+    {
+      "id": "logging-levels",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Log level usage is consistent: console.log for operational info, console.warn for warnings, console.error for errors. While not using the rendererLogger, the level semantics are correct.",
+      "evidence": []
+    },
+    {
+      "id": "logging-loops",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No excessive logging inside loops detected in modified files.",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "passed": 26,
+    "failed": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 26
+  }
+}

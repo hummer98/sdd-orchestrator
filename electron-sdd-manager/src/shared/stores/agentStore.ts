@@ -46,6 +46,12 @@ export interface SharedAgentState {
   isLoading: boolean;
   /** エラーメッセージ */
   error: string | null;
+  /**
+   * --dangerously-skip-permissionsフラグ
+   * agent-facade-action-only Task 1.1
+   * Requirements: 4.1
+   */
+  skipPermissions: boolean;
 }
 
 export interface SharedAgentActions {
@@ -107,6 +113,30 @@ export interface SharedAgentActions {
   getLogsForAgent: (agentId: string) => ParsedLogEntry[];
   /** エラーをクリアする */
   clearError: () => void;
+  /**
+   * ローディング状態を設定する
+   * agent-facade-action-only Task 3.1: ファサードからのローディング状態更新用
+   */
+  setLoading: (isLoading: boolean) => void;
+  /**
+   * エラーメッセージを設定する
+   * agent-facade-action-only Task 3.1: ファサードからのエラー状態更新用
+   */
+  setError: (error: string) => void;
+
+  /**
+   * skipPermissionsを設定する
+   * agent-facade-action-only Task 1.1
+   * Requirements: 4.2
+   */
+  setSkipPermissions: (value: boolean) => void;
+
+  /**
+   * 指定specIdの実行中Agent数を返す
+   * agent-facade-action-only Task 1.2
+   * Requirements: 5.1
+   */
+  getRunningAgentCount: (specId: string) => number;
 
   // =============================================================================
   // agent-watcher-optimization: Spec単位選択状態管理
@@ -186,6 +216,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
   logs: new Map(),
   isLoading: false,
   error: null,
+  skipPermissions: false, // agent-facade-action-only Task 1.1
 
   // Actions
 
@@ -389,6 +420,26 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     set({ error: null });
   },
 
+  // agent-facade-action-only Task 3.1: setLoading / setError for facade delegation
+  setLoading: (isLoading: boolean) => {
+    set({ isLoading });
+  },
+
+  setError: (error: string) => {
+    set({ error });
+  },
+
+  // agent-facade-action-only Task 1.1: skipPermissions setter
+  setSkipPermissions: (value: boolean) => {
+    set({ skipPermissions: value });
+  },
+
+  // agent-facade-action-only Task 1.2: getRunningAgentCount
+  getRunningAgentCount: (specId: string) => {
+    const agents = get().agents.get(specId) || [];
+    return agents.filter((a) => a.status === 'running').length;
+  },
+
   // =============================================================================
   // agent-watcher-optimization: Spec単位選択状態管理
   // =============================================================================
@@ -475,6 +526,7 @@ export function resetSharedAgentStore(): void {
     logs: new Map(),
     isLoading: false,
     error: null,
+    skipPermissions: false, // agent-facade-action-only Task 1.1
   });
 }
 

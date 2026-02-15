@@ -8,7 +8,9 @@
 
 import { useEffect, useMemo } from 'react';
 // main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
-import { useAgentStore, type ParsedLogEntry } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
+import type { ParsedLogEntry } from '@shared/api/types';
 import { useProjectStore } from '../stores/projectStore';
 import { AgentLogPanel as SharedAgentLogPanel, type AgentLogInfo } from '@shared/components/agent';
 import { useHumanActivity } from '../hooks/useHumanActivity';
@@ -18,7 +20,9 @@ import { useHumanActivity } from '../hooks/useHumanActivity';
 const EMPTY_LOGS: ParsedLogEntry[] = [];
 
 export function AgentLogPanel() {
-  const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
+  // agent-facade-action-only Task 4.2: State reads from SSOT
+  const selectedAgentId = useSharedAgentStore((state) => state.selectedAgentId);
+  // Actions from facade
   const clearLogs = useAgentStore((state) => state.clearLogs);
   const ensureLogsLoaded = useAgentStore((state) => state.ensureLogsLoaded);
 
@@ -33,12 +37,13 @@ export function AgentLogPanel() {
   const currentProject = useProjectStore((state) => state.currentProject);
   const { recordActivity } = useHumanActivity();
 
+  // agent-facade-action-only Task 4.2: Logs read from SSOT directly
   // Bug fix: getSnapshot無限ループ回避
   // セレクタ内でgetLogsForAgent()を呼ぶと毎回新しい配列が生成され無限ループになる
   // 代わりにlogs Mapを直接購読し、useMemoでソートする
-  const rawLogs = useAgentStore((state) => {
-    if (!state.selectedAgentId) return EMPTY_LOGS;
-    return state.logs.get(state.selectedAgentId) || EMPTY_LOGS;
+  const rawLogs = useSharedAgentStore((state) => {
+    if (!selectedAgentId) return EMPTY_LOGS;
+    return state.logs.get(selectedAgentId) || EMPTY_LOGS;
   });
 
   // Bug fix: agent-log-stream-race-condition - ソートはuseMemo内で行う
@@ -48,9 +53,10 @@ export function AgentLogPanel() {
     return [...rawLogs].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   }, [rawLogs]);
 
+  // agent-facade-action-only Task 4.2: Agents read from SSOT
   // Bug fix: getSnapshot無限ループ回避
   // agentsマップを直接サブスクライブし、useMemoでagentを導出
-  const agents = useAgentStore((state) => state.agents);
+  const agents = useSharedAgentStore((state) => state.agents);
   const agent = useMemo(() => {
     if (!selectedAgentId) return undefined;
     for (const agentList of agents.values()) {

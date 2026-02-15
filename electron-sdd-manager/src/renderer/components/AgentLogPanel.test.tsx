@@ -10,12 +10,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentLogPanel } from './AgentLogPanel';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import type { AgentInfo } from '@shared/api/types';
 import type { ParsedLogEntry } from '@shared/api/types';
 import type { LLMEngineId } from '@shared/registry';
 
 // Mock the stores
 vi.mock('../stores/agentStore');
+vi.mock('@shared/stores/agentStore');
 
 // Mock clipboard API
 const mockWriteText = vi.fn();
@@ -24,7 +26,10 @@ Object.defineProperty(navigator, 'clipboard', {
   configurable: true,
 });
 
+import { useSharedAgentStore } from '@shared/stores/agentStore';
+
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
+const mockUseSharedAgentStore = useSharedAgentStore as unknown as ReturnType<typeof vi.fn>;
 
 // Helper to create ParsedLogEntry
 function createParsedLog(
@@ -108,10 +113,29 @@ describe('AgentLogPanel - Task 31', () => {
     };
   };
 
-  // Mock implementation that calls selector with state
+  // agent-facade-action-only Task 6.4: Split state (SSOT) and actions (facade)
+  // State reads (selectedAgentId, logs, agents) go to useSharedAgentStore
+  // Actions (clearLogs, ensureLogsLoaded) go to useAgentStore
   const setupMock = (state: ReturnType<typeof createMockState>) => {
-    mockUseAgentStore.mockImplementation((selector: (state: ReturnType<typeof createMockState>) => unknown) => {
-      return selector(state);
+    // SSOT fields: selectedAgentId, logs, agents, findAgentById, getLogsForAgent
+    const ssotState = {
+      selectedAgentId: state.selectedAgentId,
+      logs: state.logs,
+      agents: state.agents,
+      findAgentById: state.findAgentById,
+      getLogsForAgent: state.getLogsForAgent,
+    };
+    // Facade fields: clearLogs, ensureLogsLoaded
+    const facadeActions = {
+      clearLogs: state.clearLogs,
+      ensureLogsLoaded: state.ensureLogsLoaded,
+    };
+
+    mockUseSharedAgentStore.mockImplementation((selector: (s: typeof ssotState) => unknown) => {
+      return selector(ssotState);
+    });
+    mockUseAgentStore.mockImplementation((selector: (s: typeof facadeActions) => unknown) => {
+      return selector(facadeActions);
     });
   };
 

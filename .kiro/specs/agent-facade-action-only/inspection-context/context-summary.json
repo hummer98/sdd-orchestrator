@@ -1,0 +1,176 @@
+{
+  "spec_overview": "Rendererのファサードストア（useAgentStore）から状態の二重管理を廃止し、アクション専用ストアに変換するリファクタリング。コンポーネントは状態をSSOT（useSharedAgentStore）から直接読み取り、アクション（startAgent, stopAgent等）のみファサードを経由する。",
+  "key_components": [
+    {
+      "name": "useSharedAgentStore",
+      "type": "service",
+      "path": "electron-sdd-manager/src/shared/stores/agentStore.ts",
+      "requirements": ["4.1", "4.2", "5.1"]
+    },
+    {
+      "name": "useAgentStore (facade)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/agentStore.ts",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "6.1", "6.2", "6.3"]
+    },
+    {
+      "name": "agentStoreAdapter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/agentStoreAdapter.ts",
+      "requirements": ["3.4"]
+    },
+    {
+      "name": "AgentListPanel",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx",
+      "requirements": ["2.1", "2.2", "2.4"]
+    },
+    {
+      "name": "AgentLogPanel",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx",
+      "requirements": ["2.1", "2.2", "2.3"]
+    },
+    {
+      "name": "AgentInputPanel",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx",
+      "requirements": ["2.1", "2.2"]
+    },
+    {
+      "name": "ProjectAgentPanel",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx",
+      "requirements": ["2.1", "2.2"]
+    },
+    {
+      "name": "SpecList",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/SpecList.tsx",
+      "requirements": ["5.2"]
+    },
+    {
+      "name": "AgentInfo type",
+      "type": "type",
+      "path": "electron-sdd-manager/src/shared/api/types.ts",
+      "requirements": ["3.1", "3.2", "3.3", "3.5"]
+    },
+    {
+      "name": "stores/index.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/index.ts",
+      "requirements": ["3.5"]
+    },
+    {
+      "name": "specStoreFacade",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/spec/specStoreFacade.ts",
+      "requirements": ["2.1", "2.2"]
+    },
+    {
+      "name": "projectStore",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/projectStore.ts",
+      "requirements": ["3.5"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "AgentListPanel",
+      "target": "useSharedAgentStore",
+      "type": "import"
+    },
+    {
+      "source": "AgentLogPanel",
+      "target": "useSharedAgentStore",
+      "type": "import"
+    },
+    {
+      "source": "AgentInputPanel",
+      "target": "useSharedAgentStore",
+      "type": "import"
+    },
+    {
+      "source": "ProjectAgentPanel",
+      "target": "useSharedAgentStore",
+      "type": "import"
+    },
+    {
+      "source": "SpecList",
+      "target": "useRunningAgentCount",
+      "type": "import"
+    },
+    {
+      "source": "useAgentStore (facade)",
+      "target": "agentStoreAdapter",
+      "type": "call"
+    },
+    {
+      "source": "useAgentStore (facade)",
+      "target": "useSharedAgentStore",
+      "type": "call"
+    },
+    {
+      "source": "specStoreFacade",
+      "target": "useSharedAgentStore",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/shared/stores/agentStore.ts",
+      "action": "UPDATE",
+      "reason": "skipPermissionsフィールド、setSkipPermissions()、getRunningAgentCount()追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/agentStore.ts",
+      "action": "UPDATE",
+      "reason": "状態フィールド削除、subscribe-and-sync削除、変換関数削除、AgentInfo型export変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/agentStoreAdapter.ts",
+      "action": "UPDATE",
+      "reason": "toSharedAgentInfo()/RendererAgentInfo型の削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/index.ts",
+      "action": "UPDATE",
+      "reason": "AgentInfo型re-exportの変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/AgentListPanel.tsx",
+      "action": "UPDATE",
+      "reason": "状態読み取りをuseSharedAgentStoreに変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/AgentLogPanel.tsx",
+      "action": "UPDATE",
+      "reason": "状態読み取りをuseSharedAgentStoreに変更、ログ読み取り移行"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/AgentInputPanel.tsx",
+      "action": "UPDATE",
+      "reason": "状態読み取りをuseSharedAgentStoreに変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/ProjectAgentPanel.tsx",
+      "action": "UPDATE",
+      "reason": "状態読み取りをuseSharedAgentStoreに変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/SpecList.tsx",
+      "action": "UPDATE",
+      "reason": "useRunningAgentCountフックに変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/spec/specStoreFacade.ts",
+      "action": "UPDATE",
+      "reason": "useAgentStoreからの状態読み取り・subscribeをSSOTに変更"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/projectStore.ts",
+      "action": "UPDATE",
+      "reason": "AgentInfo型import元の変更"
+    }
+  ]
+}

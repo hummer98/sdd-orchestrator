@@ -129,6 +129,14 @@ describe('Ask Agent Dialog E2E', () => {
     });
 
     it('Dialog has execute button', async () => {
+      if (!(await isAskDialogVisible())) {
+        await browser.execute(() => {
+          const btn = document.querySelector('[data-testid="spec-ask-button"]') as HTMLElement;
+          if (btn) btn.click();
+        });
+        await browser.pause(300);
+      }
+
       const exists = await browser.execute(() => {
         return !!document.querySelector('[data-testid="ask-execute-button"]');
       });
@@ -151,6 +159,14 @@ describe('Ask Agent Dialog E2E', () => {
     });
 
     it('Execute button is disabled when prompt is empty', async () => {
+      if (!(await isAskDialogVisible())) {
+        await browser.execute(() => {
+          const btn = document.querySelector('[data-testid="spec-ask-button"]') as HTMLElement;
+          if (btn) btn.click();
+        });
+        await browser.pause(300);
+      }
+
       const isDisabled = await browser.execute(() => {
         const btn = document.querySelector('[data-testid="ask-execute-button"]') as HTMLButtonElement;
         return btn ? btn.disabled : false;

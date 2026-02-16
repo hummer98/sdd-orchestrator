@@ -100,6 +100,7 @@ describe('Tool Path Settings E2E', () => {
     it('Clicking Tools tab shows tool settings panel', async () => {
       if (!(await isRemoteAccessDialogVisible())) {
         await openRemoteAccessDialog();
+        await browser.pause(300);
       }
 
       await switchToToolsTab();
@@ -121,6 +122,11 @@ describe('Tool Path Settings E2E', () => {
     });
 
     it('At least one tool row is displayed', async () => {
+      if (!(await isRemoteAccessDialogVisible())) {
+        await openRemoteAccessDialog();
+        await switchToToolsTab();
+      }
+
       // Wait for loading to complete
       await browser.waitUntil(async () => {
         const loading = await browser.execute(() => {
@@ -135,9 +141,14 @@ describe('Tool Path Settings E2E', () => {
       expect(toolRowCount).toBeGreaterThan(0);
     });
 
-    it('Git tool row exists', async () => {
+    it('Claude tool row exists', async () => {
+      if (!(await isRemoteAccessDialogVisible())) {
+        await openRemoteAccessDialog();
+        await switchToToolsTab();
+      }
+
       const exists = await browser.execute(() => {
-        return !!document.querySelector('[data-testid="tool-row-git"]');
+        return !!document.querySelector('[data-testid="tool-row-claude"]');
       });
       expect(exists).toBe(true);
     });

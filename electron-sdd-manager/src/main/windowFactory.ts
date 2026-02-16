@@ -87,8 +87,16 @@ export function createWindow(): void {
       2: (msg, meta) => logger.warn(msg, meta),
       3: (msg, meta) => logger.error(msg, meta),
     };
+    // Noise patterns: HMR, Vite dev server, React DevTools messages
+    const noisePatterns = [
+      /^\[HMR\]/,
+      /^\[vite\]/,
+      /^Download the React DevTools/,
+    ];
     mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
       try {
+        // Filter out dev-tooling noise from log files
+        if (noisePatterns.some((p) => p.test(message))) return;
         const source = sourceId ? sourceId.split('/').pop() : '';
         const logMethod = logMethods[level] ?? logMethods[1];
         logMethod(`[Renderer Console] ${message}`, { line, source });

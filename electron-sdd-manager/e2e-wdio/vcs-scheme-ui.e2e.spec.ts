@@ -149,6 +149,21 @@ describe('VCS Scheme UI E2E', () => {
     });
 
     it('Jujutsu option exists', async () => {
+      if (!(await isSettingsDialogVisible())) {
+        await openSettingsDialog();
+      }
+      // Ensure dropdown is open
+      const isOpen = await browser.execute(() => {
+        return !!document.querySelector('[data-testid="vcs-scheme-dropdown"]');
+      });
+      if (!isOpen) {
+        await browser.execute(() => {
+          const btn = document.querySelector('[data-testid="vcs-scheme-selector-button"]') as HTMLElement;
+          if (btn) btn.click();
+        });
+        await browser.pause(300);
+      }
+
       const exists = await browser.execute(() => {
         return !!document.querySelector('[data-testid="vcs-scheme-option-jj"]');
       });
@@ -167,6 +182,10 @@ describe('VCS Scheme UI E2E', () => {
     });
 
     it('Selecting Git option closes dropdown', async () => {
+      if (!(await isSettingsDialogVisible())) {
+        await openSettingsDialog();
+      }
+
       // Open dropdown
       await browser.execute(() => {
         const btn = document.querySelector('[data-testid="vcs-scheme-selector-button"]') as HTMLElement;

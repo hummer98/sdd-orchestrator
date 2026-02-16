@@ -131,6 +131,11 @@ describe('MCP Server Settings E2E', () => {
     });
 
     it('Switching to MCP tab shows MCP panel', async () => {
+      if (!(await isRemoteAccessDialogVisible())) {
+        await openRemoteAccessDialog();
+        await browser.pause(300);
+      }
+
       await switchRemoteAccessTab('mcp');
 
       const panelVisible = await browser.execute(() => {
@@ -153,6 +158,12 @@ describe('MCP Server Settings E2E', () => {
     });
 
     it('MCP panel contains enable checkbox', async () => {
+      if (!(await isRemoteAccessDialogVisible())) {
+        await openRemoteAccessDialog();
+        await browser.pause(300);
+        await switchRemoteAccessTab('mcp');
+      }
+
       const hasCheckbox = await browser.execute(() => {
         const panel = document.getElementById('tabpanel-mcp');
         if (!panel) return false;
@@ -162,6 +173,12 @@ describe('MCP Server Settings E2E', () => {
     });
 
     it('MCP panel contains port input', async () => {
+      if (!(await isRemoteAccessDialogVisible())) {
+        await openRemoteAccessDialog();
+        await browser.pause(300);
+        await switchRemoteAccessTab('mcp');
+      }
+
       const hasPortInput = await browser.execute(() => {
         return !!document.getElementById('mcp-port-input');
       });

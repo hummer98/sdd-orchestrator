@@ -136,6 +136,9 @@ describe('Project Settings Dialog E2E', () => {
     });
 
     it('Phase-specific engine selectors are displayed', async () => {
+      if (!(await isSettingsDialogVisible())) {
+        await openProjectSettingsDialog();
+      }
       const selectors = await browser.execute(() => {
         return {
           generation: !!document.querySelector('[data-testid="generation-engine-select"]'),
@@ -168,6 +171,9 @@ describe('Project Settings Dialog E2E', () => {
     });
 
     it('VCS scheme selector button is clickable', async () => {
+      if (!(await isSettingsDialogVisible())) {
+        await openProjectSettingsDialog();
+      }
       const exists = await browser.execute(() => {
         return !!document.querySelector('[data-testid="vcs-scheme-selector-button"]');
       });
@@ -193,6 +199,9 @@ describe('Project Settings Dialog E2E', () => {
     });
 
     it('Dialog contains document review section text', async () => {
+      if (!(await isSettingsDialogVisible())) {
+        await openProjectSettingsDialog();
+      }
       const text = await browser.execute(() => {
         return document.body.textContent || '';
       });

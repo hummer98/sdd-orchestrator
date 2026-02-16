@@ -20,14 +20,21 @@ import { ensureProjectSelected, waitForProjectUIReady, dismissDialogs } from './
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 
 /**
- * Helper: Open CLI Install dialog via Electron menu
+ * Helper: Open CLI Install dialog via Electron menu click
+ * Menu click triggers eventBus.emit → tRPC subscription → React state update
  */
 async function openCliInstallDialog(): Promise<void> {
   await browser.electron.execute((electron) => {
-    const windows = electron.BrowserWindow.getAllWindows();
-    if (windows.length > 0) {
-      // Trigger via IPC (menu sends this event)
-      windows[0].webContents.send('menu-cli-install');
+    const menu = electron.Menu.getApplicationMenu();
+    if (!menu) return;
+    for (const topItem of menu.items) {
+      if (!topItem.submenu) continue;
+      for (const item of topItem.submenu.items) {
+        if (item.label?.includes('CLIコマンドをインストール')) {
+          item.click(item as any, electron.BrowserWindow.getFocusedWindow() ?? undefined, {} as any);
+          return;
+        }
+      }
     }
   });
   await browser.pause(500);
@@ -105,6 +112,9 @@ describe('CLI Install Dialog E2E', () => {
     });
 
     it('System location option exists', async () => {
+      if (!(await isCliInstallDialogVisible())) {
+        await openCliInstallDialog();
+      }
       const exists = await browser.execute(() => {
         return !!document.querySelector('[data-testid="cli-install-location-system"]');
       });
@@ -130,6 +140,9 @@ describe('CLI Install Dialog E2E', () => {
     });
 
     it('Close button exists', async () => {
+      if (!(await isCliInstallDialogVisible())) {
+        await openCliInstallDialog();
+      }
       const exists = await browser.execute(() => {
         return !!document.querySelector('[data-testid="cli-install-close-button"]');
       });

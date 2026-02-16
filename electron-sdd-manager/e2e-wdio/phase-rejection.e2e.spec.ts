@@ -169,6 +169,11 @@ describe('Phase Rejection E2E', () => {
     });
 
     it('Dialog title contains phase name', async () => {
+      if (!(await isRejectDialogVisible())) {
+        await clickRejectButton();
+        await browser.pause(300);
+      }
+
       const dialogText = await browser.execute(() => {
         const body = document.body.textContent || '';
         return body;
@@ -178,6 +183,11 @@ describe('Phase Rejection E2E', () => {
     });
 
     it('Submit without reason shows validation error', async () => {
+      if (!(await isRejectDialogVisible())) {
+        await clickRejectButton();
+        await browser.pause(300);
+      }
+
       // Click the reject/confirm button without entering a reason
       await browser.execute(() => {
         const textarea = document.getElementById('reject-reason');
@@ -214,6 +224,11 @@ describe('Phase Rejection E2E', () => {
     });
 
     it('Cancel button closes RejectDialog', async () => {
+      if (!(await isRejectDialogVisible())) {
+        await clickRejectButton();
+        await browser.pause(300);
+      }
+
       await closeRejectDialog();
 
       const isVisible = await isRejectDialogVisible();
@@ -231,6 +246,11 @@ describe('Phase Rejection E2E', () => {
     });
 
     it('Entering reason and submitting closes dialog', async () => {
+      if (!(await isRejectDialogVisible())) {
+        await clickRejectButton();
+        await browser.pause(300);
+      }
+
       // Type reason into textarea
       await browser.execute(() => {
         const textarea = document.getElementById('reject-reason') as HTMLTextAreaElement;

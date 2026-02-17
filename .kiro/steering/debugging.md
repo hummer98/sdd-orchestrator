@@ -18,6 +18,7 @@
 | ログ種別 | 開発環境 | 本番環境 (macOS) |
 |----------|----------|------------------|
 | グローバルログ | `{開いているプロジェクト}/logs/main.log` ※ | `~/Library/Logs/sdd-orchestrator/main.log` |
+| **クラッシュログ** | `{開いているプロジェクト}/logs/crash.log` ※ | `~/Library/Logs/sdd-orchestrator/crash.log` |
 | **E2Eテストログ** | `{開いているプロジェクト}/logs/main-e2e.log` ※ | `~/Library/Logs/sdd-orchestrator/main-e2e.log` |
 | **プロジェクトログ** | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
 | アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
@@ -27,6 +28,8 @@
 ※ **開発環境での注意**: Viteバンドル後の`__dirname`解決により、グローバルログは`electron-sdd-manager/logs/`ではなく、**開いているプロジェクトのルートの`logs/`ディレクトリ**に出力される。プロジェクトを開いている場合は、プロジェクトログ（`.kiro/logs/main.log`）を参照するのが確実。
 
 **E2Eテストログの分離**: `--e2e-test` フラグで起動されたインスタンスは `main-e2e.log` に出力されるため、通常のアプリインスタンスのログと混在しない。
+
+**クラッシュログ**: `dialog.showErrorBox`・`uncaughtException`・`unhandledRejection` が発生した場合に `crash.log` に記録される。`main.log` より先に確認すべきファイル。非インタラクティブモード（`--e2e-test` / `SDD_NON_INTERACTIVE=1`）ではダイアログ表示をスキップし、ログのみ記録する。
 
 ### プロジェクト別ログ（project-log-separation機能）
 

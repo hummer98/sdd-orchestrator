@@ -30,6 +30,8 @@ import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 import { createWindow, getMainWindow } from './windowFactory';
 // Entry point must have zero exports — testable cleanup logic lives in appLifecycle.ts
 import { cleanupOnQuit } from './appLifecycle';
+// Crash reporter: logs errors to fixed-path crash.log and intercepts dialog.showErrorBox
+import { initCrashReporter, writeCrashLog } from './services/crashReporter';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -55,6 +57,12 @@ if (process.stderr) {
   });
 }
 
+// Initialize crash reporter as early as possible.
+// Detects non-interactive mode (E2E, background) to skip blocking dialogs.
+// Also intercepts dialog.showErrorBox to always log errors to crash.log.
+const isNonInteractive = process.argv.includes('--e2e-test') || !!process.env.SDD_NON_INTERACTIVE;
+initCrashReporter(isNonInteractive);
+
 // Handle uncaught exceptions gracefully
 // EIO errors on stdout/stderr are common in packaged Electron apps
 // when the console is unavailable or closed
@@ -66,10 +74,16 @@ process.on('uncaughtException', (error: Error) => {
     return;
   }
 
-  // For other uncaught exceptions, log and show error dialog
+  // Write to crash log (always works, independent of project logger)
+  writeCrashLog('Uncaught Exception', `${error.message}\n${error.stack ?? '(no stack)'}`);
+
+  // Also log via project logger
   logger.error('[main] Uncaught exception', { error: error.message, stack: error.stack });
 
   // Show error dialog to user (only if app is ready)
+  // Note: dialog.showErrorBox is intercepted by crashReporter:
+  // - Always logs to crash.log before showing
+  // - Skips dialog in non-interactive mode (E2E, background)
   if (app.isReady()) {
     dialog.showErrorBox(
       'Unexpected Error',
@@ -83,6 +97,7 @@ process.on('uncaughtException', (error: Error) => {
 process.on('unhandledRejection', (reason: unknown) => {
   const message = reason instanceof Error ? reason.message : String(reason);
   const stack = reason instanceof Error ? reason.stack : undefined;
+  writeCrashLog('Unhandled Rejection', `${message}\n${stack ?? '(no stack)'}`);
   logger.error('[main] Unhandled promise rejection', { reason: message, stack });
 });
 

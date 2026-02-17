@@ -97,6 +97,8 @@ export function AgentLogActionArea({
     try {
       await apiClient.sendAgentInput(agent.agentId, instructionInput.trim());
       setInstructionInput(''); // Clear input after successful send
+    } catch {
+      // Keep input text on failure so the user can retry
     } finally {
       setIsSending(false);
     }

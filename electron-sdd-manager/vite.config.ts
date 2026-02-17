@@ -27,13 +27,18 @@ export default defineConfig({
           },
           build: {
             outDir: 'dist/main',
+            // Preserve require() inside try/catch so that ssh2's native
+            // addon fallback (cpu-features, sshcrypto.node) works at runtime.
+            commonjsOptions: {
+              ignoreTryCatch: true,
+            },
             rollupOptions: {
-              // ssh2 and its optional native addon deps (cpu-features, buildcheck)
-              // must not be bundled. Bundling inlines their code and loses the
-              // try/catch fallback for missing .node binaries, causing a hard crash
-              // on platforms where the addon failed to compile.
+              // Only electron (provided by runtime) and native .node addons
+              // (binary files Rollup cannot process) are kept external.
+              // All npm packages (zod, ssh2, etc.) are bundled so that
+              // electron-builder's `!node_modules/**/*` exclusion works.
               external: (id) =>
-                ['electron', 'zod', 'ssh2'].includes(id) || /\.node($|\?)/.test(id),
+                id === 'electron' || /\.node($|\?)/.test(id),
               // vite-plugin-electron uses build.lib mode, which makes Vite set
               // preserveEntrySignatures: 'strict'. With 'strict', Rollup creates
               // a facade (shim) when the chunk needs internal exports even if the

@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## [0.72.0] - 2026-02-16
+
+### Added
+- Agent Facadeのアクション専用化 (agent-facade-action-only)
+- 自動実行フェーズのSSOT化 (auto-exec-phase-ssot)
+- Zustandセレクター最適化 (zustand-selector-optimization)
+- リモートスモークテストの実装
+- E2EShimにtRPCメソッド追加とwindow.__TRPC__公開
+- IPCLink Singleton統一化
+- vitest環境をjsdomからhappy-domへ移行
+- tRPC本番サービス配線の完全実装
+- 起動時プロジェクト選択レースコンディション修正
+- ドキュメントレビュー完了判定のSSOT化
+- tRPCフルマイグレーション
+
+### Fixed
+- Remote E2E失敗テスト7件を修正 + Rendererノイズフィルタ実装
+- pendingテスト45件を修正（Worker OOM/ハング/クラッシュ）
+- ソースコード変更に追従していない143件のユニットテスト失敗を修正
+- リモートビルド時のネイティブアドオン(.node)によるクラッシュを修正
+- 破損JSONによるUnhandled promise rejectionでクラッシュする問題を修正
+- ipcLink多重生成によるrequestIdコリジョンを解消
+- CLIからの多重起動を防止（open -a + requestSingleInstanceLock）
+- プロジェクト選択時にエンティティウォッチャーが起動しない問題を修正
+- bugStoreをtRPC対応に移行しElectronのBugsタブクラッシュを修正
+- SpecListItem DOM構造を1層化しE2E選択スタイル問題を修正
+- Mermaid図にneutralテーマを適用しダーク/ライト両対応
+- Worktree rebase/変換時のspec名解決漏れを修正
+- E2Eテスト基盤改善多数
+
+### Changed
+- Main process循環依存解消とService層DI改善
+- barrel export解体とvitest 3.1.4で20分→47秒に高速化
+- YAGNI/Dead Code分類の曖昧さを解消しデッドコード検出を強化
+- E2Eテスト全体をUI操作ベースに刷新
+
 ## [0.71.0] - 2026-02-06
 
 ### Added

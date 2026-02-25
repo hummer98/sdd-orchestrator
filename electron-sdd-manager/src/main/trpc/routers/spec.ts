@@ -454,21 +454,23 @@ export const specRouter = router({
 
   /**
    * Execute ask-spec.
+   * Uses startAgent directly with phase: 'ask' to allow concurrent execution.
    */
   executeAskSpec: publicProcedure
     .input(z.object({ specId: z.string(), featureName: z.string(), question: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const service = ctx.services.getSpecManagerService();
-      const result = await service.execute({
-        type: 'tasks', // Fixed type: 'ask-spec' is not in ExecuteOptions union, using tasks as placeholder
+      const command = `/kiro:spec-ask ${input.featureName} "${input.question}"`;
+      const result = await service.startAgent({
         specId: input.specId,
-        featureName: input.featureName,
-        commandPrefix: 'kiro',
-      } as any); // Use any for non-standard execute options if needed, but better align with actual types
+        phase: 'ask',
+        args: [command],
+        engineId: 'claude',
+      });
       if (!result.ok) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: `Execute failed: ${result.error.type}`,
+          message: `executeAskSpec failed: ${result.error.type}`,
         });
       }
       return result.value;
@@ -657,7 +659,7 @@ export const specRouter = router({
       const service = ctx.services.getSpecManagerService();
       const result = await service.startAgent({
         specId: input.specId,
-        phase: 'project-command',
+        phase: input.title,
         args: [input.command],
         group: 'project' as any, // Fixed: bypass enum check for now
         engineId: 'claude',

@@ -561,12 +561,12 @@ describe('Spec Router (spec.ts)', () => {
   // ============================================================
 
   describe('executeAskSpec', () => {
-    it('should execute ask-spec via specManagerService.execute', async () => {
-      const mockExecute = vi.fn().mockResolvedValue({
+    it('should execute ask-spec via specManagerService.startAgent with phase ask', async () => {
+      const mockStartAgent = vi.fn().mockResolvedValue({
         ok: true,
         value: { agentId: 'agent-040' },
       });
-      const mockSpecManager = { execute: mockExecute };
+      const mockSpecManager = { startAgent: mockStartAgent };
 
       const caller = createTestCaller({
         getSpecManagerService: vi.fn().mockReturnValue(mockSpecManager),
@@ -579,11 +579,12 @@ describe('Spec Router (spec.ts)', () => {
       });
 
       expect(result).toEqual({ agentId: 'agent-040' });
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockStartAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: 'my-spec',
-          featureName: 'my-feature',
-          commandPrefix: 'kiro',
+          phase: 'ask',
+          args: ['/kiro:spec-ask my-feature "What is the status?"'],
+          engineId: 'claude',
         }),
       );
     });
@@ -825,7 +826,7 @@ describe('Spec Router (spec.ts)', () => {
       expect(mockStartAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: '',
-          phase: 'project-command',
+          phase: 'Steering',
           args: ['/kiro:steering'],
           group: 'project',
           engineId: 'claude',

@@ -114,10 +114,6 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
     const runningAgent = filteredAgents.find(a => a.status === 'running');
     if (runningAgent) {
       selectAgent(runningAgent.agentId);
-    } else if (filteredAgents.length === 0) {
-      // Clear selection when moving to a spec with no agents
-      // This prevents stale agent logs from previous spec being displayed
-      selectAgent(null);
     }
   }, [specId, selectedAgentId, filteredAgents, getAgentById, selectAgent]);
 

@@ -362,7 +362,9 @@ describe('AgentListPanel - Task 30', () => {
       expect(mockSelectAgent).not.toHaveBeenCalled();
     });
 
-    it('should clear selection when no agents exist for the spec', () => {
+    it('should NOT call selectAgent(null) when no agents exist for the spec', () => {
+      // Bug fix: selectAgent(null) caused race condition with agentStore.setupEventListeners.
+      // Agent selection clearing is handled by autoSelectAgentForSpec (SSOT).
       mockUseAgentsBySpec.mockReturnValue([]);
       mockAgentStoreState({
         selectedAgentId: null,
@@ -377,8 +379,40 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel specId="spec-1" />);
 
-      // Should clear selection (call selectAgent(null)) when moving to a spec with no agents
-      expect(mockSelectAgent).toHaveBeenCalledWith(null);
+      // Should NOT call selectAgent at all — no running agent, no selection to make
+      expect(mockSelectAgent).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call selectAgent(null) during empty-to-populated transition (race condition guard)', () => {
+      // Simulates the race: filteredAgents is initially empty (loadAgents pending),
+      // then becomes populated. selectAgent(null) must not fire during the empty phase.
+      mockUseAgentsBySpec.mockReturnValue([]);
+      mockAgentStoreState({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map(),
+      });
+
+      const { rerender } = render(<AgentListPanel specId="spec-1" />);
+
+      // Phase 1: empty agents — should NOT call selectAgent(null)
+      expect(mockSelectAgent).not.toHaveBeenCalled();
+
+      // Phase 2: loadAgents completes, agents appear
+      const runningAgent = { ...baseAgentInfo, agentId: 'agent-new', status: 'running' as const };
+      mockUseAgentsBySpec.mockReturnValue([runningAgent]);
+      mockGetAgentById.mockImplementation((id: string) => id === 'agent-new' ? runningAgent : undefined);
+
+      rerender(<AgentListPanel specId="spec-1" />);
+
+      // Should select the running agent, not null
+      expect(mockSelectAgent).toHaveBeenCalledWith('agent-new');
+      expect(mockSelectAgent).not.toHaveBeenCalledWith(null);
     });
 
     it('should only auto-select running agent even when completed agents exist', () => {

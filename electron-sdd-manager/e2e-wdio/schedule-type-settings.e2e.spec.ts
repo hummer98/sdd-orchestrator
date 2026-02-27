@@ -79,6 +79,24 @@ describe('Schedule Type Settings E2E', () => {
 
     await selectSpecViaUI(SPEC_NAME);
     await waitForSpecDetailReady(SPEC_NAME, 15000);
+
+    // Open schedule task dialog (shows task list first)
+    const timerBtn = await $('[data-testid="schedule-task-button"]');
+    await timerBtn.waitForExist({ timeout: 5000 });
+    await timerBtn.click();
+    await browser.pause(500);
+
+    // Click "タスク追加" to navigate to edit page (ScheduleTypeSelector is in the edit page)
+    await browser.execute(() => {
+      const buttons = document.querySelectorAll('button');
+      for (const btn of buttons) {
+        if (btn.textContent?.includes('タスク追加')) {
+          btn.click();
+          return;
+        }
+      }
+    });
+    await browser.pause(500);
   });
 
   // ============================================================

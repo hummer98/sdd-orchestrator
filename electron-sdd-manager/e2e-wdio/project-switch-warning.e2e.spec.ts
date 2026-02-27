@@ -96,19 +96,17 @@ async function closeProjectSwitchConfirmDialog(): Promise<void> {
  */
 async function isProjectSwitchDialogVisible(): Promise<boolean> {
   return browser.execute(() => {
-    // Look for the dialog by its unique text content
-    const elements = document.querySelectorAll('h4');
-    for (const el of elements) {
-      // The dialog title includes agent count info
-      if (el.textContent?.includes('実行中のエージェント') ||
-          el.textContent?.includes('running agent')) {
+    // Look for the dialog by its unique text content (h2 + English text)
+    const headings = document.querySelectorAll('h2');
+    for (const el of headings) {
+      if (el.textContent?.includes('Switch Project')) {
         return true;
       }
     }
     // Also check for the confirm button text
     const buttons = document.querySelectorAll('button');
     for (const btn of buttons) {
-      if (btn.textContent?.includes('停止して続行')) {
+      if (btn.textContent?.includes('Stop Agents & Continue')) {
         return true;
       }
     }
@@ -180,11 +178,11 @@ describe('Project Switch Warning E2E', () => {
     it('Cancel button closes the dialog', async () => {
       await openProjectSwitchConfirmDialog(1, '/tmp/other-project');
 
-      // Click Cancel button (text: "キャンセル" or the X button)
+      // Click Cancel button
       await browser.execute(() => {
         const buttons = document.querySelectorAll('button');
         for (const btn of buttons) {
-          if (btn.textContent?.trim() === 'キャンセル') {
+          if (btn.textContent?.trim() === 'Cancel') {
             btn.click();
             return;
           }
@@ -204,11 +202,11 @@ describe('Project Switch Warning E2E', () => {
     it('Confirm button closes the dialog', async () => {
       await openProjectSwitchConfirmDialog(1, '/tmp/other-project');
 
-      // Click confirm button (text: "停止して続行")
+      // Click confirm button (text: "Stop Agents & Continue")
       await browser.execute(() => {
         const buttons = document.querySelectorAll('button');
         for (const btn of buttons) {
-          if (btn.textContent?.includes('停止して続行')) {
+          if (btn.textContent?.includes('Stop Agents & Continue')) {
             btn.click();
             return;
           }

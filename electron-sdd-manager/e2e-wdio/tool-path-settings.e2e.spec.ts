@@ -170,8 +170,8 @@ describe('Tool Path Settings E2E', () => {
         const panel = document.getElementById('tabpanel-tools');
         return panel ? panel.textContent || '' : '';
       });
-      // Should contain tool names and status text
-      expect(panelText).toContain('git');
+      // Should contain tool names and status text (TOOL_DEFINITIONS: claude, jj, jq)
+      expect(panelText).toContain('claude');
     });
   });
 

@@ -61,6 +61,18 @@ async function dismissOverlays(): Promise<void> {
 }
 
 /**
+ * Helper: Dismiss toast notifications that may block clicks
+ */
+async function dismissToasts(): Promise<void> {
+  await browser.execute(() => {
+    document.querySelectorAll('[role="alert"]').forEach(el => {
+      (el as HTMLElement).remove();
+    });
+  });
+  await browser.pause(200);
+}
+
+/**
  * Helper: Click a tab by data-testid via DOM
  */
 async function clickTab(testId: string): Promise<void> {
@@ -230,12 +242,24 @@ describe('Project File Editing E2E', () => {
   describe('UJ-002: Steering file editing (UC5.2)', () => {
     before(async () => {
       await navigateToProjectTab();
+      // Wait for Steering Files section to load (catch ContextId timeouts to allow retry)
+      await browser.waitUntil(async () => {
+        try {
+          return await browser.execute(() => {
+            const fileList = document.querySelector('[data-testid="project-file-list"]');
+            return fileList?.textContent?.includes('Steering Files') ?? false;
+          });
+        } catch {
+          return false;
+        }
+      }, { timeout: 15000, interval: 1000, timeoutMsg: 'Steering Files section not loaded' });
     });
 
     it('Project file list shows Steering Files section', async () => {
       const fileList = await $('[data-testid="project-file-list"]');
       const text = await fileList.getText();
-      expect(text).toContain('Steering Files');
+      // SectionHeader uses CSS uppercase, so getText() returns "STEERING FILES"
+      expect(text.toUpperCase()).toContain('STEERING FILES');
     });
 
     it('Steering section lists available files', async () => {
@@ -269,6 +293,7 @@ describe('Project File Editing E2E', () => {
   // ============================================================
   describe('UJ-003: Edit/Preview mode toggle', () => {
     before(async () => {
+      await dismissToasts();
       await navigateToProjectTab();
       await clickFileByName('CLAUDE.md');
       // Wait for editor to load
@@ -309,6 +334,7 @@ describe('Project File Editing E2E', () => {
   // ============================================================
   describe('UJ-004: Content modification and save', () => {
     before(async () => {
+      await dismissToasts();
       await navigateToProjectTab();
       await clickFileByName('CLAUDE.md');
       const editor = await $('[data-testid="project-file-editor"]');
@@ -376,6 +402,7 @@ describe('Project File Editing E2E', () => {
   // ============================================================
   describe('UJ-005: Cmd+S keyboard shortcut save', () => {
     before(async () => {
+      await dismissToasts();
       await navigateToProjectTab();
       await clickFileByName('product.md');
       const editor = await $('[data-testid="project-file-editor"]');

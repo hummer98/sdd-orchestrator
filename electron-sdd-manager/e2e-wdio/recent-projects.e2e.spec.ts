@@ -22,13 +22,12 @@ const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
  * Helper: Navigate to ProjectSelectionView by deselecting project
  */
 async function navigateToProjectSelection(): Promise<void> {
-  // Use store to clear selected project path
+  // Use store to clear current project (state key is `currentProject`)
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.project?.setState) return;
     stores.project.setState({
-      selectedProjectPath: null,
-      specList: [],
+      currentProject: null,
     });
   });
   await browser.pause(500);

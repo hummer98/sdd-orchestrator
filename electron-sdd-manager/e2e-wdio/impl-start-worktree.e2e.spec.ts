@@ -177,11 +177,37 @@ function deleteBranch(branch: string): boolean {
   }
 }
 
+/**
+ * Helper: Initialize fixture as git repo if not already
+ */
+function ensureGitRepo(): void {
+  try {
+    execSync('git rev-parse --git-dir', { cwd: FIXTURE_PROJECT_PATH, stdio: 'ignore' });
+  } catch {
+    execSync('git init && git add -A && git commit --allow-empty -m "initial"', {
+      cwd: FIXTURE_PROJECT_PATH,
+      stdio: 'ignore',
+    });
+  }
+}
+
+/**
+ * Helper: Remove .git from fixture (cleanup)
+ */
+function removeGitRepo(): void {
+  const gitDir = path.join(FIXTURE_PROJECT_PATH, '.git');
+  if (fs.existsSync(gitDir)) {
+    fs.rmSync(gitDir, { recursive: true, force: true });
+  }
+}
+
 describe('Impl Start Worktree E2E', () => {
   // ============================================================
   // Test Setup
   // ============================================================
   before(async () => {
+    // Initialize fixture as git repo (required for branch operations)
+    ensureGitRepo();
     // Ensure we're on main branch before tests
     checkoutBranch('main') || checkoutBranch('master');
   });
@@ -190,6 +216,8 @@ describe('Impl Start Worktree E2E', () => {
     // Clean up test spec and return to main branch
     cleanupTestSpec(WORKTREE_SPEC_NAME);
     checkoutBranch('main') || checkoutBranch('master');
+    // Remove .git from fixture to avoid nested repo issues
+    removeGitRepo();
   });
 
   beforeEach(async () => {

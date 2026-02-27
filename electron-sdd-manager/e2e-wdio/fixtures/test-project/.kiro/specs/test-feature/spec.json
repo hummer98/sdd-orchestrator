@@ -1,7 +1,7 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2E\u30c6\u30b9\u30c8\u7528\u306e\u30c6\u30b9\u30c8\u6a5f\u80fd",
+  "description": "E2Eテスト用のテスト機能",
   "phase": "requirements-generated",
   "language": "ja",
   "approvals": {
@@ -374,8 +374,16 @@
       {
         "roundNumber": 88,
         "status": "review_complete"
+      },
+      {
+        "roundNumber": 89,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 90,
+        "status": "review_complete"
       }
     ]
   },
-  "updated_at": "2026-02-11T04:06:14.278955Z"
+  "updated_at": "2026-02-26T06:38:06.435Z"
 }

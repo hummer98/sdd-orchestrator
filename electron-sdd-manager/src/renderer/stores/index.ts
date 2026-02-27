@@ -7,6 +7,7 @@ import { useSpecStore } from './specStore';
 import { useEditorStore } from './editorStore';
 import { useNotificationStore } from './notificationStore';
 import { useAgentStore } from './agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import { useWorkflowStore } from './workflowStore';
 import { useRemoteAccessStore } from './remoteAccessStore';
 import { useConnectionStore } from './connectionStore';
@@ -96,7 +97,10 @@ export { useGitViewStore } from './gitViewStore';
     subscribe: useNotificationStore.subscribe,
   },
   agent: {
-    getState: () => useAgentStore.getState(),
+    getState: () => ({
+      ...useSharedAgentStore.getState(),  // state from SSOT
+      ...useAgentStore.getState(),         // actions from facade
+    }),
     setState: (state: Parameters<typeof useAgentStore.setState>[0]) => useAgentStore.setState(state),
     subscribe: useAgentStore.subscribe,
   },

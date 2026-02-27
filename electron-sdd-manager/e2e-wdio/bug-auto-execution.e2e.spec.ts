@@ -231,12 +231,7 @@ async function clearAgentStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (stores?.agent?.getState) {
-      const state = stores.agent.getState();
-      state.agents.forEach((agents: any[], specId: string) => {
-        agents.forEach((agent: any) => {
-          state.removeAgent(agent.agentId);
-        });
-      });
+      stores.agent.getState().clearAllAgents();
     }
   });
 }

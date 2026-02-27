@@ -155,6 +155,8 @@ interface AgentActions {
   // zustand-agent-selector-hooks: getProjectAgents REMOVED (use useProjectAgents hook)
   /** Find agent by ID (pure function for selectors) */
   findAgentById: (agentId: string | null) => SharedAgentInfo | undefined;
+  /** E2E/test用: 全agentをクリア */
+  clearAllAgents: () => Promise<void>;
   /** Clear error */
   clearError: () => void;
   /** Select for project agents panel */
@@ -453,6 +455,17 @@ export const useAgentStore = create<AgentActions>()(
     findAgentById: (agentId: string | null) => {
       if (!agentId) return undefined;
       return get().getAgentById(agentId);
+    },
+
+    clearAllAgents: async () => {
+      const sharedState = useSharedAgentStore.getState();
+      const agentIds: string[] = [];
+      sharedState.agents.forEach((agentList) => {
+        agentList.forEach((a) => agentIds.push(a.agentId));
+      });
+      for (const id of agentIds) {
+        await get().removeAgent(id);
+      }
     },
 
     clearError: () => {

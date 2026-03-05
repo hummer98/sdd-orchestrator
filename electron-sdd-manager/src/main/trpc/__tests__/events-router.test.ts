@@ -1158,7 +1158,8 @@ describe('統合テスト - ファイルイベント配信', () => {
     const bus = createEventBus();
     const testRouter = router({ events: eventsRouter });
     const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
+    // multi-window-integration: provide matching projectPath for window-based filtering
+    const ctx = createContext({ eventBus: bus, getCurrentProjectPath: () => '/project' });
 
     const payload = {
       projectPath: '/project',

@@ -32,6 +32,9 @@ import {
   validateProjectPath,
 } from './projectUtils';
 
+// multi-window-integration Task 6.1: WindowManager for per-window project registration
+import { getWindowManager } from '../../services/windowManager';
+
 // State Management
 import {
   getSpecManagerService,
@@ -126,8 +129,8 @@ export function validateProjectCommandParams(
 // Project Selection
 // ============================================================
 
-export async function selectProject(projectPath: string): Promise<SelectProjectResult> {
-  logger.info('[projectSetup] selectProject called', { projectPath });
+export async function selectProject(projectPath: string, windowId?: number): Promise<SelectProjectResult> {
+  logger.info('[projectSetup] selectProject called', { projectPath, windowId });
 
   if (isProjectSelectionInProgress()) {
     logger.warn('[projectSetup] selectProject blocked - selection already in progress', { projectPath });
@@ -140,7 +143,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
   }
 
   setProjectSelectionLock(true);
-  logger.debug('[projectSetup] selectProject acquired lock', { projectPath });
+  logger.debug('[projectSetup] selectProject acquired lock', { projectPath, windowId });
 
   try {
     const validationResult = await validateProjectPath(projectPath);
@@ -152,6 +155,33 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
         specs: [], bugs: [], specJsonMap: {},
         error: validationResult.error,
       };
+    }
+
+    // multi-window-integration Task 6.1: Per-window project registration via WindowManager
+    try {
+      const wm = getWindowManager();
+      const effectiveWindowId = windowId ?? wm.getFocusedWindowId();
+      if (effectiveWindowId !== null) {
+        const setResult = wm.setWindowProject(effectiveWindowId, projectPath);
+        if (!setResult.ok) {
+          const error = setResult.error;
+          if (error.type === 'DUPLICATE_PROJECT') {
+            logger.warn('[projectSetup] selectProject duplicate project detected', {
+              projectPath, existingWindowId: error.existingWindowId,
+            });
+            wm.restoreAndFocus(error.existingWindowId);
+            return {
+              success: false, projectPath,
+              kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+              specs: [], bugs: [], specJsonMap: {},
+              error: { type: 'DUPLICATE_PROJECT', existingWindowId: error.existingWindowId },
+            };
+          }
+        }
+      }
+    } catch {
+      // WindowManager not available (e.g., test environment) - continue without per-window registration
+      logger.debug('[projectSetup] WindowManager not available, skipping per-window registration');
     }
 
     await setProjectPath(projectPath);
@@ -412,35 +442,45 @@ function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBug
   // Without this bridge, Renderer never receives bug auto-execution state updates.
   // ============================================================
   const eventBus = getGlobalEventBus();
+  // multi-window-integration Task 6.3: Capture projectPath for event metadata
+  const projectPath = getCurrentProjectPath();
 
   bugCoordinator.on('state-changed', (bugPath: string, state: Record<string, unknown>) => {
     const { timeoutId, ...serializableState } = state;
     logger.info('[projectSetup] Bug EventBus bridge: state-changed', { bugPath, status: serializableState.status, currentPhase: serializableState.currentPhase });
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED, { bugPath, state: serializableState });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED, { bugPath, state: serializableState, projectPath });
   });
 
   bugCoordinator.on('phase-completed', (bugPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_COMPLETED, { bugPath, phase });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_COMPLETED, { bugPath, phase, projectPath });
   });
 
   bugCoordinator.on('phase-started', (bugPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED, { bugPath, phase });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED, { bugPath, phase, projectPath });
   });
 
   bugCoordinator.on('execution-error', (bugPath: string, error: Record<string, unknown>) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR, { bugPath, error });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR, { bugPath, error, projectPath });
   });
 
   bugCoordinator.on('execution-completed', (bugPath: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED, { bugPath });
+    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED, { bugPath, projectPath });
   });
 
   bugCoordinator.on('execute-next-phase', async (bugPath: string, phase: BugWorkflowPhase, context: { bugName: string }) => {
     logger.info('[projectSetup] Bug execute-next-phase event received', { bugPath, phase, bugName: context.bugName });
     try {
       const service = getSpecManagerService();
-      const window = BrowserWindow.getAllWindows()[0];
-      if (!window) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
+      // multi-window-integration Task 6.4: Use WindowManager to find window by project instead of getAllWindows()[0]
+      let hasWindow = false;
+      try {
+        const wm = getWindowManager();
+        const focusedId = wm.getFocusedWindowId();
+        hasWindow = focusedId !== null || BrowserWindow.getAllWindows().length > 0;
+      } catch {
+        hasWindow = BrowserWindow.getAllWindows().length > 0;
+      }
+      if (!hasWindow) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
 
       let command = BUG_PHASE_COMMANDS[phase];
       if (!command) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
@@ -481,8 +521,16 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
     logger.info('[projectSetup] execute-next-phase event received', { specPath, phase, context });
     try {
       const service = getSpecManagerService();
-      const window = BrowserWindow.getAllWindows()[0];
-      if (!window) return;
+      // multi-window-integration Task 6.4: Use WindowManager to check window existence instead of getAllWindows()[0]
+      let hasWindow = false;
+      try {
+        const wm = getWindowManager();
+        const focusedId = wm.getFocusedWindowId();
+        hasWindow = focusedId !== null || BrowserWindow.getAllWindows().length > 0;
+      } catch {
+        hasWindow = BrowserWindow.getAllWindows().length > 0;
+      }
+      if (!hasWindow) return;
       coordinator.setCurrentPhase(specPath, phase);
 
       if (phase === 'document-review') {
@@ -576,6 +624,8 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
   // Without this bridge, Renderer never receives auto-execution state updates.
   // ============================================================
   const eventBus = getGlobalEventBus();
+  // multi-window-integration Task 6.3: Capture projectPath for event metadata
+  const projectPath = getCurrentProjectPath();
 
   coordinator.on('state-changed', (specPath: string, state: Record<string, unknown>) => {
     // Strip timeoutId before emitting to EventBus - it contains NodeJS.Timeout
@@ -583,23 +633,23 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { timeoutId, ...serializableState } = state;
     logger.info('[projectSetup] EventBus bridge: state-changed', { specPath, status: serializableState.status, currentPhase: serializableState.currentPhase });
-    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_STATUS_CHANGED, { specPath, state: serializableState });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_STATUS_CHANGED, { specPath, state: serializableState, projectPath });
   });
 
   coordinator.on('phase-completed', (specPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_COMPLETED, { specPath, phase });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_COMPLETED, { specPath, phase, projectPath });
   });
 
   coordinator.on('phase-started', (specPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_STARTED, { specPath, phase });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_PHASE_STARTED, { specPath, phase, projectPath });
   });
 
   coordinator.on('execution-error', (specPath: string, error: Record<string, unknown>) => {
-    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_ERROR, { specPath, error });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_ERROR, { specPath, error, projectPath });
   });
 
   coordinator.on('execution-completed', (specPath: string) => {
-    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_COMPLETED, { specPath });
+    eventBus.emit(EVENT_NAMES.AUTO_EXECUTION_COMPLETED, { specPath, projectPath });
   });
 
   coordinator.on('execute-spec-merge', async (specPath: string, context: { specId: string }) => {
@@ -743,13 +793,16 @@ export function registerEventCallbacks(service: SpecManagerService, _window: Bro
   logger.info('[projectSetup] Registering event callbacks');
 
   const eventBus = getGlobalEventBus();
+  // multi-window-integration Task 6.3: Capture projectPath at registration time for event metadata
+  const projectPath = getCurrentProjectPath();
 
   // LogStreamingService for parsed log distribution
   const logStreamingService = new LogStreamingService(
     getDefaultAgentRecordService(),
     (agentId, parsedLog) => {
       // Task 9.2: Emit to EventBus for tRPC Subscription (primary path)
-      eventBus.emit(EVENT_NAMES.AGENT_LOG, { agentId, parsedLog });
+      // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+      eventBus.emit(EVENT_NAMES.AGENT_LOG, { agentId, parsedLog, projectPath });
       // Send parsed log to WebSocket (Remote UI)
       const remoteServer = getRemoteAccessServer();
       const wsHandler = remoteServer.getWebSocketHandler();
@@ -761,7 +814,8 @@ export function registerEventCallbacks(service: SpecManagerService, _window: Bro
 
   service.onOutput((agentId, stream, data) => {
     // Emit to EventBus for tRPC Subscription (primary path)
-    eventBus.emit(EVENT_NAMES.AGENT_OUTPUT, { agentId, stream, data });
+    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+    eventBus.emit(EVENT_NAMES.AGENT_OUTPUT, { agentId, stream, data, projectPath });
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
     if (wsHandler) wsHandler.broadcastAgentOutput(agentId, stream, data, stream === 'stderr' ? 'error' : 'agent');
@@ -774,7 +828,8 @@ export function registerEventCallbacks(service: SpecManagerService, _window: Bro
   service.onStatusChange(async (agentId, status) => {
     logger.info('[projectSetup] Agent status change', { agentId, status });
     // Emit to EventBus for tRPC Subscription (primary path)
-    eventBus.emit(EVENT_NAMES.AGENT_STATUS_CHANGE, { agentId, status });
+    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+    eventBus.emit(EVENT_NAMES.AGENT_STATUS_CHANGE, { agentId, status, projectPath });
     const agentInfo = await service.getAgentById(agentId);
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
@@ -787,11 +842,13 @@ export function registerEventCallbacks(service: SpecManagerService, _window: Bro
 
   service.onAgentExitError((agentId, error) => {
     logger.warn('[projectSetup] Agent exit error', { agentId, error: error.message });
-    eventBus.emit(EVENT_NAMES.AGENT_EXIT_ERROR, { agentId, error: error.message });
+    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+    eventBus.emit(EVENT_NAMES.AGENT_EXIT_ERROR, { agentId, error: error.message, projectPath });
   });
 
   service.onAgentStartError((agentId, specId, error) => {
     logger.warn('[projectSetup] Agent start error', { agentId, specId, errorType: error.type, errorMessage: error.message });
-    eventBus.emit(EVENT_NAMES.AGENT_START_ERROR, { agentId, specId, error });
+    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+    eventBus.emit(EVENT_NAMES.AGENT_START_ERROR, { agentId, specId, error, projectPath });
   });
 }

@@ -103,10 +103,27 @@ vi.mock('./services/agentLifecycleSetup', () => ({
   })),
 }));
 
-// Mock windowFactory (createWindow extracted from index.ts)
-vi.mock('./windowFactory', () => ({
-  createWindow: vi.fn(),
-  getMainWindow: vi.fn(() => null),
+// multi-window-integration Task 7.3: windowFactory deleted, mock WindowManager instead
+vi.mock('./services/windowManager', () => ({
+  getWindowManager: vi.fn(() => ({
+    createWindow: vi.fn(() => ({ id: 1, webContents: { id: 101 } })),
+    getAllWindowIds: vi.fn(() => []),
+    getWindowByProject: vi.fn(() => null),
+    restoreAndFocus: vi.fn(),
+    getIPCHandler: vi.fn(() => null),
+    setIPCHandler: vi.fn(),
+    getWindowIdByWebContents: vi.fn(),
+    getWindowContext: vi.fn(),
+    getFocusedWindowId: vi.fn(),
+    getWindowProject: vi.fn(),
+    getWindowServices: vi.fn(),
+  })),
+  resetWindowManager: vi.fn(),
+}));
+
+// Mock initializeTRPCHandler (called in app.whenReady)
+vi.mock('./trpc/handler', () => ({
+  initializeTRPCHandler: vi.fn(),
 }));
 
 // Mock other services

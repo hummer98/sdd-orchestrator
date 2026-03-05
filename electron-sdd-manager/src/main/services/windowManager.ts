@@ -2,15 +2,25 @@
  * WindowManager Service
  * Manages multiple windows, projects, and per-window services
  * Requirements: 1.1-1.5, 3.1-3.4, 4.1-4.6, 5.2-5.4
+ *
+ * multi-window-integration Task 1.1-1.4:
+ * - PerWindowServices with MetricsService and AutoExecutionCoordinator
+ * - webContentsToWindowId mapping and context resolution
+ * - IPCHandler management (attach/detach)
+ * - normalizePath with symlink resolution (realpathSync)
  */
 
 import { BrowserWindow, app, screen } from 'electron';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, realpathSync } from 'fs';
 import { SpecManagerService } from './specManagerService';
 import { SpecsWatcherService } from './specsWatcherService';
 import { AgentRecordWatcherService } from './agentRecordWatcherService';
 import { BugsWatcherService } from './bugsWatcherService';
+import { MetricsService } from './metricsService';
+import { MetricsFileWriter } from './metricsFileWriter';
+import { MetricsFileReader } from './metricsFileReader';
+import { AutoExecutionCoordinator } from './autoExecutionCoordinator';
 import { FileService } from './fileService';
 import { getConfigStore } from './configStore';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
@@ -41,12 +51,25 @@ export interface WindowState {
 
 /**
  * Per-window service instances
+ * multi-window-integration Task 1.1: Added MetricsService and AutoExecutionCoordinator
  */
 export interface PerWindowServices {
   specManagerService: SpecManagerService;
   specsWatcherService: SpecsWatcherService;
   agentRecordWatcherService: AgentRecordWatcherService;
   bugsWatcherService: BugsWatcherService;
+  metricsService: MetricsService;
+  autoExecutionCoordinator: AutoExecutionCoordinator;
+}
+
+/**
+ * Per-window context combining windowId, projectPath, and services
+ * multi-window-integration Task 1.2: Context resolution for tRPC
+ */
+export interface PerWindowContext {
+  windowId: number;
+  projectPath: string | null;
+  services: PerWindowServices | null;
 }
 
 /**
@@ -96,10 +119,27 @@ const DEFAULT_BOUNDS: WindowBoundsExtended = {
 
 /**
  * Normalize project path for comparison
- * Removes trailing slashes and resolves relative paths
+ * Removes trailing slashes and resolves symlinks via realpathSync
+ * multi-window-integration Task 1.4: Added symlink resolution
  */
 function normalizePath(projectPath: string): string {
-  return projectPath.replace(/\/+$/, '');
+  try {
+    // Resolve symlinks first, then remove trailing slashes
+    const resolved = realpathSync(projectPath);
+    return resolved.replace(/\/+$/, '');
+  } catch {
+    // If path does not exist (realpathSync fails), fall back to trailing slash removal only
+    return projectPath.replace(/\/+$/, '');
+  }
+}
+
+/**
+ * IPCHandler interface for type-safe access
+ * multi-window-integration Task 1.3
+ */
+interface IPCHandlerLike {
+  attachWindow(window: BrowserWindow): void;
+  detachWindow?(window: BrowserWindow): void;
 }
 
 /**
@@ -115,6 +155,18 @@ export class WindowManager {
 
   // Window ID -> PerWindowServices mapping
   private windowServices: Map<number, PerWindowServices> = new Map();
+
+  // webContents ID -> Window ID mapping (for O(1) tRPC context resolution)
+  // multi-window-integration Task 1.2
+  private webContentsToWindowId: Map<number, number> = new Map();
+
+  // Window ID -> BrowserWindow reference (for detachWindow on close)
+  // Needed because BrowserWindow.getAllWindows() may not contain the window after it's closed
+  private windowReferences: Map<number, BrowserWindow> = new Map();
+
+  // IPCHandler instance (Singleton pattern - DD-001)
+  // multi-window-integration Task 1.3
+  private ipcHandler: IPCHandlerLike | null = null;
 
   // Event callbacks
   private focusCallbacks: ((windowId: number) => void)[] = [];
@@ -165,8 +217,19 @@ export class WindowManager {
     };
     this.windowStates.set(window.id, windowState);
 
+    // multi-window-integration Task 1.2: Register webContents ID -> window ID mapping
+    this.webContentsToWindowId.set(window.webContents.id, window.id);
+
+    // Store window reference for detachWindow on close
+    this.windowReferences.set(window.id, window);
+
     // Set up event handlers
     this.setupWindowEventHandlers(window);
+
+    // multi-window-integration Task 1.3: Attach window to IPCHandler if it exists
+    if (this.ipcHandler) {
+      this.ipcHandler.attachWindow(window);
+    }
 
     // Show window when ready
     window.once('ready-to-show', () => {
@@ -219,6 +282,9 @@ export class WindowManager {
 
   /**
    * Handle window close
+   * multi-window-integration Task 1.1: Added MetricsService/AutoExecutionCoordinator cleanup
+   * multi-window-integration Task 1.2: Remove webContentsToWindowId entry
+   * multi-window-integration Task 1.3: Call detachWindow on IPCHandler
    */
   private handleWindowClose(windowId: number): void {
     const state = this.windowStates.get(windowId);
@@ -228,12 +294,31 @@ export class WindowManager {
       this.projectWindowMap.delete(normalizePath(state.projectPath));
     }
 
+    // multi-window-integration Task 1.3: Detach window from IPCHandler
+    const windowRef = this.windowReferences.get(windowId);
+    if (this.ipcHandler && windowRef) {
+      this.ipcHandler.detachWindow?.(windowRef);
+    }
+    this.windowReferences.delete(windowId);
+
+    // multi-window-integration Task 1.2: Remove webContents mapping
+    // Find and remove the webContents entry for this window
+    for (const [webContentsId, winId] of this.webContentsToWindowId) {
+      if (winId === windowId) {
+        this.webContentsToWindowId.delete(webContentsId);
+        break;
+      }
+    }
+
     // Clean up services
+    // multi-window-integration Task 1.1: Added MetricsService/AutoExecutionCoordinator cleanup
     const services = this.windowServices.get(windowId);
     if (services) {
       services.specsWatcherService.stop();
       services.agentRecordWatcherService.stop();
       services.bugsWatcherService.stop();
+      // multi-window-integration Task 1.1: Stop new services
+      services.autoExecutionCoordinator.resetAll();
     }
     this.windowServices.delete(windowId);
 
@@ -288,6 +373,47 @@ export class WindowManager {
    */
   getAllWindowIds(): number[] {
     return Array.from(this.windowStates.keys());
+  }
+
+  /**
+   * Get window ID by webContents ID
+   * multi-window-integration Task 1.2: O(1) lookup for tRPC context resolution
+   */
+  getWindowIdByWebContents(webContentsId: number): number | null {
+    return this.webContentsToWindowId.get(webContentsId) ?? null;
+  }
+
+  /**
+   * Get per-window context (windowId, projectPath, services)
+   * multi-window-integration Task 1.2: Context resolution for tRPC
+   */
+  getWindowContext(windowId: number): PerWindowContext | null {
+    const state = this.windowStates.get(windowId);
+    if (!state) {
+      return null;
+    }
+
+    return {
+      windowId: state.windowId,
+      projectPath: state.projectPath,
+      services: this.windowServices.get(windowId) || null,
+    };
+  }
+
+  /**
+   * Get IPCHandler instance
+   * multi-window-integration Task 1.3
+   */
+  getIPCHandler(): IPCHandlerLike | null {
+    return this.ipcHandler;
+  }
+
+  /**
+   * Set IPCHandler instance
+   * multi-window-integration Task 1.3
+   */
+  setIPCHandler(handler: IPCHandlerLike): void {
+    this.ipcHandler = handler;
   }
 
   /**
@@ -403,6 +529,7 @@ export class WindowManager {
   /**
    * Create per-window services
    * Requirements: 5.3, 5.4
+   * multi-window-integration Task 1.1: Added MetricsService and AutoExecutionCoordinator
    */
   private createWindowServices(windowId: number, projectPath: string): void {
     // Stop existing services if any
@@ -411,6 +538,7 @@ export class WindowManager {
       existingServices.specsWatcherService.stop();
       existingServices.agentRecordWatcherService.stop();
       existingServices.bugsWatcherService.stop();
+      existingServices.autoExecutionCoordinator.resetAll();
     }
 
     // Create new services
@@ -421,6 +549,9 @@ export class WindowManager {
       specsWatcherService: new SpecsWatcherService(projectPath, fileService),
       agentRecordWatcherService: new AgentRecordWatcherService(projectPath),
       bugsWatcherService: new BugsWatcherService(projectPath),
+      // multi-window-integration Task 1.1: Per-window MetricsService and AutoExecutionCoordinator
+      metricsService: new MetricsService(logger, new MetricsFileWriter(logger), new MetricsFileReader(logger)),
+      autoExecutionCoordinator: new AutoExecutionCoordinator(),
     };
 
     this.windowServices.set(windowId, services);
@@ -513,7 +644,8 @@ export class WindowManager {
     }
 
     // If no windows were restored, create a default window
-    if (restored === 0 && skipped.length === 0) {
+    // This handles: first launch (no saved states), all saved projects missing
+    if (restored === 0) {
       this.createWindow();
       restored = 1;
     }

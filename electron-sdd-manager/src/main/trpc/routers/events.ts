@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { observable } from '@trpc/server/observable';
 import { router, publicProcedure } from '../trpc';
 import { EVENT_NAMES } from '../services/eventBus';
+import { shouldDeliverEvent } from '../services/eventBusFilter';
+import { projectLogger as logger } from '../../services/projectLogger';
 
 // ============================================================
 // Zod Schemas - イベントペイロード定義
@@ -112,6 +114,11 @@ export const menuSetCommandPrefixSchema = z.object({
 /**
  * EventBusイベントをtRPC Subscriptionに変換するヘルパー
  *
+ * multi-window-integration Task 4.3: ウィンドウ別フィルタリング対応
+ * - プロジェクトスコープイベント: ctx.services.getCurrentProjectPath()とイベントのprojectPathを比較
+ * - アプリスコープイベント: フィルタなしで全Subscriptionに配信
+ * - projectPathがnullのイベント（移行期間の安全策）: 全ウィンドウに配信しログ出力
+ *
  * @param eventName - EVENT_NAMES定数のイベント名
  * @returns observable()で生成されたtRPC Subscription
  */
@@ -123,13 +130,27 @@ function createEventSubscription<T>(eventName: string) {
         return () => {};
       }
 
+      // Subscription生成時にウィンドウのprojectPathをキャプチャ
+      const getWindowProjectPath = ctx.services.getCurrentProjectPath;
+
       const handler = (...args: unknown[]) => {
         // Diagnostic: detect phantom subscription data
         if (args.length === 0 || (args.length === 1 && args[0] === undefined)) {
           const stack = new Error().stack;
-          console.warn(`[events-router] ${eventName} fired with empty data. args=${JSON.stringify(args)} stack=${stack}`);
+          logger.warn(`[events-router] ${eventName} fired with empty data`, { args: JSON.stringify(args), stack });
         }
-        emit.next(args.length === 1 ? (args[0] as T) : (args as unknown as T));
+
+        const payload = args.length === 1 ? (args[0] as T) : (args as unknown as T);
+
+        // ウィンドウ別フィルタリング (multi-window-integration Task 4.3)
+        const eventProjectPath = (payload as Record<string, unknown>)?.projectPath as string | undefined;
+        const windowProjectPath = getWindowProjectPath();
+
+        if (!shouldDeliverEvent(eventProjectPath, windowProjectPath, eventName)) {
+          return; // フィルタリング: このウィンドウには配信しない
+        }
+
+        emit.next(payload);
       };
 
       eventBus.on(eventName, handler);

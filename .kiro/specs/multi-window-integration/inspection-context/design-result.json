@@ -1,0 +1,472 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-26T14:30:00Z",
+  "checks": [
+    {
+      "id": "design-component-WindowManager",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager service exists at expected path with all design-specified extensions (PerWindowServices, PerWindowContext, webContentsToWindowId, IPCHandler management)",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts"
+      ]
+    },
+    {
+      "id": "design-interface-WindowManager-PerWindowContext",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PerWindowContext interface matches design: { windowId: number; projectPath: string | null; services: PerWindowServices | null }",
+      "evidence": [
+        "Design: interface PerWindowContext { windowId: number; projectPath: string | null; services: PerWindowServices | null; }",
+        "Actual (line 69-73): interface PerWindowContext { windowId: number; projectPath: string | null; services: PerWindowServices | null; }"
+      ]
+    },
+    {
+      "id": "design-interface-WindowManager-PerWindowServices",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PerWindowServices interface matches design with all 6 service fields including MetricsService and AutoExecutionCoordinator (DD-005)",
+      "evidence": [
+        "Design: specManagerService, specsWatcherService, agentRecordWatcherService, bugsWatcherService, metricsService, autoExecutionCoordinator",
+        "Actual (lines 56-63): all 6 fields present and correctly typed"
+      ]
+    },
+    {
+      "id": "design-interface-WindowManager-methods",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager class implements all design-specified methods: createWindow, closeWindow, getWindowContext, getWindowIdByWebContents, setWindowProject, getWindowProject, getWindowByProject, checkDuplicate, getIPCHandler, setIPCHandler, focusWindow, restoreAndFocus, getFocusedWindowId, saveAllWindowStates, restoreWindows, onWindowFocus, onWindowClose",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts"
+      ]
+    },
+    {
+      "id": "design-interface-WindowManager-statemaps",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager state maps match design: windowStates Map, projectWindowMap Map, windowServices Map, webContentsToWindowId Map",
+      "evidence": [
+        "Design: windowStates: Map<number, WindowState>, projectWindowMap: Map<string, number>, windowServices: Map<number, PerWindowServices>, webContentsToWindowId: Map<number, number>",
+        "Actual (lines 151-161): all 4 Maps present with correct types"
+      ]
+    },
+    {
+      "id": "design-component-WindowContextFactory",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowContextFactory exists at expected path as a new file (CREATE action)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts"
+      ]
+    },
+    {
+      "id": "design-interface-WindowContextFactory-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createWindowContextFactory function signature matches design: (windowManager, sharedServices) => WindowContextCreateFn. WindowContextCreateFn type matches: (opts: { event: IpcMainInvokeEvent }) => Promise<Context>",
+      "evidence": [
+        "Design: function createWindowContextFactory(windowManager: WindowManager, sharedServices: Partial<ContextServices>): WindowContextCreateFn",
+        "Actual (lines 53-56): function createWindowContextFactory(windowManager: WindowManagerLike, sharedServices: Partial<ContextServices>): WindowContextCreateFn",
+        "Note: WindowManagerLike is a lightweight interface subset - acceptable deviation for avoiding circular imports"
+      ]
+    },
+    {
+      "id": "design-interface-WindowContextFactory-closurebinding",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Per-window property closure binding implemented as designed: getCurrentProjectPath, getSpecManagerService, and selectProject are all bound to windowId via closures",
+      "evidence": [
+        "Design: selectProject: (path) => selectProject(path, windowId) closure binding",
+        "Actual (lines 95-107): perWindowOverrides.getCurrentProjectPath, perWindowOverrides.getSpecManagerService, perWindowOverrides.selectProject all use closure binding with windowId"
+      ]
+    },
+    {
+      "id": "design-component-EventBusFilter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "EventBusFilter exists at expected path as a new file (CREATE action)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts"
+      ]
+    },
+    {
+      "id": "design-interface-EventBusFilter-categories",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Event categorization matches design: PROJECT_SCOPED_EVENTS (22 events) and APP_SCOPED_EVENTS (14 events) with correct event assignments matching the design table",
+      "evidence": [
+        "Design: Project-scoped: SPECS_CHANGED, BUGS_CHANGED, AGENT_*, AUTO_EXECUTION_*, GIT_CHANGES_DETECTED, PROJECT_FILE_CHANGED, METRICS_UPDATED",
+        "Actual: PROJECT_SCOPED_EVENTS includes all design-specified events plus BUG_AUTO_EXECUTION_* (6 events)",
+        "Design: App-scoped: REMOTE_SERVER_STATUS_CHANGED, REMOTE_CLIENT_COUNT_CHANGED, CLOUDFLARE_TUNNEL_STATUS_CHANGED, SSH_STATUS_CHANGED, MCP_STATUS_CHANGED, SCHEDULE_TASK_STATUS_CHANGED, MENU_*",
+        "Actual: APP_SCOPED_EVENTS includes all design-specified events"
+      ]
+    },
+    {
+      "id": "design-interface-EventBusFilter-shouldDeliverEvent",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shouldDeliverEvent function implements the filtering logic as designed: app-scoped events always delivered, project-scoped with null eventProjectPath delivered as safety fallback, null windowProjectPath not delivered, matching projectPath delivered",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts lines 123-145"
+      ]
+    },
+    {
+      "id": "design-component-handler-initializeTRPCHandler",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "initializeTRPCHandler function exists in handler.ts implementing DD-001 Singleton IPCHandler pattern. setupTRPCHandler is kept as deprecated for backward compatibility",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts lines 50-92"
+      ]
+    },
+    {
+      "id": "design-interface-handler-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "initializeTRPCHandler signature: (windowManager, window, serviceOverrides?) matches the design intent of receiving WindowManager and delegating to createWindowContextFactory. Uses Singleton pattern correctly.",
+      "evidence": [
+        "Design: setupTRPCHandler -> initializeTRPCHandler(windowManager, sharedServices)",
+        "Actual: initializeTRPCHandler(windowManager: WindowManagerForHandler, window: BrowserWindow, serviceOverrides?: Partial<ContextServices>)",
+        "Note: The actual signature takes a BrowserWindow parameter for the first window attachment, which is a practical addition to the design"
+      ]
+    },
+    {
+      "id": "design-component-context-windowId",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ContextServices interface has windowId field as designed for multi-window context identification",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts line 247: windowId?: number"
+      ]
+    },
+    {
+      "id": "design-component-ProjectStateCompat",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectStateCompat (projectState.ts compatibility layer) exists and delegates to WindowManager as designed. Getters delegate to focused window, setters are deprecated no-ops",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts"
+      ]
+    },
+    {
+      "id": "design-interface-ProjectStateCompat-delegation",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getCurrentProjectPath() delegates to WindowManager.getFocusedWindowId() -> getWindowProject(). getSpecManagerService() delegates to WindowManager focused window services. Setters (setCurrentProjectPath, setSpecManagerService, etc.) are no-ops as designed",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts lines 59-134"
+      ]
+    },
+    {
+      "id": "design-component-projectSetup-selectProject",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "selectProject function has windowId parameter as designed and includes WindowManager per-window registration with duplicate check",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts line 132: export async function selectProject(projectPath: string, windowId?: number)"
+      ]
+    },
+    {
+      "id": "design-interface-projectSetup-windowId",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "selectProject signature matches design: (projectPath: string, windowId?: number) with optional windowId for backward compatibility. Includes duplicate project check via WindowManager.setWindowProject and restoreAndFocus for existing windows",
+      "evidence": [
+        "Design: selectProject(projectPath, windowId?) with windowId optional, fallback to focused window",
+        "Actual (lines 132-231): selectProject(projectPath: string, windowId?: number) with effectiveWindowId = windowId ?? wm.getFocusedWindowId()"
+      ]
+    },
+    {
+      "id": "design-component-watcherUtils",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "watcherUtils.ts exists with per-window watcher delegation via WindowManager. All three watcher types (specs, bugs, agent record) support windowId parameter",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/watcherUtils.ts"
+      ]
+    },
+    {
+      "id": "design-interface-watcherUtils-windowId",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Watcher functions have windowId parameter and delegate to WindowManager per-window services when provided, with backward compat global variable fallback",
+      "evidence": [
+        "startSpecsWatcher(_, fileService, getCurrentProjectPath, windowId?) line 31",
+        "startBugsWatcher(getCurrentProjectPath, windowId?) line 115",
+        "startAgentRecordWatcher(_, getCurrentProjectPath, windowId?) line 191"
+      ]
+    },
+    {
+      "id": "design-component-events-router-filtering",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "events.ts router uses shouldDeliverEvent from eventBusFilter for window-scoped event filtering in the createEventSubscription helper",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts lines 15, 124-163"
+      ]
+    },
+    {
+      "id": "design-interface-events-router-filtering",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Event subscription filtering matches design: captures window projectPath at subscription time via ctx.services.getCurrentProjectPath, compares with event projectPath using shouldDeliverEvent on each event",
+      "evidence": [
+        "Design DD-004: Subscription side filtering with projectPath comparison",
+        "Actual (lines 133-153): getWindowProjectPath captured, shouldDeliverEvent called on each event"
+      ]
+    },
+    {
+      "id": "design-component-menu-WindowManager",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "menu.ts uses WindowManager.createWindow for new window creation (Cmd+Shift+N) and recent project opening. findProjectlessWindow helper implements window reuse logic",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts lines 28-40, 128-133"
+      ]
+    },
+    {
+      "id": "design-component-MenuFocusTracker",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "initializeMenuFocusTracking function exists in menu.ts, registers WindowManager.onWindowFocus callback to update menu project context",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts lines 371-377"
+      ]
+    },
+    {
+      "id": "design-wiring-MenuFocusTracker-startup",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[RE-INSPECTION FIX VERIFIED] initializeMenuFocusTracking() is now correctly wired in the startup flow at index.ts line 287, called immediately after createMenu() at line 284. This ensures menu context updates on window focus changes (Requirement 6.1). Previously flagged as FAIL - now resolved by autofix.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts line 20: import { createMenu, initializeMenuFocusTracking } from './menu'",
+        "electron-sdd-manager/src/main/index.ts line 284: createMenu()",
+        "electron-sdd-manager/src/main/index.ts line 287: initializeMenuFocusTracking()",
+        "electron-sdd-manager/src/main/menu.ts lines 371-377: initializeMenuFocusTracking() definition with WindowManager.onWindowFocus callback"
+      ]
+    },
+    {
+      "id": "design-component-index-WindowManager",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "index.ts uses WindowManager for startup flow: restoreWindows(), initializeTRPCHandler(), activate handler, second-instance handler all use WindowManager",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts lines 31-32, 338-350, 414-422, 129-173"
+      ]
+    },
+    {
+      "id": "design-component-windowFactory-deleted",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "windowFactory.ts has been deleted as specified in design (Requirement 2.1). No file found at expected deletion path",
+      "evidence": [
+        "Glob for **/windowFactory.ts returned no results",
+        "Git status shows: D electron-sdd-manager/src/main/windowFactory.ts"
+      ]
+    },
+    {
+      "id": "design-component-appLifecycle-saveAllWindowStates",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "appLifecycle.ts calls WindowManager.saveAllWindowStates() in cleanupOnQuit as first operation (Requirement 7.1)",
+      "evidence": [
+        "electron-sdd-manager/src/main/appLifecycle.ts lines 22-29"
+      ]
+    },
+    {
+      "id": "design-component-productionServices",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts uses WindowManager for createNewWindow and references compatibility layer functions for getCurrentProjectPath/getSpecManagerService",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts lines 98, 201-203"
+      ]
+    },
+    {
+      "id": "design-component-E2E-tests",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2E test suite exists with 4 spec files covering multi-window creation, duplicate prevention, tRPC operations, and cleanup (Requirements 8.1-8.4)",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/multi-window-creation.e2e.spec.ts",
+        "electron-sdd-manager/e2e-wdio/multi-window-duplicate-prevention.e2e.spec.ts",
+        "electron-sdd-manager/e2e-wdio/multi-window-trpc.e2e.spec.ts",
+        "electron-sdd-manager/e2e-wdio/multi-window-cleanup.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "design-dd001-ipchandler-singleton",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-001 implemented correctly: createIPCHandler called once (first window), subsequent windows use attachWindow via WindowManager.getIPCHandler/setIPCHandler",
+      "evidence": [
+        "handler.ts lines 57-63: checks existingHandler, calls attachWindow if exists",
+        "handler.ts lines 66-86: first call creates IPCHandler, stores via windowManager.setIPCHandler",
+        "windowManager.ts lines 230-232: createWindow auto-attaches via ipcHandler.attachWindow"
+      ]
+    },
+    {
+      "id": "design-dd002-event-sender-resolution",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-002 implemented correctly: WindowContextFactory uses BrowserWindow.fromWebContents(event.sender) for window identification with focused window fallback",
+      "evidence": [
+        "windowContextFactory.ts lines 64-80: BrowserWindow.fromWebContents(event.sender) with fallback to getFocusedWindowId()"
+      ]
+    },
+    {
+      "id": "design-dd003-compat-layer",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-003 implemented correctly: projectState.ts global functions delegate to WindowManager focused window. Setters are no-ops with deprecation markers",
+      "evidence": [
+        "projectState.ts: getCurrentProjectPath delegates to wm.getFocusedWindowId() -> wm.getWindowProject()",
+        "Setters (setCurrentProjectPath, setSpecManagerService, etc.) are no-op functions"
+      ]
+    },
+    {
+      "id": "design-dd004-subscription-filtering",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-004 implemented correctly: Filtering is done at Subscription level in events.ts via shouldDeliverEvent, not at EventBus emit level. EventBus remains a simple broadcaster",
+      "evidence": [
+        "events.ts: createEventSubscription helper applies shouldDeliverEvent filter",
+        "eventBusFilter.ts: isProjectScopedEvent + shouldDeliverEvent provide the filtering logic"
+      ]
+    },
+    {
+      "id": "design-dd005-perwindow-services",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DD-005 implemented correctly: PerWindowServices contains MetricsService and AutoExecutionCoordinator (project-specific), while FileService, BugService, ConfigStore remain shared",
+      "evidence": [
+        "windowManager.ts PerWindowServices: specManagerService, specsWatcherService, agentRecordWatcherService, bugsWatcherService, metricsService, autoExecutionCoordinator",
+        "productionServices.ts: fileService, bugService, configStore shared across windows"
+      ]
+    },
+    {
+      "id": "design-eventbus-projectpath-metadata",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Event emitters include projectPath metadata for window-scoped filtering (Requirement 4.1). Verified in projectSetup.ts and watcherUtils.ts",
+      "evidence": [
+        "projectSetup.ts: EventBus.emit includes projectPath in AGENT_OUTPUT, AGENT_STATUS_CHANGE, AGENT_LOG, AGENT_START_ERROR, AGENT_EXIT_ERROR, AUTO_EXECUTION_*, BUG_AUTO_EXECUTION_*",
+        "watcherUtils.ts: SPECS_CHANGED, BUGS_CHANGED, AGENT_RECORD_CHANGED all include projectPath"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals: multi-window support enables parallel project work, which is consistent with SDD Orchestrator's role as a development workflow management tool. No out-of-scope functionality added",
+      "evidence": [
+        "product.md: SDD Orchestrator manages spec-driven development workflows",
+        "Design scope: Window management, tRPC context isolation, EventBus filtering - all within Electron main process"
+      ]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Technology choices match tech.md: Uses Electron BrowserWindow API, electron-trpc for IPC, tRPC Context DI pattern, EventBus pattern, Vitest for testing, ConfigStore for persistence",
+      "evidence": [
+        "tech.md: Electron 35.x, electron-trpc, tRPC Context DI, Vitest",
+        "Implementation uses all specified technologies correctly"
+      ]
+    },
+    {
+      "id": "steering-tech-testing",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Testing approach follows tech.md guidelines: unit tests use Vitest with *.test.ts naming co-located with implementation, E2E tests use WebdriverIO in e2e-wdio/ directory",
+      "evidence": [
+        "Unit tests: windowManager.test.ts, windowContextFactory.test.ts, eventBusFilter.test.ts, etc.",
+        "E2E tests: e2e-wdio/multi-window-*.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "steering-structure-directories",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Files are placed in correct directories per structure.md: services in main/services/, tRPC layer in main/trpc/, helpers in main/trpc/helpers/, event services in main/trpc/services/",
+      "evidence": [
+        "WindowManager: src/main/services/windowManager.ts (correct: backend service)",
+        "WindowContextFactory: src/main/trpc/windowContextFactory.ts (correct: tRPC layer)",
+        "EventBusFilter: src/main/trpc/services/eventBusFilter.ts (correct: tRPC service)",
+        "ProjectState: src/main/trpc/helpers/projectState.ts (correct: helper)"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management follows structure.md rules: window state managed in Main process (WindowManager), no domain state moved to Renderer, per-window state accessed via tRPC context DI",
+      "evidence": [
+        "structure.md: 'Main Process owns session state, process management, file monitoring'",
+        "WindowManager holds windowStates, projectWindowMap, windowServices in Main process",
+        "Renderer accesses state via tRPC queries/subscriptions (not direct state)"
+      ]
+    },
+    {
+      "id": "steering-structure-naming",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Naming conventions follow structure.md: Services use camelCase (windowManager.ts, windowContextFactory.ts), tests use *.test.ts, types in interfaces within service files",
+      "evidence": [
+        "structure.md: Services camelCase, Tests *.test.ts",
+        "All new files follow conventions"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 38,
+    "passed": 38,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 38
+  }
+}

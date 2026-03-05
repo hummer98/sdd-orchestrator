@@ -2,13 +2,13 @@
  * Production Services - DI Assembly for tRPC Context
  * trpc-service-wiring-completion: All 72 services wired for production use
  *
- * Creates the Partial<ContextServices> object that setupTRPCHandler merges into context.
+ * Creates the Partial<ContextServices> object that initializeTRPCHandler merges into context.
  * handler.ts injects eventBus, getInitialSelectResult, clearInitialSelectResult separately.
  * This file must NOT return those 3 properties to avoid overwriting handler.ts values.
  *
  * Design Decisions:
  * - DD-001: Existing createProductionServices() pattern
- * - DD-003: showOpenDialog / createNewWindow window reference resolution
+ * - DD-003: showOpenDialog window reference resolution
  * - DD-004: Closure pattern for project-path-dependent services
  */
 
@@ -94,6 +94,8 @@ import { projectLogger } from '../services/projectLogger';
 import { sshUriParser } from '../services/ssh/sshUriParser';
 import { readParsedLogs } from '../services/logFileService';
 import { startBugsWatcher, stopBugsWatcher } from './helpers/watcherUtils';
+// multi-window-integration Task 7.3: WindowManager for createNewWindow
+import { getWindowManager } from '../services/windowManager';
 
 // AutoExecution / Cloudflare / MCP / Schedule
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
@@ -184,16 +186,21 @@ export function createProductionServices(): Partial<ContextServices> {
     // ============================================================
     selectProject: selectProject as unknown as ContextServices['selectProject'],
     showOpenDialog: async () => {
-      const focusedWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
-      if (!focusedWindow) return null;
-      const result = await dialog.showOpenDialog(focusedWindow, {
+      // multi-window-integration Task 6.4: Use focused window with WindowManager-aware fallback
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      const targetWindow = focusedWindow ?? BrowserWindow.getAllWindows()[0] ?? null;
+      if (!targetWindow) return null;
+      const result = await dialog.showOpenDialog(targetWindow, {
         properties: ['openDirectory'],
       });
       if (result.canceled || result.filePaths.length === 0) return null;
       return result.filePaths[0];
     },
-    // createNewWindow: injected via windowFactory.ts → setupTRPCHandler serviceOverrides
-    // (circular dependency elimination — no longer defined here)
+    // multi-window-integration Task 7.3: createNewWindow now wired via WindowManager
+    // (previously injected externally, now directly wired here)
+    createNewWindow: async () => {
+      getWindowManager().createWindow();
+    },
     getIsE2ETest: () => process.argv.includes('--e2e-test'),
 
     // ============================================================

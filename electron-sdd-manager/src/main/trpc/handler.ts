@@ -1,12 +1,13 @@
 /**
  * tRPC IPC Handler setup
  * Task 1.1: handler.tsからコンテキストへのサービス渡しを設定する
- * Requirements: 1.1, 1.2, 1.3, 8.1, 8.2, 8.3, 8.4, 8.5
+ * multi-window-integration Task 2.2: IPCHandler Singleton pattern
+ * Requirements: 1.1, 1.2, 1.3, 3.1, 8.1, 8.2, 8.3, 8.4, 8.5
+ * DD-001: IPCHandler Singleton + attachWindow pattern
  * DD-006: tRPC Contextへのサービス注入
  *
- * Registers the tRPC IPC handler for the given BrowserWindow.
- * Called from createWindow() after the window is created (DD-005).
- * Passes createContext factory to createIPCHandler for service DI.
+ * multi-window-integration Task 7.3: setupTRPCHandler is deprecated.
+ * Use initializeTRPCHandler (Singleton IPCHandler with attachWindow) for multi-window.
  *
  * Handler-injected services (not in productionServices.ts):
  * - eventBus: Global EventBus for tRPC Subscription event distribution
@@ -20,6 +21,7 @@ import { projectLogger } from '../services/projectLogger';
 import { createProductionServices } from './productionServices';
 import { getInitialSelectResult as getInitialSelectResultImpl, clearInitialSelectResult } from './helpers/projectState';
 import { getGlobalEventBus } from './services/globalEventBus';
+import { createWindowContextFactory, type WindowManagerLike } from './windowContextFactory';
 
 // Type-safe wrapper: projectSetup returns SelectProjectResult,
 // but ContextServices expects SelectProjectResultLike (structurally compatible superset)
@@ -27,13 +29,74 @@ const getInitialSelectResult: ContextServices['getInitialSelectResult'] =
   () => getInitialSelectResultImpl() as ReturnType<ContextServices['getInitialSelectResult']>;
 
 /**
+ * WindowManager interface subset for initializeTRPCHandler.
+ * Extends WindowManagerLike with IPCHandler management methods.
+ */
+interface WindowManagerForHandler extends WindowManagerLike {
+  getIPCHandler(): { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow): void } | null;
+  setIPCHandler(handler: { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow): void }): void;
+}
+
+/**
+ * Initialize tRPC IPC handler with multi-window support.
+ * Uses Singleton IPCHandler pattern (DD-001):
+ * - First call: creates IPCHandler with createWindowContextFactory
+ * - Subsequent calls: attaches window to existing IPCHandler
+ *
+ * @param windowManager - WindowManager instance for window state lookup and IPCHandler storage
+ * @param window - The BrowserWindow to attach
+ * @param serviceOverrides - Optional partial service overrides for DI (testing)
+ */
+export function initializeTRPCHandler(
+  windowManager: WindowManagerForHandler,
+  window: Electron.BrowserWindow,
+  serviceOverrides?: Partial<ContextServices>,
+): void {
+  try {
+    // Check if IPCHandler already exists (DD-001: Singleton)
+    const existingHandler = windowManager.getIPCHandler();
+    if (existingHandler) {
+      // Attach this window to existing IPCHandler
+      existingHandler.attachWindow(window);
+      projectLogger.info('[trpc] Window attached to existing IPCHandler', { windowId: window.id });
+      return;
+    }
+
+    // First call: create IPCHandler with WindowContextFactory
+    const productionDefaults = createProductionServices();
+    const sharedServices: Partial<ContextServices> = {
+      ...productionDefaults,
+      ...serviceOverrides,
+      // Handler-injected services
+      getInitialSelectResult,
+      clearInitialSelectResult,
+      eventBus: getGlobalEventBus(),
+    };
+
+    // Create per-request context factory using WindowContextFactory
+    const contextFactory = createWindowContextFactory(windowManager, sharedServices);
+
+    const ipcHandler = createIPCHandler({
+      router: appRouter,
+      windows: [window],
+      createContext: contextFactory,
+    });
+
+    // Store IPCHandler on WindowManager (SSOT)
+    windowManager.setIPCHandler(ipcHandler);
+
+    projectLogger.info('[trpc] IPCHandler created and stored on WindowManager', { windowId: window.id });
+  } catch (error) {
+    projectLogger.error('[trpc] Failed to initialize tRPC handler', { error });
+  }
+}
+
+/**
  * Sets up the tRPC IPC handler for the given BrowserWindow.
  * This enables Renderer processes to call tRPC procedures via IPC.
  *
- * Production services are automatically resolved via createProductionServices().
- * Handler-injected services (eventBus, getInitialSelectResult, clearInitialSelectResult)
- * are added after the merge to ensure they are always present.
- * Tests can override individual services via serviceOverrides parameter.
+ * @deprecated Use initializeTRPCHandler for multi-window support.
+ * This function is kept for backward compatibility during migration.
  *
  * @param window - The BrowserWindow instance to attach the handler to
  * @param serviceOverrides - Optional partial service overrides for DI (testing)

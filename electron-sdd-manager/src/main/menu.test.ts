@@ -1,6 +1,8 @@
 /**
  * Menu Module Tests
  * Requirements: 1.1, 1.2, 1.3 (sidebar-refactor)
+ * multi-window-integration Task 5.1: WindowManager.createWindow integration
+ * multi-window-integration Task 5.2: Focused window menu context tracking
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -37,12 +39,24 @@ vi.mock('./services/configStore', () => ({
   })),
 }));
 
-// Mock windowFactory module (createWindow)
-vi.mock('./windowFactory', () => ({
-  createWindow: vi.fn(),
+// Mock WindowManager
+const mockWindowManagerCreateWindow = vi.fn();
+const mockWindowManagerOnWindowFocus = vi.fn();
+const mockWindowManagerGetWindowProject = vi.fn();
+const mockWindowManagerGetAllWindowIds = vi.fn(() => [] as number[]);
+const mockWindowManagerGetWindow = vi.fn();
+
+vi.mock('./services/windowManager', () => ({
+  getWindowManager: vi.fn(() => ({
+    createWindow: mockWindowManagerCreateWindow,
+    onWindowFocus: mockWindowManagerOnWindowFocus,
+    getWindowProject: mockWindowManagerGetWindowProject,
+    getAllWindowIds: mockWindowManagerGetAllWindowIds,
+    getWindow: mockWindowManagerGetWindow,
+  })),
 }));
 
-// Mock globalEventBus (trpc-full-migration: webContents.send → eventBus.emit)
+// Mock globalEventBus (trpc-full-migration: webContents.send -> eventBus.emit)
 const mockEmit = vi.fn();
 vi.mock('./trpc/services/globalEventBus', () => ({
   getGlobalEventBus: vi.fn(() => ({
@@ -59,23 +73,29 @@ vi.mock('./trpc/services/eventBus', () => ({
     MENU_INSTALL_COMMANDSET: 'events:menu-install-commandset',
     MENU_INSTALL_EXPERIMENTAL_DEBUG: 'events:menu-install-experimental-debug',
     MENU_INSTALL_EXPERIMENTAL_GEMINI: 'events:menu-install-experimental-gemini',
+    MENU_RESET_LAYOUT: 'events:menu-reset-layout',
+    MENU_TOGGLE_REMOTE_SERVER: 'events:menu-toggle-remote-server',
   },
 }));
 
 // Import after mocks
-import { createMenu, updateMenu, setMenuProjectPath, updateWindowTitle } from './menu';
+import { createMenu, updateMenu, setMenuProjectPath, updateWindowTitle, initializeMenuFocusTracking } from './menu';
 import { getConfigStore } from './services/configStore';
-import { createWindow } from './windowFactory';
 
 describe('Menu Module', () => {
   let mockWindow: Partial<BrowserWindow>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(createWindow).mockClear();
     mockEmit.mockClear();
+    mockWindowManagerCreateWindow.mockClear();
+    mockWindowManagerOnWindowFocus.mockClear();
+    mockWindowManagerGetWindowProject.mockClear();
+    mockWindowManagerGetAllWindowIds.mockClear().mockReturnValue([]);
+    mockWindowManagerGetWindow.mockClear();
 
     mockWindow = {
+      id: 1,
       webContents: {
         send: vi.fn(),
         isLoading: vi.fn().mockReturnValue(false),
@@ -160,43 +180,352 @@ describe('Menu Module', () => {
     });
   });
 
-  describe('Menu items - Open Recent Project', () => {
-    it('should create window if no window exists when opening recent project', () => {
-      // Setup: Mock recent projects
-      const mockGetRecentProjects = vi.fn(() => ['/path/to/project1', '/path/to/project2']);
-      vi.mocked(getConfigStore).mockReturnValue({
-        getRecentProjects: mockGetRecentProjects,
-        addRecentProject: vi.fn(),
-        removeRecentProject: vi.fn(),
-      } as any);
+  // ============================================================
+  // multi-window-integration Task 5.1: WindowManager.createWindow integration
+  // ============================================================
+  describe('multi-window Task 5.1: WindowManager.createWindow integration', () => {
+    describe('New Window menu item', () => {
+      it('should create a new window via WindowManager.createWindow() when "New Window" is clicked', () => {
+        const newMockWindow = {
+          id: 2,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+        mockWindowManagerCreateWindow.mockReturnValue(newMockWindow);
 
-      // Setup: No windows exist
-      vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
-      vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
+        createMenu();
 
-      // After createWindow is called, return the new window
-      vi.mocked(createWindow).mockImplementation(() => {
-        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const newWindowItem = fileMenu.submenu.find((item: any) => item.label === '新しいウィンドウ');
+
+        newWindowItem.click();
+
+        expect(mockWindowManagerCreateWindow).toHaveBeenCalledOnce();
       });
-
-      createMenu();
-
-      // Get the menu template to find the recent project menu item
-      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
-
-      // Find "File" menu -> "Recent Projects" submenu -> first project item
-      const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
-      const recentProjectsMenu = fileMenu.submenu.find((item: any) => item.label === '最近のプロジェクト');
-      const firstProject = recentProjectsMenu.submenu[0];
-
-      // Trigger the click handler
-      firstProject.click();
-
-      // Verify createWindow was called
-      expect(createWindow).toHaveBeenCalledOnce();
-      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
     });
 
+    describe('Recent project selection with project-less window', () => {
+      it('should open recent project in a window without a project when one exists', () => {
+        // Setup: Mock recent projects
+        const mockGetRecentProjects = vi.fn(() => ['/path/to/project1']);
+        vi.mocked(getConfigStore).mockReturnValue({
+          getRecentProjects: mockGetRecentProjects,
+          addRecentProject: vi.fn(),
+          removeRecentProject: vi.fn(),
+        } as any);
+
+        // Setup: A window without project exists (windowId=1)
+        const projectlessWindow = {
+          id: 1,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(projectlessWindow as BrowserWindow);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([projectlessWindow as BrowserWindow]);
+
+        // WindowManager reports that windowId=1 has no project
+        mockWindowManagerGetAllWindowIds.mockReturnValue([1]);
+        mockWindowManagerGetWindowProject.mockReturnValue(null);
+        mockWindowManagerGetWindow.mockReturnValue(projectlessWindow);
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const recentProjectsMenu = fileMenu.submenu.find((item: any) => item.label === '最近のプロジェクト');
+        const firstProject = recentProjectsMenu.submenu[0];
+
+        firstProject.click();
+
+        // Should NOT create a new window (use existing project-less window)
+        expect(mockWindowManagerCreateWindow).not.toHaveBeenCalled();
+        // Should emit event to open project in the project-less window
+        expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
+      });
+
+      it('should create a new window via WindowManager when all windows have projects', () => {
+        // Setup: Mock recent projects
+        const mockGetRecentProjects = vi.fn(() => ['/path/to/project2']);
+        vi.mocked(getConfigStore).mockReturnValue({
+          getRecentProjects: mockGetRecentProjects,
+          addRecentProject: vi.fn(),
+          removeRecentProject: vi.fn(),
+        } as any);
+
+        // Setup: All windows have projects
+        const windowWithProject = {
+          id: 1,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(windowWithProject as BrowserWindow);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([windowWithProject as BrowserWindow]);
+
+        // WindowManager reports that windowId=1 has a project
+        mockWindowManagerGetAllWindowIds.mockReturnValue([1]);
+        mockWindowManagerGetWindowProject.mockReturnValue('/path/to/project1');
+
+        // New window created by WindowManager
+        const newWindow = {
+          id: 2,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+        mockWindowManagerCreateWindow.mockReturnValue(newWindow);
+        // After creating new window, getAllWindows returns both
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([windowWithProject as BrowserWindow, newWindow as BrowserWindow]);
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const recentProjectsMenu = fileMenu.submenu.find((item: any) => item.label === '最近のプロジェクト');
+        const firstProject = recentProjectsMenu.submenu[0];
+
+        firstProject.click();
+
+        // Should create a new window via WindowManager
+        expect(mockWindowManagerCreateWindow).toHaveBeenCalledOnce();
+        expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project2' });
+      });
+
+      it('should create a new window via WindowManager when no windows exist', () => {
+        // Setup: Mock recent projects
+        const mockGetRecentProjects = vi.fn(() => ['/path/to/project1']);
+        vi.mocked(getConfigStore).mockReturnValue({
+          getRecentProjects: mockGetRecentProjects,
+          addRecentProject: vi.fn(),
+          removeRecentProject: vi.fn(),
+        } as any);
+
+        // Setup: No windows exist
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
+        mockWindowManagerGetAllWindowIds.mockReturnValue([]);
+
+        // WindowManager creates new window
+        const newWindow = {
+          id: 1,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+        mockWindowManagerCreateWindow.mockReturnValue(newWindow);
+        // After creating window, getAllWindows returns it
+        mockWindowManagerCreateWindow.mockImplementation(() => {
+          vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([newWindow as BrowserWindow]);
+          return newWindow;
+        });
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const recentProjectsMenu = fileMenu.submenu.find((item: any) => item.label === '最近のプロジェクト');
+        const firstProject = recentProjectsMenu.submenu[0];
+
+        firstProject.click();
+
+        expect(mockWindowManagerCreateWindow).toHaveBeenCalledOnce();
+        expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
+      });
+    });
+
+    describe('Open Project Dialog with WindowManager', () => {
+      it('should create window via WindowManager if no window exists when opening project dialog', async () => {
+        // Setup: No windows exist
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
+
+        const newWindow = {
+          id: 1,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(false),
+            once: vi.fn(),
+          } as unknown as Electron.WebContents,
+        };
+        mockWindowManagerCreateWindow.mockImplementation(() => {
+          vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([newWindow as BrowserWindow]);
+          return newWindow;
+        });
+
+        // Mock dialog result
+        vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+          canceled: false,
+          filePaths: ['/selected/project'],
+        } as any);
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
+
+        await openProjectItem.click();
+
+        expect(mockWindowManagerCreateWindow).toHaveBeenCalledOnce();
+        expect(dialog.showOpenDialog).toHaveBeenCalledWith(newWindow, {
+          properties: ['openDirectory'],
+          title: 'プロジェクトディレクトリを選択',
+        });
+        expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
+      });
+
+      it('should not create window if window already exists when opening project dialog', async () => {
+        // Setup: Window exists
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(mockWindow as BrowserWindow);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
+
+        // Mock dialog result
+        vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+          canceled: false,
+          filePaths: ['/selected/project'],
+        } as any);
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
+
+        await openProjectItem.click();
+
+        expect(mockWindowManagerCreateWindow).not.toHaveBeenCalled();
+        expect(dialog.showOpenDialog).toHaveBeenCalled();
+      });
+
+      it('should wait for window to load before sending event when project is selected', async () => {
+        // Setup: No windows exist
+        vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
+        vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
+
+        const mockLoadingWindow = {
+          id: 1,
+          webContents: {
+            send: vi.fn(),
+            isLoading: vi.fn().mockReturnValue(true),
+            once: vi.fn((event: string, callback: () => void) => {
+              if (event === 'did-finish-load') {
+                callback();
+              }
+            }),
+          } as unknown as Electron.WebContents,
+        };
+
+        mockWindowManagerCreateWindow.mockImplementation(() => {
+          vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockLoadingWindow as BrowserWindow]);
+          return mockLoadingWindow;
+        });
+
+        // Mock dialog result
+        vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+          canceled: false,
+          filePaths: ['/selected/project'],
+        } as any);
+
+        createMenu();
+
+        const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+        const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
+        const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
+
+        await openProjectItem.click();
+
+        expect(mockLoadingWindow.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function));
+        expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
+      });
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 5.2: Focused window menu context tracking
+  // ============================================================
+  describe('multi-window Task 5.2: Focused window menu context tracking', () => {
+    it('should register onWindowFocus callback via initializeMenuFocusTracking', () => {
+      initializeMenuFocusTracking();
+
+      expect(mockWindowManagerOnWindowFocus).toHaveBeenCalledOnce();
+      expect(mockWindowManagerOnWindowFocus).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should call setMenuProjectPath with the focused window project path when a window gains focus', () => {
+      initializeMenuFocusTracking();
+
+      // Extract the callback registered via onWindowFocus
+      const focusCallback = mockWindowManagerOnWindowFocus.mock.calls[0][0];
+
+      // Simulate window focus with windowId=1 that has a project
+      mockWindowManagerGetWindowProject.mockReturnValue('/path/to/my-project');
+      focusCallback(1);
+
+      // setMenuProjectPath should be called, rebuilding the menu
+      // We verify this by checking the menu was rebuilt
+      expect(Menu.buildFromTemplate).toHaveBeenCalled();
+      expect(Menu.setApplicationMenu).toHaveBeenCalled();
+    });
+
+    it('should call setMenuProjectPath(null) when a window without project gains focus', () => {
+      initializeMenuFocusTracking();
+
+      const focusCallback = mockWindowManagerOnWindowFocus.mock.calls[0][0];
+
+      // Simulate window focus with windowId=2 that has no project
+      mockWindowManagerGetWindowProject.mockReturnValue(null);
+      focusCallback(2);
+
+      // Menu should be rebuilt
+      expect(Menu.buildFromTemplate).toHaveBeenCalled();
+
+      // Verify that project-dependent menu items are disabled
+      // We can check by creating the menu and inspecting the template
+      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls.at(-1)?.[0];
+      const toolsMenu = menuTemplate?.find((item: any) => item.label === 'ツール') as any;
+      const installCommandsetItem = toolsMenu?.submenu?.find((item: any) =>
+        item.label === 'コマンドセットをインストール...'
+      );
+
+      expect(installCommandsetItem?.enabled).toBe(false);
+    });
+
+    it('should enable project-dependent menu items when focused window has a project', () => {
+      initializeMenuFocusTracking();
+
+      const focusCallback = mockWindowManagerOnWindowFocus.mock.calls[0][0];
+
+      // Simulate window focus with windowId=1 that has a project
+      mockWindowManagerGetWindowProject.mockReturnValue('/path/to/project');
+      focusCallback(1);
+
+      // Verify that project-dependent menu items are enabled
+      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls.at(-1)?.[0];
+      const toolsMenu = menuTemplate?.find((item: any) => item.label === 'ツール') as any;
+      const installCommandsetItem = toolsMenu?.submenu?.find((item: any) =>
+        item.label === 'コマンドセットをインストール...'
+      );
+
+      expect(installCommandsetItem?.enabled).toBe(true);
+    });
+  });
+
+  describe('Menu items - Open Recent Project (legacy tests)', () => {
     it('should not create window if window already exists when opening recent project', () => {
       // Setup: Mock recent projects
       const mockGetRecentProjects = vi.fn(() => ['/path/to/project1']);
@@ -206,9 +535,14 @@ describe('Menu Module', () => {
         removeRecentProject: vi.fn(),
       } as any);
 
-      // Setup: Window exists
+      // Setup: Window exists with no project
       vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(mockWindow as BrowserWindow);
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
+
+      // WindowManager reports window without project
+      mockWindowManagerGetAllWindowIds.mockReturnValue([1]);
+      mockWindowManagerGetWindowProject.mockReturnValue(null);
+      mockWindowManagerGetWindow.mockReturnValue(mockWindow);
 
       createMenu();
 
@@ -221,8 +555,8 @@ describe('Menu Module', () => {
       // Trigger the click handler
       firstProject.click();
 
-      // Verify createWindow was NOT called
-      expect(createWindow).not.toHaveBeenCalled();
+      // Verify createWindow was NOT called (use existing project-less window)
+      expect(mockWindowManagerCreateWindow).not.toHaveBeenCalled();
       expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
     });
 
@@ -238,12 +572,14 @@ describe('Menu Module', () => {
       // Setup: No windows exist, and window is loading after creation
       vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
       vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
+      mockWindowManagerGetAllWindowIds.mockReturnValue([]);
 
       const mockLoadingWindow = {
+        id: 1,
         webContents: {
           send: vi.fn(),
           isLoading: vi.fn().mockReturnValue(true),
-          once: vi.fn((event, callback) => {
+          once: vi.fn((event: string, callback: () => void) => {
             // Simulate did-finish-load event
             if (event === 'did-finish-load') {
               callback();
@@ -252,8 +588,9 @@ describe('Menu Module', () => {
         } as unknown as Electron.WebContents,
       };
 
-      vi.mocked(createWindow).mockImplementation(() => {
+      mockWindowManagerCreateWindow.mockImplementation(() => {
         vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockLoadingWindow as BrowserWindow]);
+        return mockLoadingWindow;
       });
 
       createMenu();
@@ -271,112 +608,6 @@ describe('Menu Module', () => {
       expect(mockLoadingWindow.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function));
       // Verify eventBus.emit was called after load
       expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/path/to/project1' });
-    });
-  });
-
-  describe('Menu items - Open Project Dialog', () => {
-    it('should create window if no window exists when opening project dialog', async () => {
-      // Setup: No windows exist
-      vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
-      vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
-
-      // After createWindow is called, return the new window
-      vi.mocked(createWindow).mockImplementation(() => {
-        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
-      });
-
-      // Mock dialog result
-      vi.mocked(dialog.showOpenDialog).mockResolvedValue({
-        canceled: false,
-        filePaths: ['/selected/project'],
-      } as any);
-
-      createMenu();
-
-      // Get the menu template
-      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
-      const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
-      const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
-
-      // Trigger the click handler
-      await openProjectItem.click();
-
-      // Verify createWindow was called
-      expect(createWindow).toHaveBeenCalledOnce();
-      expect(dialog.showOpenDialog).toHaveBeenCalledWith(mockWindow, {
-        properties: ['openDirectory'],
-        title: 'プロジェクトディレクトリを選択',
-      });
-      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
-    });
-
-    it('should not create window if window already exists when opening project dialog', async () => {
-      // Setup: Window exists
-      vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(mockWindow as BrowserWindow);
-      vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
-
-      // Mock dialog result
-      vi.mocked(dialog.showOpenDialog).mockResolvedValue({
-        canceled: false,
-        filePaths: ['/selected/project'],
-      } as any);
-
-      createMenu();
-
-      // Get the menu template
-      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
-      const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
-      const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
-
-      // Trigger the click handler
-      await openProjectItem.click();
-
-      // Verify createWindow was NOT called
-      expect(createWindow).not.toHaveBeenCalled();
-      expect(dialog.showOpenDialog).toHaveBeenCalled();
-    });
-
-    it('should wait for window to load before sending event when project is selected', async () => {
-      // Setup: No windows exist
-      vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null);
-      vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([]);
-
-      const mockLoadingWindow = {
-        webContents: {
-          send: vi.fn(),
-          isLoading: vi.fn().mockReturnValue(true),
-          once: vi.fn((event, callback) => {
-            if (event === 'did-finish-load') {
-              callback();
-            }
-          }),
-        } as unknown as Electron.WebContents,
-      };
-
-      vi.mocked(createWindow).mockImplementation(() => {
-        vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockLoadingWindow as BrowserWindow]);
-      });
-
-      // Mock dialog result
-      vi.mocked(dialog.showOpenDialog).mockResolvedValue({
-        canceled: false,
-        filePaths: ['/selected/project'],
-      } as any);
-
-      createMenu();
-
-      // Get the menu template
-      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
-      const fileMenu = menuTemplate.find((item: any) => item.label === 'ファイル') as any;
-      const openProjectItem = fileMenu.submenu.find((item: any) => item.label === 'プロジェクトを開く...');
-
-      // Trigger the click handler
-      await openProjectItem.click();
-
-      // Verify window.webContents.once was called to wait for load
-      expect(mockLoadingWindow.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function));
-      // Verify eventBus.emit was called after load
-      expect(mockEmit).toHaveBeenCalledWith('events:menu-open-project', { projectPath: '/selected/project' });
     });
   });
 

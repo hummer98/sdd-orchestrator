@@ -1,0 +1,279 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-26T10:15:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "Window title pattern duplicated across 3 locations: The pattern `isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator'` for computing the base title appears in windowManager.ts (lines 199 and 463) and menu.ts (line 359). This should be extracted to a shared constant or utility.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:199 - title: isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator'",
+        "electron-sdd-manager/src/main/services/windowManager.ts:463 - const baseTitle = isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator'",
+        "electron-sdd-manager/src/main/menu.ts:359 - const baseTitle = isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator'"
+      ]
+    },
+    {
+      "id": "principle-dry-2",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "Duplicate MetricsService/SpecManagerService creation in projectSetup.ts:setProjectPath() and windowManager.ts:createWindowServices(). Both paths create MetricsService (with MetricsFileWriter/MetricsFileReader) and SpecManagerService independently. During the transition period, the dual creation paths exist because setProjectPath() handles global state while createWindowServices() handles per-window state, but this will be a DRY concern once the migration is fully complete.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:553 - metricsService: new MetricsService(logger, new MetricsFileWriter(logger), new MetricsFileReader(logger))",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:246-248 - new MetricsFileWriter/MetricsFileReader/MetricsService",
+        "electron-sdd-manager/src/main/services/windowManager.ts:548 - new SpecManagerService(projectPath, { layoutConfigService })",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:253 - new SpecManagerService(projectPath, { layoutConfigService, metricsService })"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager is correctly established as the SSOT for window lifecycle. All production code uses getWindowManager() for window operations. windowFactory.ts is deleted and all references removed.",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-2",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IPCHandler follows Singleton pattern (DD-001). initializeTRPCHandler creates handler once and stores on WindowManager via setIPCHandler(). Subsequent calls attach windows via attachWindow().",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-3",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "MultiWindowState interface is duplicated in configStore.ts (line 81) and windowManager.ts (line 78). configStore version uses `bounds: WindowBounds` (readonly), windowManager version uses `bounds: WindowBoundsExtended` (mutable extends WindowBounds with identical fields). This is a minor SSOT violation - a single canonical type should be shared. Additionally, WindowBoundsExtended adds no new fields over WindowBounds (only removes readonly), which is a minor KISS concern.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/configStore.ts:81 - export interface MultiWindowState { ... bounds: WindowBounds ... }",
+        "electron-sdd-manager/src/main/services/windowManager.ts:78 - export interface MultiWindowState { ... bounds: WindowBoundsExtended ... }",
+        "electron-sdd-manager/src/main/services/windowManager.ts:34 - export interface WindowBoundsExtended extends WindowBounds { x: number; y: number; width: number; height: number; } (no new fields vs WindowBounds)"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Architecture follows a straightforward pattern: WindowManager -> WindowContextFactory -> tRPC Context. Event filtering uses a simple shouldDeliverEvent() helper. No over-engineering detected.",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No speculative features detected. All new components (WindowContextFactory, EventBusFilter, IPCHandler Singleton) are directly tied to requirements.",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-windowfactory",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "windowFactory.ts is confirmed deleted. No file exists at src/main/windowFactory.ts. Only references remaining are in test files verifying the deletion (startupFlow.test.ts, index.test.ts).",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-index",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "index.ts correctly uses WindowManager.createWindow() via restoreWindows(), initializeTRPCHandler(), initializeMenuFocusTracking(). app.on('activate') and second-instance use WindowManager. No windowFactory references.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-handler",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handler.ts exports initializeTRPCHandler (new) and setupTRPCHandler (deprecated with @deprecated tag). initializeTRPCHandler uses createWindowContextFactory as designed.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-context",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts ContextServices interface includes optional windowId field. createContext merges overrides correctly.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-projectstate",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectState.ts correctly delegates to WindowManager for getCurrentProjectPath(), getSpecManagerService(), getAutoExecutionCoordinator(), getMetricsService(). Setters are deprecated no-ops.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-projectsetup",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "selectProject accepts optional windowId parameter. Per-window project registration via WindowManager.setWindowProject() with duplicate detection. BrowserWindow.getAllWindows()[0] replaced with WindowManager-aware existence checks (Task 6.4).",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-watcherutils",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "watcherUtils.ts supports per-window watcher delegation via optional windowId parameter with backward-compatible global variable fallback. getAgentRecordWatcherService() removed (previously dead code).",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-events",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "events.ts router uses createEventSubscription helper with shouldDeliverEvent filtering. All subscriptions automatically filter based on window's projectPath. console.warn replaced with logger.warn.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-menu",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "menu.ts creates windows via getWindowManager().createWindow(). New window menu, recent projects, and focus tracking all use WindowManager. initializeMenuFocusTracking() registers onWindowFocus callback.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-applifecycle",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "appLifecycle.ts cleanupOnQuit() calls windowManager.saveAllWindowStates() as the first cleanup step.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-productionservices",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts wires createNewWindow via getWindowManager().createWindow(). showOpenDialog uses getFocusedWindow() with getAllWindows()[0] fallback.",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-windowmanager",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager extended with PerWindowServices (MetricsService, AutoExecutionCoordinator), webContentsToWindowId mapping, getWindowContext(), getWindowIdByWebContents(), IPCHandler management (get/set/attach/detach), normalizePath with realpathSync.",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-windowcontextfactory",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "windowContextFactory.ts created with createWindowContextFactory function. Used by handler.ts in production. Resolves window via BrowserWindow.fromWebContents(event.sender) with focused-window fallback.",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-eventbusfilter",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "eventBusFilter.ts created with PROJECT_SCOPED_EVENTS, APP_SCOPED_EVENTS constants, isProjectScopedEvent() and shouldDeliverEvent() helpers. shouldDeliverEvent is consumed by events.ts router in production.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-initializeMenuFocusTracking",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[FIXED] initializeMenuFocusTracking() is now called in index.ts:287 during app startup. Previously reported as dead code - autofix resolved.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:20 - import { createMenu, initializeMenuFocusTracking } from './menu';",
+        "electron-sdd-manager/src/main/index.ts:287 - initializeMenuFocusTracking();"
+      ]
+    },
+    {
+      "id": "dead-code-getAgentRecordWatcherService",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[FIXED] getAgentRecordWatcherService() has been removed from watcherUtils.ts. Previously reported as dead code with zero consumers - autofix resolved by deletion.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-APP_SCOPED_EVENTS",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "APP_SCOPED_EVENTS is exported and consumed only in test files for event categorization completeness validation. PROJECT_SCOPED_EVENTS is used internally via projectScopedEventSet for O(1) lookup. Both serve valid documentation and test-verification purposes.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-WindowContextCreateFn",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowContextCreateFn type is exported as the return type of createWindowContextFactory. Standard TypeScript API design for type-safe consumers.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-setupTRPCHandler",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "setupTRPCHandler is deprecated (@deprecated tag) but still used in existing test files for backward compatibility. Acceptable during migration period.",
+      "evidence": []
+    },
+    {
+      "id": "placeholder-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO, FIXME, PLACEHOLDER, or implementation-pending markers found in new/modified production files. Existing TODO/implement references in other files (updateManager.ts, etc.) are pre-existing and not part of this spec.",
+      "evidence": []
+    },
+    {
+      "id": "logging-format-1",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All new code uses projectLogger (aliased as logger) with structured logging. Log messages follow [Component] prefix pattern consistently: [WindowManager], [WindowContextFactory], [trpc], [projectSetup], [watcherUtils], [events-router].",
+      "evidence": []
+    },
+    {
+      "id": "logging-levels-1",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Appropriate log levels used: logger.info for normal operations (window create/close, service init), logger.warn for recoverable issues (window not found, duplicate project, fallback, empty event data), logger.error for failures (tRPC handler init failure), logger.debug for verbose diagnostics.",
+      "evidence": []
+    },
+    {
+      "id": "logging-console-1",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[FIXED] console.warn in events.ts:139 has been replaced with logger.warn. All new/modified production files (windowManager.ts, windowContextFactory.ts, eventBusFilter.ts, handler.ts, context.ts, projectState.ts, projectSetup.ts, watcherUtils.ts, events.ts, menu.ts, index.ts, appLifecycle.ts, productionServices.ts) use projectLogger exclusively. No console.* usage found.",
+      "evidence": []
+    },
+    {
+      "id": "logging-error-handling",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Error handling in new code includes logging. initializeTRPCHandler catches and logs errors. WindowContextFactory logs fallback to focused window. projectSetup.selectProject logs duplicate detection and validation failures.",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 31,
+    "passed": 28,
+    "failed": 3,
+    "critical": 0,
+    "major": 0,
+    "minor": 3,
+    "info": 28
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "feature_name": "mw-feature-a",
+  "name": "mw-feature-a",
+  "description": "Multi-window E2E test feature A",
+  "phase": "requirements-generated",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "createdAt": "2026-02-26T00:00:00.000Z",
+  "updatedAt": "2026-02-26T00:00:00.000Z"
+}

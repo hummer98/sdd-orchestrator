@@ -1,12 +1,14 @@
 /**
  * Application Menu Manager
  * Requirements: 11.6, 11.7
+ * multi-window-integration Task 5.1: WindowManager.createWindow integration
+ * multi-window-integration Task 5.2: Focused window menu context tracking via onWindowFocus
  */
 
 import { Menu, MenuItem, app, BrowserWindow, dialog } from 'electron';
 import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
-import { createWindow } from './windowFactory';
+import { getWindowManager } from './services/windowManager';
 import { getGlobalEventBus } from './trpc/services/globalEventBus';
 import { EVENT_NAMES } from './trpc/services/eventBus';
 
@@ -19,7 +21,27 @@ let isRemoteServerRunning = false;
 const isMac = process.platform === 'darwin';
 
 /**
+ * Find a window without a project assigned (project-less window).
+ * multi-window-integration Task 5.1: Used for recent project selection to reuse existing windows.
+ * Returns the BrowserWindow if found, null otherwise.
+ */
+function findProjectlessWindow(): BrowserWindow | null {
+  const wm = getWindowManager();
+  const windowIds = wm.getAllWindowIds();
+  for (const windowId of windowIds) {
+    if (wm.getWindowProject(windowId) === null) {
+      const win = wm.getWindow(windowId);
+      if (win) {
+        return win;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Build recent projects submenu from config store
+ * multi-window-integration Task 5.1: Use WindowManager for window creation and project-less window reuse
  */
 function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
   const configStore = getConfigStore();
@@ -33,13 +55,14 @@ function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
     label: basename(projectPath),
     sublabel: projectPath,
     click: () => {
-      let window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+      // multi-window-integration Task 5.1:
+      // If there's a project-less window, reuse it; otherwise create a new one via WindowManager
+      let window = findProjectlessWindow();
 
-      // If no window exists, create one first
+      // If no project-less window exists, create a new one via WindowManager
       if (!window) {
-        createWindow();
-        // Get the newly created window
-        window = BrowserWindow.getAllWindows()[0];
+        const wm = getWindowManager();
+        window = wm.createWindow();
       }
 
       if (window) {
@@ -104,8 +127,9 @@ export function createMenu(): void {
           label: '新しいウィンドウ',
           accelerator: 'CmdOrCtrl+Shift+N',
           click: () => {
-            // Create a new window via createWindow()
-            createWindow();
+            // multi-window-integration Task 5.1: Create a new window via WindowManager
+            const wm = getWindowManager();
+            wm.createWindow();
           },
         },
         { type: 'separator' as const },
@@ -115,10 +139,10 @@ export function createMenu(): void {
           click: async () => {
             let window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
 
-            // If no window exists, create one first
+            // If no window exists, create one via WindowManager
             if (!window) {
-              createWindow();
-              window = BrowserWindow.getAllWindows()[0];
+              const wm = getWindowManager();
+              window = wm.createWindow();
             }
 
             if (window) {
@@ -336,4 +360,18 @@ export function updateWindowTitle(projectName: string | null): void {
   const title = projectName ? `${baseTitle} - ${projectName}` : baseTitle;
 
   window.setTitle(title);
+}
+
+/**
+ * Initialize menu focus tracking with WindowManager.
+ * Registers an onWindowFocus callback that updates the menu's project context
+ * whenever a window gains focus.
+ * multi-window-integration Task 5.2: Focused window menu context tracking
+ */
+export function initializeMenuFocusTracking(): void {
+  const wm = getWindowManager();
+  wm.onWindowFocus((windowId: number) => {
+    const projectPath = wm.getWindowProject(windowId);
+    setMenuProjectPath(projectPath);
+  });
 }

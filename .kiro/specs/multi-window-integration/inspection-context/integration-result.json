@@ -1,0 +1,562 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-26T10:15:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete: PerWindowServicesにMetricsServiceとAutoExecutionCoordinatorを追加"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete: webContentsToWindowIdマッピングとコンテキスト解決メソッド"
+    },
+    {
+      "id": "task-1.3",
+      "checkType": "task-completion",
+      "target": "1.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.3 marked as complete: IPCHandler保持・管理機能"
+    },
+    {
+      "id": "task-1.4",
+      "checkType": "task-completion",
+      "target": "1.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.4 marked as complete: パス正規化にシンボリックリンク解決"
+    },
+    {
+      "id": "task-1.5",
+      "checkType": "task-completion",
+      "target": "1.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.5 marked as complete: WindowManager拡張のユニットテスト"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete: createWindowContextFactory実装"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete: handler.tsをIPCHandler Singletonパターンに移行"
+    },
+    {
+      "id": "task-2.3",
+      "checkType": "task-completion",
+      "target": "2.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.3 marked as complete: context.tsのContextServicesをウィンドウ別対応に更新"
+    },
+    {
+      "id": "task-2.4",
+      "checkType": "task-completion",
+      "target": "2.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.4 marked as complete: WindowContextFactoryとtRPCハンドラのユニットテスト"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete: グローバル変数のgetter/setterをWindowManager委譲"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete: projectState互換レイヤーのユニットテスト"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete: EventBusイベント型にprojectPathメタデータを追加"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete: イベントカテゴリ分類定数とフィルタヘルパー関数"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 marked as complete: events.tsの各Subscriptionにウィンドウ別フィルタリング"
+    },
+    {
+      "id": "task-4.4",
+      "checkType": "task-completion",
+      "target": "4.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.4 marked as complete: EventBusフィルタリングのユニットテスト"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete: menu.tsのウィンドウ管理をWindowManager経由に変更"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete: フォーカスウィンドウのメニューコンテキスト追従"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete: selectProjectにwindowIdパラメータを追加"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete: watcherUtils.tsのWatcher生成をウィンドウ別に対応"
+    },
+    {
+      "id": "task-6.3",
+      "checkType": "task-completion",
+      "target": "6.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.3 marked as complete: イベント発火箇所にprojectPathメタデータを付与"
+    },
+    {
+      "id": "task-6.4",
+      "checkType": "task-completion",
+      "target": "6.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.4 marked as complete: productionServices.tsのウィンドウ別サービス分離"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 marked as complete: index.tsの起動フローをWindowManager経由に変更"
+    },
+    {
+      "id": "task-7.2",
+      "checkType": "task-completion",
+      "target": "7.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.2 marked as complete: app.on('activate')とsecond-instanceハンドラをWindowManager経由"
+    },
+    {
+      "id": "task-7.3",
+      "checkType": "task-completion",
+      "target": "7.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.3 marked as complete: windowFactory.ts物理削除、全参照更新"
+    },
+    {
+      "id": "task-8.1",
+      "checkType": "task-completion",
+      "target": "8.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.1 marked as complete: appLifecycle.tsにウィンドウ状態保存追加"
+    },
+    {
+      "id": "task-8.2",
+      "checkType": "task-completion",
+      "target": "8.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.2 marked as complete: 起動フローにウィンドウ状態復元を統合"
+    },
+    {
+      "id": "task-9.1",
+      "checkType": "task-completion",
+      "target": "9.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.1 marked as complete: tRPCコンテキスト分離の統合テスト"
+    },
+    {
+      "id": "task-9.2",
+      "checkType": "task-completion",
+      "target": "9.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.2 marked as complete: EventBusフィルタリングの統合テスト"
+    },
+    {
+      "id": "task-9.3",
+      "checkType": "task-completion",
+      "target": "9.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.3 marked as complete: プロジェクト選択 -> サービスライフサイクルの統合テスト"
+    },
+    {
+      "id": "task-10.1",
+      "checkType": "task-completion",
+      "target": "10.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.1 marked as complete: 複数ウィンドウの同時作成と独立プロジェクト操作E2E"
+    },
+    {
+      "id": "task-10.2",
+      "checkType": "task-completion",
+      "target": "10.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.2 marked as complete: 重複プロジェクトオープン防止E2E"
+    },
+    {
+      "id": "task-10.3",
+      "checkType": "task-completion",
+      "target": "10.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.3 marked as complete: 各ウィンドウでのtRPC操作E2E"
+    },
+    {
+      "id": "task-10.4",
+      "checkType": "task-completion",
+      "target": "10.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.4 marked as complete: ウィンドウクローズ時のリソース解放E2E"
+    },
+    {
+      "id": "import-WindowManager",
+      "checkType": "import",
+      "target": "WindowManager",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager is imported in 8+ files",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts",
+        "electron-sdd-manager/src/main/menu.ts",
+        "electron-sdd-manager/src/main/appLifecycle.ts",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts",
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts",
+        "electron-sdd-manager/src/main/trpc/helpers/watcherUtils.ts",
+        "electron-sdd-manager/src/main/trpc/productionServices.ts",
+        "electron-sdd-manager/src/main/trpc/handler.ts"
+      ]
+    },
+    {
+      "id": "import-WindowContextFactory",
+      "checkType": "import",
+      "target": "WindowContextFactory (createWindowContextFactory)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createWindowContextFactory is imported in handler.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts"
+      ]
+    },
+    {
+      "id": "import-EventBusFilter",
+      "checkType": "import",
+      "target": "EventBusFilter (shouldDeliverEvent)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shouldDeliverEvent is imported in events.ts router",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts"
+      ]
+    },
+    {
+      "id": "import-initializeTRPCHandler",
+      "checkType": "import",
+      "target": "initializeTRPCHandler",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "initializeTRPCHandler is imported in index.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts"
+      ]
+    },
+    {
+      "id": "usage-WindowManager-index",
+      "checkType": "usage",
+      "target": "WindowManager in index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager is used in index.ts for: getWindowManager(), restoreWindows(), createWindow(), getAllWindowIds(), getWindowByProject(), restoreAndFocus()"
+    },
+    {
+      "id": "usage-WindowManager-menu",
+      "checkType": "usage",
+      "target": "WindowManager in menu.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager is used in menu.ts for: getWindowManager().createWindow(), findProjectlessWindow(), initializeMenuFocusTracking()"
+    },
+    {
+      "id": "usage-WindowManager-appLifecycle",
+      "checkType": "usage",
+      "target": "WindowManager in appLifecycle.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WindowManager is used in appLifecycle.ts for saveAllWindowStates()"
+    },
+    {
+      "id": "usage-createWindowContextFactory",
+      "checkType": "usage",
+      "target": "createWindowContextFactory in handler.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createWindowContextFactory is called in handler.ts line 77 to create per-request context factory"
+    },
+    {
+      "id": "usage-shouldDeliverEvent",
+      "checkType": "usage",
+      "target": "shouldDeliverEvent in events.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shouldDeliverEvent is called in events.ts line 149 within createEventSubscription helper for window-scoped filtering"
+    },
+    {
+      "id": "usage-initializeTRPCHandler",
+      "checkType": "usage",
+      "target": "initializeTRPCHandler in index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "initializeTRPCHandler is called in index.ts line 350 during app.whenReady startup flow"
+    },
+    {
+      "id": "wiring-windowFactory-deleted",
+      "checkType": "wiring",
+      "target": "Task 7.3: windowFactory.ts physical deletion",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "windowFactory.ts has been deleted. No file found at src/main/windowFactory.ts. Only test files reference it negatively (verifying absence)."
+    },
+    {
+      "id": "wiring-startup-flow",
+      "checkType": "wiring",
+      "target": "Task 7.1: index.ts startup flow uses WindowManager",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "app.whenReady() calls getWindowManager().restoreWindows() (line 342) and initializeTRPCHandler(windowManager, firstWindow) (line 350)"
+    },
+    {
+      "id": "wiring-activate-handler",
+      "checkType": "wiring",
+      "target": "Task 7.2: app.on('activate') uses WindowManager",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "app.on('activate') uses getWindowManager().getAllWindowIds() and createWindow() (lines 418-424)"
+    },
+    {
+      "id": "wiring-second-instance",
+      "checkType": "wiring",
+      "target": "Task 7.2: app.on('second-instance') uses WindowManager",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "second-instance handler uses getWindowManager().getWindowByProject() and restoreAndFocus() (lines 139-172)"
+    },
+    {
+      "id": "wiring-appLifecycle-save",
+      "checkType": "wiring",
+      "target": "Task 8.1: appLifecycle.ts saves window states",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "cleanupOnQuit() calls getWindowManager().saveAllWindowStates() before other cleanup (lines 24-30)"
+    },
+    {
+      "id": "wiring-initializeMenuFocusTracking",
+      "checkType": "wiring",
+      "target": "Task 5.2: initializeMenuFocusTracking wired to startup",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "FIXED (re-inspection): initializeMenuFocusTracking() is now called in index.ts line 287, immediately after createMenu() on line 284. The function is imported from menu.ts (line 20) and wires WindowManager.onWindowFocus to setMenuProjectPath for focused-window menu context tracking."
+    },
+    {
+      "id": "wiring-projectSetup-windowId",
+      "checkType": "wiring",
+      "target": "Task 6.1: selectProject has windowId parameter",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "selectProject(projectPath, windowId?) in projectSetup.ts accepts optional windowId. WindowManager.setWindowProject is called when windowId is available."
+    },
+    {
+      "id": "wiring-eventBus-projectPath",
+      "checkType": "wiring",
+      "target": "Task 6.3: projectPath in EventBus emit calls",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "projectPath is included in eventBus.emit calls for SPECS_CHANGED, BUGS_CHANGED, AGENT_RECORD_CHANGED (watcherUtils.ts), AGENT_OUTPUT, AGENT_STATUS_CHANGE, AGENT_LOG, AGENT_EXIT_ERROR, AGENT_START_ERROR (projectSetup.ts), AUTO_EXECUTION_* events, BUG_AUTO_EXECUTION_* events, and PROJECT_FILE_CHANGED (projectFileUtils.ts line 162)."
+    },
+    {
+      "id": "wiring-context-windowId",
+      "checkType": "wiring",
+      "target": "Task 2.3: ContextServices has windowId field",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ContextServices interface in context.ts has windowId?: number field (line 247). WindowContextFactory sets perWindowOverrides.windowId (windowContextFactory.ts line 87)."
+    },
+    {
+      "id": "wiring-productionServices-createNewWindow",
+      "checkType": "wiring",
+      "target": "Task 7.3: createNewWindow uses WindowManager",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "productionServices.ts createNewWindow (lines 201-203) calls getWindowManager().createWindow()"
+    },
+    {
+      "id": "test-windowManager",
+      "checkType": "usage",
+      "target": "WindowManager unit tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/services/windowManager.test.ts"
+    },
+    {
+      "id": "test-windowContextFactory",
+      "checkType": "usage",
+      "target": "WindowContextFactory unit tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/__tests__/windowContextFactory.test.ts"
+    },
+    {
+      "id": "test-eventBusFilter",
+      "checkType": "usage",
+      "target": "EventBusFilter unit tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/services/eventBusFilter.test.ts"
+    },
+    {
+      "id": "test-projectState",
+      "checkType": "usage",
+      "target": "projectState compatibility layer unit tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/helpers/projectState.test.ts"
+    },
+    {
+      "id": "test-integration-context",
+      "checkType": "usage",
+      "target": "tRPC context isolation integration test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/__tests__/integration-context-isolation.test.ts"
+    },
+    {
+      "id": "test-integration-eventbus",
+      "checkType": "usage",
+      "target": "EventBus filtering integration test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/__tests__/integration-eventbus-filtering.test.ts"
+    },
+    {
+      "id": "test-integration-lifecycle",
+      "checkType": "usage",
+      "target": "Project lifecycle integration test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: src/main/trpc/__tests__/integration-project-lifecycle.test.ts"
+    },
+    {
+      "id": "test-e2e-creation",
+      "checkType": "usage",
+      "target": "E2E multi-window creation test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: e2e-wdio/multi-window-creation.e2e.spec.ts"
+    },
+    {
+      "id": "test-e2e-duplicate",
+      "checkType": "usage",
+      "target": "E2E duplicate prevention test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: e2e-wdio/multi-window-duplicate-prevention.e2e.spec.ts"
+    },
+    {
+      "id": "test-e2e-trpc",
+      "checkType": "usage",
+      "target": "E2E tRPC multi-window test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: e2e-wdio/multi-window-trpc.e2e.spec.ts"
+    },
+    {
+      "id": "test-e2e-cleanup",
+      "checkType": "usage",
+      "target": "E2E cleanup/resource release test",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists: e2e-wdio/multi-window-cleanup.e2e.spec.ts"
+    },
+    {
+      "id": "placeholder-webSocketHandler-todo",
+      "checkType": "placeholder",
+      "target": "electron-sdd-manager/src/main/services/webSocketHandler.ts:1364",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "TODO on line 1364 ('Implement in task 3.3') is NOT related to multi-window-integration spec. It references a different task from a different spec."
+    },
+    {
+      "id": "remaining-getAllWindows-0",
+      "checkType": "wiring",
+      "target": "Task 6.4: BrowserWindow.getAllWindows()[0] references",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Remaining getAllWindows()[0] references in menu.ts (lines 140, 353) and productionServices.ts (line 191) are used as fallback after BrowserWindow.getFocusedWindow() and are acceptable patterns. The projectSetup.ts references (lines 474, 524) are in documented comments explaining the migration from the old pattern."
+    }
+  ],
+  "stats": {
+    "total": 63,
+    "passed": 63,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 63
+  }
+}

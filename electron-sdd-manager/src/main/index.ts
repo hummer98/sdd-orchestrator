@@ -3,9 +3,10 @@
  * Requirements: 11.1, 11.6, 11.7, 13.1, 13.2
  * Task 10.2: CLI起動オプション統合
  * Task 6.4: MCP server auto-start (mcp-server-integration)
+ * multi-window-integration Task 7.1-7.3: WindowManager-based startup flow
  */
 
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, dialog } from 'electron';
 import { existsSync } from 'fs';
 import { initializeEventWiring, selectProject } from './trpc/helpers/projectSetup';
 import { getGlobalEventBus } from './trpc/services/globalEventBus';
@@ -16,7 +17,7 @@ import { setupSSHStatusNotifications } from './services/sshSetup';
 // worktreeHandlers: tRPC gitルーターに移行・削除済み (Task 8.3)
 // bugWorktreeHandlers: tRPC bugルーターに移行済み (Task 5.4)
 // convertWorktreeHandlers: tRPC bugルーター (convertToWorktree) に移行済み (Task 5.4)
-import { createMenu } from './menu';
+import { createMenu, initializeMenuFocusTracking } from './menu';
 import { getConfigStore } from './services/configStore';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './services/projectLogger';
@@ -26,8 +27,9 @@ import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser'
 import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
-// Circular dependency elimination: createWindow extracted to windowFactory.ts
-import { createWindow, getMainWindow } from './windowFactory';
+// multi-window-integration Task 7.1-7.3: WindowManager-based window management
+import { getWindowManager } from './services/windowManager';
+import { initializeTRPCHandler } from './trpc/handler';
 // Entry point must have zero exports — testable cleanup logic lives in appLifecycle.ts
 import { cleanupOnQuit } from './appLifecycle';
 // Crash reporter: logs errors to fixed-path crash.log and intercepts dialog.showErrorBox
@@ -133,21 +135,40 @@ if (!gotTheLock) {
     const secondArgs = isAppPackaged ? argv.slice(1) : argv.slice(2);
     const secondOptions = parseCLIArgs(secondArgs);
 
-    // Focus existing window
-    const mainWindow = getMainWindow();
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    // multi-window-integration Task 7.2: Use WindowManager for second-instance handling
+    const windowManager = getWindowManager();
 
-    // If the second instance specified a project path, select it
+    // If the second instance specified a project path, check for existing window
     if (secondOptions.projectPath && existsSync(secondOptions.projectPath)) {
       logger.info('[main] Selecting project from second instance', {
         projectPath: secondOptions.projectPath,
       });
-      selectProject(secondOptions.projectPath).catch((error) => {
-        logger.error('[main] Failed to select project from second instance', { error });
-      });
+
+      // Check if project is already open in a window
+      const existingWindow = windowManager.getWindowByProject(secondOptions.projectPath);
+      if (existingWindow) {
+        // Restore and focus the existing window (handles minimized state)
+        const existingWindowId = existingWindow.id;
+        windowManager.restoreAndFocus(existingWindowId);
+        logger.info('[main] Focused existing window for project', {
+          projectPath: secondOptions.projectPath,
+          windowId: existingWindowId,
+        });
+      } else {
+        // No existing window for this project - create new window and select project
+        windowManager.createWindow();
+        selectProject(secondOptions.projectPath).catch((error) => {
+          logger.error('[main] Failed to select project from second instance', { error });
+        });
+      }
+    } else {
+      // No project specified - focus the first available window
+      const windowIds = windowManager.getAllWindowIds();
+      if (windowIds.length > 0) {
+        windowManager.restoreAndFocus(windowIds[0]);
+      } else {
+        windowManager.createWindow();
+      }
     }
   });
 }
@@ -262,6 +283,9 @@ app.whenReady().then(async () => {
   // Create application menu
   createMenu();
 
+  // multi-window-integration Task 5.2: Enable menu context tracking on window focus change
+  initializeMenuFocusTracking();
+
   // Task 6.4: Initialize MCP server (mcp-server-integration)
   // Auto-start MCP server if enabled in settings
   const configStore = getConfigStore();
@@ -312,8 +336,21 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Create main window
-  createWindow();
+  // multi-window-integration Task 8.2: Restore previous window states or create default window
+  // replaces direct createWindow() call from Task 7.1
+  const windowManager = getWindowManager();
+  const { restored, skipped } = windowManager.restoreWindows();
+  logger.info('[main] Window restoration complete', { restored, skipped: skipped.length });
+
+  // multi-window-integration Task 7.1: Initialize tRPC IPC handler with WindowManager
+  // IPCHandler is created once and attached to the first window (DD-001 Singleton pattern)
+  const allWindowIds = windowManager.getAllWindowIds();
+  const firstWindow = allWindowIds.length > 0 ? windowManager.getWindow(allWindowIds[0]) : null;
+  if (firstWindow) {
+    initializeTRPCHandler(windowManager, firstWindow);
+  } else {
+    logger.error('[main] No windows available after restoration - cannot initialize tRPC handler');
+  }
 
   // Task 10.2: Remote UI auto-start with CLI options
   if (cliOptions.remoteUIAuto) {
@@ -376,11 +413,14 @@ async function startRemoteUIWithCLIOptions(): Promise<void> {
 }
 
 // macOS: Re-create window when dock icon is clicked
+// multi-window-integration Task 7.2: Use WindowManager for activate handler
 app.on('activate', () => {
-  logger.info('[main] activate event fired', { windowCount: BrowserWindow.getAllWindows().length });
-  if (BrowserWindow.getAllWindows().length === 0) {
+  const windowManager = getWindowManager();
+  const windowIds = windowManager.getAllWindowIds();
+  logger.info('[main] activate event fired', { windowCount: windowIds.length });
+  if (windowIds.length === 0) {
     logger.info('[main] No windows found, creating new window');
-    createWindow();
+    windowManager.createWindow();
   }
 });
 

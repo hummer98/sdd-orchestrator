@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 // Legacy IPC handlers removed: all migrated to tRPC routers (trpc-full-migration)
 
 // Mock electron-trpc/main to prevent ESM named import of CJS electron module
-// (projectSetup.ts → menu.ts → windowFactory.ts → handler.ts → electron-trpc/main)
+// (projectSetup.ts → menu.ts → handler.ts → electron-trpc/main)
 vi.mock('electron-trpc/main', () => ({
   createIPCHandler: vi.fn(),
 }));

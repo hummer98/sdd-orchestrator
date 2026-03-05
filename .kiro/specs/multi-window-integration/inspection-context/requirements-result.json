@@ -1,0 +1,468 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-26T14:00:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: New window creation via Cmd+Shift+N. Menu.ts registers accelerator CmdOrCtrl+Shift+N calling WindowManager.createWindow(). WindowManager.createWindow() creates a BrowserWindow with project selection screen (projectPath: null). E2E test in multi-window-creation.e2e.spec.ts validates creation.",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts:128 (CmdOrCtrl+Shift+N accelerator)",
+        "electron-sdd-manager/src/main/menu.ts:131 (wm.createWindow())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:182 (createWindow method)",
+        "electron-sdd-manager/e2e-wdio/multi-window-creation.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: Window tRPC context binding on project selection. WindowManager.setWindowProject() stores projectPath per window. WindowContextFactory resolves event.sender to window and creates per-window context with getCurrentProjectPath closure. selectProject() in projectSetup.ts calls wm.setWindowProject().",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:423 (setWindowProject)",
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:53 (createWindowContextFactory)",
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:95 (perWindowOverrides.getCurrentProjectPath)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:162 (wm.setWindowProject in selectProject)"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: Per-window tRPC procedure execution. WindowContextFactory creates per-request context from event.sender -> BrowserWindow -> WindowManager.getWindowContext(). getCurrentProjectPath and getSpecManagerService are closure-bound per window.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:64 (BrowserWindow.fromWebContents)",
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:95 (getCurrentProjectPath closure)",
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:98 (getSpecManagerService closure)",
+        "electron-sdd-manager/src/main/trpc/__tests__/windowContextFactory.test.ts"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: Project context isolation between windows. WindowManager stores per-window state in Map structures (windowStates, windowServices). Setting project B on window B does not affect window A. E2E test verifies independent registration.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:151 (windowStates Map)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:157 (windowServices Map)",
+        "electron-sdd-manager/e2e-wdio/multi-window-creation.e2e.spec.ts (independent project registration test)"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.5: File watcher cleanup on window close. handleWindowClose() stops specsWatcherService, agentRecordWatcherService, bugsWatcherService, and resets autoExecutionCoordinator. WindowServices are deleted from the Map.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:317 (specsWatcherService.stop())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:318 (agentRecordWatcherService.stop())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:319 (bugsWatcherService.stop())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:321 (autoExecutionCoordinator.resetAll())",
+        "electron-sdd-manager/e2e-wdio/multi-window-cleanup.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "req-1.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.6: macOS behavior when last window closes. index.ts handles 'window-all-closed' event: non-darwin quits, darwin keeps running. 'activate' event creates new window via WindowManager if no windows exist.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:428-436 (window-all-closed handler, darwin check)",
+        "electron-sdd-manager/src/main/index.ts:417-425 (activate handler, WindowManager.createWindow())"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: windowFactory.ts abolished, WindowManager manages all windows via Map. windowFactory.ts is deleted (confirmed by git status 'D' and glob returning no results). WindowManager uses Map<number, WindowState> for all window management.",
+      "evidence": [
+        "git status shows 'D electron-sdd-manager/src/main/windowFactory.ts'",
+        "electron-sdd-manager/src/main/services/windowManager.ts:151 (windowStates Map)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:154 (projectWindowMap for O(1) lookup)"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: app.whenReady() creates window via WindowManager. index.ts uses windowManager.restoreWindows() which creates default window if no saved states, then initializeTRPCHandler with WindowManager.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:341-343 (windowManager.restoreWindows())",
+        "electron-sdd-manager/src/main/index.ts:347-353 (initializeTRPCHandler(windowManager, firstWindow))"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: app.on('activate') delegates to WindowManager. index.ts activate handler checks windowManager.getAllWindowIds() and creates window via windowManager.createWindow() if empty.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:417-425 (activate handler with WindowManager)"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: second-instance handling via WindowManager. index.ts second-instance handler uses windowManager.getWindowByProject() for duplicate check, restoreAndFocus for existing windows, and creates new window for new projects.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:130-173 (second-instance handler with WindowManager)",
+        "electron-sdd-manager/src/main/index.ts:148 (windowManager.getWindowByProject)",
+        "electron-sdd-manager/src/main/index.ts:152 (windowManager.restoreAndFocus)"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.5: Window title shows 'SDD Orchestrator - {project name}'. WindowManager.setWindowProject() extracts project name and sets title. Default title 'SDD Orchestrator' shown for windows without project.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:461 (projectName = projectPath.split('/').pop())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:464 (window.setTitle with project name)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:199 (default title without project)"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: setupTRPCHandler with per-window context factory. initializeTRPCHandler() uses createWindowContextFactory() as the createContext for createIPCHandler. Singleton IPCHandler pattern (DD-001) with attachWindow for subsequent windows.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts:50 (initializeTRPCHandler function)",
+        "electron-sdd-manager/src/main/trpc/handler.ts:77 (createWindowContextFactory(windowManager, sharedServices))",
+        "electron-sdd-manager/src/main/trpc/handler.ts:79 (createIPCHandler with contextFactory)"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: getCurrentProjectPath() returns request-originating window's project. WindowContextFactory overrides getCurrentProjectPath with closure bound to windowContext.projectPath.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:95 (perWindowOverrides.getCurrentProjectPath = () => projectPath)",
+        "electron-sdd-manager/src/main/trpc/__tests__/windowContextFactory.test.ts"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: getSpecManagerService() returns request-originating window's instance. WindowContextFactory overrides getSpecManagerService with closure bound to per-window services.specManagerService.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/windowContextFactory.ts:98-99 (perWindowOverrides.getSpecManagerService closure)",
+        "electron-sdd-manager/src/main/trpc/__tests__/windowContextFactory.test.ts"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: projectState.ts global variables replaced with WindowManager delegation. getCurrentProjectPath() delegates to WindowManager.getFocusedWindowId() -> getWindowProject(). Setters are deprecated no-ops.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts:59 (getCurrentProjectPath delegates to WindowManager)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts:76 (getSpecManagerService delegates to WindowManager)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectState.ts:116-133 (deprecated no-op setters)"
+      ]
+    },
+    {
+      "id": "req-3.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.5: selectProject() initializes only the target window's services. selectProject() in projectSetup.ts accepts optional windowId, calls wm.setWindowProject() which calls createWindowServices() for that specific window only.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:132 (selectProject with windowId parameter)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:165 (wm.setWindowProject(effectiveWindowId, projectPath))",
+        "electron-sdd-manager/src/main/services/windowManager.ts:468 (createWindowServices for specific windowId)"
+      ]
+    },
+    {
+      "id": "req-3.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.6: Context/service cleanup on window close. handleWindowClose() removes windowServices, windowStates, projectWindowMap entries, and webContentsToWindowId mapping. IPCHandler.detachWindow is called.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:289-331 (handleWindowClose full cleanup)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:300 (ipcHandler.detachWindow)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:323 (windowServices.delete)"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: EventBus events include projectPath metadata. Events emitted in projectSetup.ts and watcherUtils.ts include projectPath. EventBusFilter defines PROJECT_SCOPED_EVENTS (22 events) and APP_SCOPED_EVENTS (14 events).",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:24 (PROJECT_SCOPED_EVENTS array)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:64 (APP_SCOPED_EVENTS array)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:636 (eventBus.emit with projectPath)",
+        "electron-sdd-manager/src/main/trpc/helpers/watcherUtils.ts:72 (emit with projectPath)"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: tRPC Subscription filters events by window context. createEventSubscription() in events.ts uses shouldDeliverEvent() to compare event projectPath with window's getCurrentProjectPath(). Non-matching events are dropped.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:125 (createEventSubscription with filter)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:149 (shouldDeliverEvent call)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:123 (shouldDeliverEvent function)"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: Project-scoped events not delivered to unrelated windows. shouldDeliverEvent() returns false when eventProjectPath != windowProjectPath for project-scoped events. isProjectScopedEvent() uses O(1) Set lookup.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:144 (return eventProjectPath === windowProjectPath)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:103 (isProjectScopedEvent with Set)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.test.ts"
+      ]
+    },
+    {
+      "id": "req-4.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.4: App-scoped events broadcast to all windows. shouldDeliverEvent() returns true for non-project-scoped events (settings changes, Remote UI status, SSH status, MCP status, etc.).",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:129 (return true for non-project-scoped)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts:64 (APP_SCOPED_EVENTS includes REMOTE_SERVER_STATUS_CHANGED, SSH_STATUS_CHANGED, etc.)",
+        "electron-sdd-manager/src/main/trpc/services/eventBusFilter.test.ts"
+      ]
+    },
+    {
+      "id": "req-4.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.5: Subscription listener cleanup on window close. createEventSubscription() returns cleanup function that calls eventBus.removeListener(). When BrowserWindow closes, electron-trpc triggers unsubscribe automatically.",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:158 (cleanup: eventBus.removeListener)",
+        "electron-sdd-manager/src/main/trpc/routers/events.ts:156 (eventBus.on registration)"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: Duplicate project detection focuses existing window. WindowManager.setWindowProject() returns DUPLICATE_PROJECT error. selectProject() in projectSetup.ts detects this and calls wm.restoreAndFocus(error.existingWindowId). E2E test verifies.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:430 (checkDuplicate in setWindowProject)",
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts:172 (wm.restoreAndFocus on DUPLICATE_PROJECT)",
+        "electron-sdd-manager/e2e-wdio/multi-window-duplicate-prevention.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: Minimized window restored on duplicate. WindowManager.restoreAndFocus() checks isMinimized() and calls restore() before focus().",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:519-527 (restoreAndFocus with isMinimized check)",
+        "electron-sdd-manager/e2e-wdio/multi-window-duplicate-prevention.e2e.spec.ts"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: Path normalization with trailing slash removal and symlink resolution. normalizePath() uses realpathSync for symlink resolution and replace(/\\/+$/, '') for trailing slashes.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:125-133 (normalizePath with realpathSync)"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.4: --project CLI arg and second-instance duplicate detection. second-instance handler in index.ts uses windowManager.getWindowByProject() and restoreAndFocus() for existing project windows.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:142-156 (second-instance: getWindowByProject + restoreAndFocus)"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: Menu context updates on window focus. initializeMenuFocusTracking() is implemented in menu.ts (line 371) and is called from index.ts (line 287) after createMenu() (line 284) during app startup. This registers a WindowManager.onWindowFocus callback that calls setMenuProjectPath() with the focused window's project path. [RE-INSPECTION: Previously PARTIAL because call was missing from startup code; now FIXED with initializeMenuFocusTracking() called at index.ts:287]",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts:371 (initializeMenuFocusTracking defined)",
+        "electron-sdd-manager/src/main/index.ts:287 (initializeMenuFocusTracking() called after createMenu())",
+        "electron-sdd-manager/src/main/index.ts:284 (createMenu() call)",
+        "electron-sdd-manager/src/main/menu.test.ts:462 (unit test coverage)"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: Project-specific menu items disabled when no project. Menu items use 'enabled: currentProjectPathForMenu !== null' to disable when no project is selected. setMenuProjectPath(null) disables them.",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts:222 (enabled: currentProjectPathForMenu !== null for layout reset)",
+        "electron-sdd-manager/src/main/menu.ts:261 (enabled: currentProjectPathForMenu !== null for commandset)",
+        "electron-sdd-manager/src/main/menu.ts:332 (setMenuProjectPath sets currentProjectPathForMenu)"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: Recent projects menu opens in project-less window or creates new. buildRecentProjectsSubmenu() calls findProjectlessWindow() first, then falls back to wm.createWindow() via WindowManager.",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts:60 (findProjectlessWindow in click handler)",
+        "electron-sdd-manager/src/main/menu.ts:64 (wm.createWindow() fallback)",
+        "electron-sdd-manager/src/main/menu.ts:28 (findProjectlessWindow helper)"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.4: 'New window' menu uses WindowManager. Menu item with CmdOrCtrl+Shift+N calls getWindowManager().createWindow().",
+      "evidence": [
+        "electron-sdd-manager/src/main/menu.ts:128 (CmdOrCtrl+Shift+N accelerator)",
+        "electron-sdd-manager/src/main/menu.ts:131 (wm.createWindow())"
+      ]
+    },
+    {
+      "id": "req-7.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.1: Window state persistence on app quit. cleanupOnQuit() in appLifecycle.ts calls windowManager.saveAllWindowStates() which saves position, size, projectPath, isMaximized to ConfigStore via setMultiWindowStates().",
+      "evidence": [
+        "electron-sdd-manager/src/main/appLifecycle.ts:26 (windowManager.saveAllWindowStates())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:589 (saveAllWindowStates method)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:608 (configStore.setMultiWindowStates)",
+        "electron-sdd-manager/src/main/appLifecycle.test.ts:55 (unit test)"
+      ]
+    },
+    {
+      "id": "req-7.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.2: Window state restoration on startup. index.ts calls windowManager.restoreWindows() which reads saved states from configStore.getMultiWindowStates() and creates windows with saved bounds, project paths, and maximized states.",
+      "evidence": [
+        "electron-sdd-manager/src/main/index.ts:341-343 (windowManager.restoreWindows())",
+        "electron-sdd-manager/src/main/services/windowManager.ts:616 (restoreWindows method)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:618 (configStore.getMultiWindowStates())"
+      ]
+    },
+    {
+      "id": "req-7.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.3: Non-existent project directory skipped with logging. restoreWindows() checks existsSync(state.projectPath) and skips with logger.warn if missing.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:625 (existsSync check)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:628 (logger.warn for non-existent project)"
+      ]
+    },
+    {
+      "id": "req-7.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.4: Default window on first launch. restoreWindows() creates a default window when restored === 0 (no saved states or all projects missing).",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:648-651 (if restored === 0, createWindow())"
+      ]
+    },
+    {
+      "id": "req-7.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 7.5: Multi-display fallback to primary display. validateDisplayBounds() checks if bounds are within any display and falls back to primary display workArea if off-screen.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/windowManager.ts:661 (validateDisplayBounds method)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:666 (screen.getAllDisplays() check)",
+        "electron-sdd-manager/src/main/services/windowManager.ts:681 (primaryDisplay fallback)"
+      ]
+    },
+    {
+      "id": "req-8.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.1: E2E test for multi-window creation and independent project operation. multi-window-creation.e2e.spec.ts covers window creation, independent project registration, window title verification, and spec list independence.",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/multi-window-creation.e2e.spec.ts (full E2E test file)"
+      ]
+    },
+    {
+      "id": "req-8.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.2: E2E test for duplicate project prevention with focus behavior. multi-window-duplicate-prevention.e2e.spec.ts covers DUPLICATE_PROJECT error, checkDuplicate, restoreAndFocus, minimized window restore, and path normalization.",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/multi-window-duplicate-prevention.e2e.spec.ts (full E2E test file)"
+      ]
+    },
+    {
+      "id": "req-8.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.3: E2E test for per-window tRPC operations. multi-window-trpc.e2e.spec.ts covers window context resolution, webContentsToWindowId mapping, per-window services isolation, and spec list independence.",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/multi-window-trpc.e2e.spec.ts (full E2E test file)"
+      ]
+    },
+    {
+      "id": "req-8.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 8.4: E2E test for window close resource cleanup. multi-window-cleanup.e2e.spec.ts covers PerWindowServices removal, WindowState removal, duplicate lock release, webContentsToWindowId cleanup, and primary window resilience.",
+      "evidence": [
+        "electron-sdd-manager/e2e-wdio/multi-window-cleanup.e2e.spec.ts (full E2E test file)"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 33,
+    "passed": 33,
+    "failed": 0,
+    "partial": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 33
+  }
+}

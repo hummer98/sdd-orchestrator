@@ -153,12 +153,13 @@ export async function writeProjectFileCore(projectPath: string, filePath: string
 // Watcher Control
 // =============================================================================
 
-export function initProjectFileWatcher(): void {
+export function initProjectFileWatcher(projectPath?: string): void {
   const watcherService = getProjectFileWatcherService();
   watcherService.onChange((filePath) => {
     logger.debug('[projectFileUtils] File changed, broadcasting via EventBus', { filePath });
     // Emit to EventBus for tRPC Subscription (primary path after IPC removal)
-    getGlobalEventBus().emit(EVENT_NAMES.PROJECT_FILE_CHANGED, { filePath });
+    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
+    getGlobalEventBus().emit(EVENT_NAMES.PROJECT_FILE_CHANGED, { filePath, projectPath: projectPath ?? null });
   });
 }
 

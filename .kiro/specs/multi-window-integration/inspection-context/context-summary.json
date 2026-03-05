@@ -1,0 +1,213 @@
+{
+  "spec_overview": "SDD Orchestratorの単一ウィンドウアーキテクチャを、複数の独立したプロジェクトコンテキストで動作するマルチウィンドウアーキテクチャに移行する。WindowManagerがウィンドウ管理のSSOTとなり、tRPC Context DIがウィンドウ別コンテキストを自動解決し、EventBusイベントがウィンドウ別にルーティングされる。",
+  "key_components": [
+    {
+      "name": "WindowManager",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/windowManager.ts",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "2.1", "2.2", "2.3", "2.4", "2.5", "5.1", "5.2", "5.3", "5.4", "7.1", "7.2", "7.3", "7.4", "7.5"]
+    },
+    {
+      "name": "WindowContextFactory",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/windowContextFactory.ts",
+      "requirements": ["3.1", "3.2", "3.3", "3.4", "3.5", "3.6"]
+    },
+    {
+      "name": "EventBusFilter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts",
+      "requirements": ["4.1", "4.2", "4.3", "4.4", "4.5"]
+    },
+    {
+      "name": "handler.ts (initializeTRPCHandler)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/handler.ts",
+      "requirements": ["3.1"]
+    },
+    {
+      "name": "context.ts (ContextServices)",
+      "type": "type",
+      "path": "electron-sdd-manager/src/main/trpc/context.ts",
+      "requirements": ["3.1", "3.2", "3.3"]
+    },
+    {
+      "name": "projectState.ts (互換レイヤー)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/helpers/projectState.ts",
+      "requirements": ["3.4"]
+    },
+    {
+      "name": "projectSetup.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts",
+      "requirements": ["3.5", "1.5"]
+    },
+    {
+      "name": "watcherUtils.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/helpers/watcherUtils.ts",
+      "requirements": ["1.5", "3.5"]
+    },
+    {
+      "name": "events.ts router",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/events.ts",
+      "requirements": ["4.2", "4.3", "4.4"]
+    },
+    {
+      "name": "menu.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/menu.ts",
+      "requirements": ["6.1", "6.2", "6.3", "6.4"]
+    },
+    {
+      "name": "index.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/index.ts",
+      "requirements": ["2.2", "2.3", "2.4", "1.6"]
+    },
+    {
+      "name": "appLifecycle.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/appLifecycle.ts",
+      "requirements": ["7.1"]
+    },
+    {
+      "name": "productionServices.ts",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/productionServices.ts",
+      "requirements": ["3.5", "3.6"]
+    },
+    {
+      "name": "E2Eテストスイート",
+      "type": "component",
+      "path": "electron-sdd-manager/e2e-wdio/multi-window-*.e2e.spec.ts",
+      "requirements": ["8.1", "8.2", "8.3", "8.4"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "index.ts",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "WindowManager",
+      "target": "IPCHandler (electron-trpc)",
+      "type": "call"
+    },
+    {
+      "source": "WindowContextFactory",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "handler.ts",
+      "target": "WindowContextFactory",
+      "type": "call"
+    },
+    {
+      "source": "events.ts",
+      "target": "EventBusFilter",
+      "type": "call"
+    },
+    {
+      "source": "menu.ts",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "projectSetup.ts",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "projectState.ts",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "appLifecycle.ts",
+      "target": "WindowManager",
+      "type": "call"
+    },
+    {
+      "source": "watcherUtils.ts",
+      "target": "WindowManager",
+      "type": "call"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/windowFactory.ts",
+      "action": "DELETE",
+      "reason": "WindowManager.createWindowに完全置換 (Requirement 2.1)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/index.ts",
+      "action": "UPDATE",
+      "reason": "起動フローをWindowManager経由に変更 (Requirements 2.2, 2.3, 2.4)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/handler.ts",
+      "action": "UPDATE",
+      "reason": "setupTRPCHandler -> initializeTRPCHandler, IPCHandler Singleton (Requirements 3.1, DD-001)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/context.ts",
+      "action": "UPDATE",
+      "reason": "ContextServicesにwindowId追加、ウィンドウ別対応 (Requirements 3.1-3.3)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/helpers/projectState.ts",
+      "action": "UPDATE",
+      "reason": "グローバル変数をWindowManager委譲の互換レイヤーに変更 (Requirement 3.4)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts",
+      "action": "UPDATE",
+      "reason": "selectProjectにwindowId追加 (Requirement 3.5)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/helpers/watcherUtils.ts",
+      "action": "UPDATE",
+      "reason": "ウィンドウ別Watcher生成対応 (Requirements 1.5, 3.5)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/productionServices.ts",
+      "action": "UPDATE",
+      "reason": "ウィンドウ別サービス分離 (Requirements 3.5, 3.6)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/routers/events.ts",
+      "action": "UPDATE",
+      "reason": "EventBusフィルタリング追加 (Requirements 4.2-4.4)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/menu.ts",
+      "action": "UPDATE",
+      "reason": "WindowManager経由のメニュー操作 (Requirements 6.1-6.4)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/appLifecycle.ts",
+      "action": "UPDATE",
+      "reason": "saveAllWindowStates追加 (Requirement 7.1)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/services/windowManager.ts",
+      "action": "UPDATE",
+      "reason": "PerWindowServices拡張、コンテキスト解決メソッド追加 (DD-005)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/windowContextFactory.ts",
+      "action": "CREATE",
+      "reason": "tRPCリクエストごとのウィンドウ別コンテキスト生成 (Requirements 3.1-3.6)"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/services/eventBusFilter.ts",
+      "action": "CREATE",
+      "reason": "イベントカテゴリ分類とフィルタヘルパー (Requirements 4.1-4.5)"
+    }
+  ]
+}

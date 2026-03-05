@@ -240,6 +240,13 @@ export interface McpServerServiceInterface {
  */
 export interface ContextServices {
   // ============================================================
+  // Window Identity (multi-window-integration Task 2.3)
+  // ============================================================
+
+  /** Window ID for this context (undefined for legacy/test contexts without window binding) */
+  windowId?: number;
+
+  // ============================================================
   // State Getters/Setters (from handlers.ts global state)
   // ============================================================
 

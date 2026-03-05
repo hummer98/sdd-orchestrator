@@ -239,6 +239,7 @@ export type SelectProjectError =
   | { type: 'NOT_A_DIRECTORY'; path: string }
   | { type: 'PERMISSION_DENIED'; path: string }
   | { type: 'SELECTION_IN_PROGRESS' }
+  | { type: 'DUPLICATE_PROJECT'; existingWindowId: number }
   | { type: 'INTERNAL_ERROR'; message: string };
 
 /** プロジェクト選択結果 */

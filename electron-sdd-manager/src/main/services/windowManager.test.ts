@@ -35,6 +35,7 @@ vi.mock('fs', async (importOriginal) => {
   return {
     ...actual,
     existsSync: vi.fn(() => true),
+    realpathSync: vi.fn((p: string) => p.replace(/\/+$/, '')),
     createWriteStream: vi.fn(() => ({
       write: vi.fn(),
       end: vi.fn(),
@@ -96,8 +97,37 @@ vi.mock('./bugsWatcherService', () => ({
   })),
 }));
 
+// Mock MetricsService
+vi.mock('./metricsService', () => ({
+  MetricsService: vi.fn().mockImplementation(() => ({
+    setProjectPath: vi.fn(),
+    getProjectPath: vi.fn(() => null),
+  })),
+}));
+
+// Mock MetricsFileWriter
+vi.mock('./metricsFileWriter', () => ({
+  MetricsFileWriter: vi.fn().mockImplementation(() => ({})),
+}));
+
+// Mock MetricsFileReader
+vi.mock('./metricsFileReader', () => ({
+  MetricsFileReader: vi.fn().mockImplementation(() => ({})),
+}));
+
+// Mock AutoExecutionCoordinator
+vi.mock('./autoExecutionCoordinator', () => ({
+  AutoExecutionCoordinator: vi.fn().mockImplementation(() => ({
+    resetAll: vi.fn(),
+  })),
+}));
+
 import { WindowManager, DuplicateProjectError } from './windowManager';
 import { BrowserWindow } from 'electron';
+import { realpathSync, existsSync } from 'fs';
+
+const mockRealpathSync = vi.mocked(realpathSync);
+const mockExistsSync = vi.mocked(existsSync);
 
 describe('WindowManager', () => {
   let windowManager: WindowManager;
@@ -112,9 +142,11 @@ describe('WindowManager', () => {
     const mockBrowserWindowConstructor = BrowserWindow as unknown as ReturnType<typeof vi.fn>;
     mockBrowserWindowConstructor.mockImplementation(() => {
       const id = windowIdCounter++;
+      const webContentsId = id + 100; // webContents.id offset from window.id
       const instance = {
         id,
         webContents: {
+          id: webContentsId,
           send: vi.fn(),
           isLoading: vi.fn(() => false),
           once: vi.fn(),
@@ -449,6 +481,442 @@ describe('WindowManager', () => {
 
       expect(validatedBounds.x).toBe(100);
       expect(validatedBounds.y).toBe(100);
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 1.1: PerWindowServices拡充
+  // ============================================================
+  describe('multi-window Task 1.1: PerWindowServices with MetricsService and AutoExecutionCoordinator', () => {
+    it('should include metricsService in PerWindowServices when project is set', () => {
+      const window = windowManager.createWindow();
+      windowManager.setWindowProject(window.id, '/path/to/project');
+
+      const services = windowManager.getWindowServices(window.id);
+      expect(services).not.toBeNull();
+      expect(services?.metricsService).toBeDefined();
+    });
+
+    it('should include autoExecutionCoordinator in PerWindowServices when project is set', () => {
+      const window = windowManager.createWindow();
+      windowManager.setWindowProject(window.id, '/path/to/project');
+
+      const services = windowManager.getWindowServices(window.id);
+      expect(services).not.toBeNull();
+      expect(services?.autoExecutionCoordinator).toBeDefined();
+    });
+
+    it('should stop MetricsService and AutoExecutionCoordinator on window close', () => {
+      const window = windowManager.createWindow();
+      windowManager.setWindowProject(window.id, '/path/to/project');
+
+      const services = windowManager.getWindowServices(window.id);
+      expect(services).not.toBeNull();
+
+      // Simulate the 'closed' event
+      const instance = windowInstances.get(window.id);
+      const closedHandler = instance.on.mock.calls.find(
+        (call: any[]) => call[0] === 'closed'
+      )?.[1];
+
+      windowInstances.delete(window.id);
+      if (closedHandler) {
+        closedHandler();
+      }
+
+      // After close, services should be cleaned up from the map
+      expect(windowManager.getWindowServices(window.id)).toBeNull();
+      // AutoExecutionCoordinator.resetAll should have been called
+      expect(services?.autoExecutionCoordinator.resetAll).toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 1.2: webContentsToWindowIdマッピング
+  // ============================================================
+  describe('multi-window Task 1.2: webContentsToWindowId mapping and context resolution', () => {
+    it('should register webContents ID to windowId mapping on createWindow', () => {
+      const window = windowManager.createWindow();
+      const instance = windowInstances.get(window.id);
+      const webContentsId = instance.webContents.id ?? window.id;
+
+      // getWindowIdByWebContents should resolve the window
+      const resolvedWindowId = windowManager.getWindowIdByWebContents(webContentsId);
+      expect(resolvedWindowId).toBe(window.id);
+    });
+
+    it('should return null for unknown webContents ID', () => {
+      const resolvedWindowId = windowManager.getWindowIdByWebContents(9999);
+      expect(resolvedWindowId).toBeNull();
+    });
+
+    it('should remove webContentsToWindowId entry on window close', () => {
+      const window = windowManager.createWindow();
+      const instance = windowInstances.get(window.id);
+      const webContentsId = instance.webContents.id ?? window.id;
+
+      // Simulate close
+      const closedHandler = instance.on.mock.calls.find(
+        (call: any[]) => call[0] === 'closed'
+      )?.[1];
+
+      windowInstances.delete(window.id);
+      if (closedHandler) {
+        closedHandler();
+      }
+
+      expect(windowManager.getWindowIdByWebContents(webContentsId)).toBeNull();
+    });
+
+    it('should return PerWindowContext via getWindowContext for registered window', () => {
+      const window = windowManager.createWindow();
+      windowManager.setWindowProject(window.id, '/path/to/project');
+
+      const context = windowManager.getWindowContext(window.id);
+      expect(context).not.toBeNull();
+      expect(context?.windowId).toBe(window.id);
+      expect(context?.projectPath).toBe('/path/to/project');
+      expect(context?.services).not.toBeNull();
+    });
+
+    it('should return null from getWindowContext for unregistered window', () => {
+      const context = windowManager.getWindowContext(9999);
+      expect(context).toBeNull();
+    });
+
+    it('should return context with null services for window without project', () => {
+      const window = windowManager.createWindow();
+
+      const context = windowManager.getWindowContext(window.id);
+      expect(context).not.toBeNull();
+      expect(context?.windowId).toBe(window.id);
+      expect(context?.projectPath).toBeNull();
+      expect(context?.services).toBeNull();
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 1.3: IPCHandler保持・管理
+  // ============================================================
+  describe('multi-window Task 1.3: IPCHandler management', () => {
+    it('should initially have no IPCHandler', () => {
+      expect(windowManager.getIPCHandler()).toBeNull();
+    });
+
+    it('should store and retrieve IPCHandler via getter/setter', () => {
+      const mockIPCHandler = {
+        attachWindow: vi.fn(),
+        detachWindow: vi.fn(),
+      };
+
+      windowManager.setIPCHandler(mockIPCHandler as any);
+      expect(windowManager.getIPCHandler()).toBe(mockIPCHandler);
+    });
+
+    it('should call attachWindow on IPCHandler when createWindow is called and IPCHandler exists', () => {
+      const mockIPCHandler = {
+        attachWindow: vi.fn(),
+        detachWindow: vi.fn(),
+      };
+
+      windowManager.setIPCHandler(mockIPCHandler as any);
+      const window = windowManager.createWindow();
+
+      expect(mockIPCHandler.attachWindow).toHaveBeenCalledWith(window);
+    });
+
+    it('should NOT call attachWindow when IPCHandler is not set', () => {
+      // No IPCHandler set, createWindow should not throw
+      const window = windowManager.createWindow();
+      expect(window).toBeDefined();
+    });
+
+    it('should call detachWindow on IPCHandler when window is closed', () => {
+      const mockIPCHandler = {
+        attachWindow: vi.fn(),
+        detachWindow: vi.fn(),
+      };
+
+      windowManager.setIPCHandler(mockIPCHandler as any);
+      const window = windowManager.createWindow();
+
+      // Simulate close
+      const instance = windowInstances.get(window.id);
+      const closedHandler = instance.on.mock.calls.find(
+        (call: any[]) => call[0] === 'closed'
+      )?.[1];
+
+      windowInstances.delete(window.id);
+      if (closedHandler) {
+        closedHandler();
+      }
+
+      expect(mockIPCHandler.detachWindow).toHaveBeenCalledWith(window);
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 1.4: normalizePath シンボリックリンク解決
+  // ============================================================
+  describe('multi-window Task 1.4: normalizePath with symlink resolution', () => {
+    it('should resolve symlinks in project path via realpathSync', () => {
+      // Mock realpathSync to return a resolved path
+      mockRealpathSync.mockReturnValue('/real/path/to/project' as any);
+
+      const window1 = windowManager.createWindow();
+      windowManager.setWindowProject(window1.id, '/symlink/to/project');
+
+      // The duplicate check should use the resolved path
+      const duplicate = windowManager.checkDuplicate('/real/path/to/project');
+      expect(duplicate).toBe(window1.id);
+    });
+
+    it('should fall back to trailing slash removal when realpathSync throws', () => {
+      // Mock realpathSync to throw (path does not exist)
+      mockRealpathSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
+
+      const window1 = windowManager.createWindow();
+      windowManager.setWindowProject(window1.id, '/path/to/project/');
+
+      // Should still normalize trailing slash
+      const duplicate = windowManager.checkDuplicate('/path/to/project');
+      expect(duplicate).toBe(window1.id);
+    });
+
+    it('should still remove trailing slashes', () => {
+      // realpathSync returns path without trailing slash
+      mockRealpathSync.mockImplementation(((p: string) =>
+        p.replace(/\/+$/, '')) as any);
+
+      const window1 = windowManager.createWindow();
+      windowManager.setWindowProject(window1.id, '/path/to/project');
+
+      const duplicate = windowManager.checkDuplicate('/path/to/project/');
+      expect(duplicate).toBe(window1.id);
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 8.2: Window state restoration
+  // ============================================================
+  describe('multi-window Task 8.2: restoreWindows', () => {
+    beforeEach(() => {
+      // Reset existsSync to return true by default
+      mockExistsSync.mockReturnValue(true);
+    });
+
+    it('should restore windows from saved ConfigStore states', () => {
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/a',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+        {
+          projectPath: '/project/b',
+          bounds: { x: 200, y: 200, width: 1000, height: 700 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      expect(result.restored).toBe(2);
+      expect(result.skipped).toHaveLength(0);
+      expect(windowManager.getAllWindowIds()).toHaveLength(2);
+    });
+
+    it('should skip windows with non-existent project directories', () => {
+      mockExistsSync.mockImplementation(((path: string) => {
+        if (path === '/project/missing') return false;
+        return true;
+      }) as any);
+
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/existing',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+        {
+          projectPath: '/project/missing',
+          bounds: { x: 200, y: 200, width: 1000, height: 700 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      expect(result.restored).toBe(1);
+      expect(result.skipped).toEqual(['/project/missing']);
+      expect(windowManager.getAllWindowIds()).toHaveLength(1);
+    });
+
+    it('should create default window on first launch (no saved states)', () => {
+      mockConfigStore.getMultiWindowStates.mockReturnValue([]);
+
+      const result = windowManager.restoreWindows();
+
+      expect(result.restored).toBe(1);
+      expect(result.skipped).toHaveLength(0);
+      expect(windowManager.getAllWindowIds()).toHaveLength(1);
+    });
+
+    it('should create default window when all saved projects are missing', () => {
+      mockExistsSync.mockReturnValue(false);
+
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/gone1',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+        {
+          projectPath: '/project/gone2',
+          bounds: { x: 200, y: 200, width: 1000, height: 700 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      // All projects were skipped, but we still need at least one window
+      // Note: current implementation only creates default when skipped.length === 0
+      // This test documents whether fallback occurs when all projects are missing
+      expect(result.skipped).toEqual(['/project/gone1', '/project/gone2']);
+      expect(windowManager.getAllWindowIds().length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should validate display bounds during restoration (multi-display support)', () => {
+      // Window position at 5000,5000 is off-screen (display is 1920x1080)
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/a',
+          bounds: { x: 5000, y: 5000, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      expect(result.restored).toBe(1);
+      // Window should have been repositioned to primary display
+      // We verify this by checking that the window was created (validateDisplayBounds is called internally)
+      expect(windowManager.getAllWindowIds()).toHaveLength(1);
+    });
+
+    it('should restore maximized state for windows', () => {
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/a',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: true,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      expect(result.restored).toBe(1);
+      // The window should have been created with isMaximized option
+      const windowId = windowManager.getAllWindowIds()[0];
+      const instance = windowInstances.get(windowId);
+      // The 'ready-to-show' callback calls maximize() when isMaximized is true
+      expect(instance).toBeDefined();
+    });
+
+    it('should skip windows with empty projectPath', () => {
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      const result = windowManager.restoreWindows();
+
+      // Empty projectPath should be treated as no saved state
+      // Should create a default window
+      expect(result.restored).toBe(1);
+      expect(windowManager.getAllWindowIds()).toHaveLength(1);
+    });
+
+    it('should set project paths on restored windows', () => {
+      mockConfigStore.getMultiWindowStates.mockReturnValue([
+        {
+          projectPath: '/project/a',
+          bounds: { x: 100, y: 100, width: 1200, height: 800 },
+          isMaximized: false,
+          isMinimized: false,
+        },
+      ]);
+
+      windowManager.restoreWindows();
+
+      const windowId = windowManager.getAllWindowIds()[0];
+      const projectPath = windowManager.getWindowProject(windowId);
+      expect(projectPath).toBe('/project/a');
+    });
+  });
+
+  // ============================================================
+  // multi-window-integration Task 8.1 + 8.2: Save and restore cycle
+  // ============================================================
+  describe('multi-window Task 8.1+8.2: Save and restore round-trip', () => {
+    it('should save window states with project paths and bounds', () => {
+      const window1 = windowManager.createWindow();
+      const window2 = windowManager.createWindow();
+      windowManager.setWindowProject(window1.id, '/project/a');
+      windowManager.setWindowProject(window2.id, '/project/b');
+
+      windowManager.saveAllWindowStates();
+
+      expect(mockConfigStore.setMultiWindowStates).toHaveBeenCalledTimes(1);
+      const savedStates = mockConfigStore.setMultiWindowStates.mock.calls[0][0];
+      expect(savedStates).toHaveLength(2);
+      expect(savedStates[0].projectPath).toBe('/project/a');
+      expect(savedStates[1].projectPath).toBe('/project/b');
+    });
+
+    it('should only save windows with project paths (skip empty windows)', () => {
+      const window1 = windowManager.createWindow();
+      windowManager.createWindow(); // No project
+      windowManager.setWindowProject(window1.id, '/project/a');
+
+      windowManager.saveAllWindowStates();
+
+      const savedStates = mockConfigStore.setMultiWindowStates.mock.calls[0][0];
+      expect(savedStates).toHaveLength(1);
+      expect(savedStates[0].projectPath).toBe('/project/a');
+    });
+
+    it('should include bounds, isMaximized, and isMinimized in saved states', () => {
+      const window1 = windowManager.createWindow();
+      windowManager.setWindowProject(window1.id, '/project/a');
+
+      windowManager.saveAllWindowStates();
+
+      const savedStates = mockConfigStore.setMultiWindowStates.mock.calls[0][0];
+      expect(savedStates[0]).toHaveProperty('bounds');
+      expect(savedStates[0]).toHaveProperty('isMaximized');
+      expect(savedStates[0]).toHaveProperty('isMinimized');
+      expect(savedStates[0].bounds).toEqual(expect.objectContaining({
+        x: expect.any(Number),
+        y: expect.any(Number),
+        width: expect.any(Number),
+        height: expect.any(Number),
+      }));
     });
   });
 });

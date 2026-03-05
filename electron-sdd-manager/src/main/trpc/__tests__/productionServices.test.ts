@@ -345,13 +345,13 @@ describe('productionServices', () => {
       expect(typeof services).toBe('object');
     });
 
-    it('should return 71 service properties (all except 4 externally injected)', () => {
+    it('should return 72 service properties (all except 3 handler.ts injected)', () => {
       const services = createProductionServices();
       const keys = Object.keys(services);
       // productionServices should wire all ContextServices properties except:
       // - eventBus, getInitialSelectResult, clearInitialSelectResult (injected by handler.ts)
-      // - createNewWindow (injected by windowFactory.ts via setupTRPCHandler serviceOverrides)
-      expect(keys.length).toBeGreaterThanOrEqual(71);
+      // multi-window-integration Task 7.3: createNewWindow now wired here via WindowManager
+      expect(keys.length).toBeGreaterThanOrEqual(72);
     });
 
     it('should NOT include handler.ts injected properties (eventBus, getInitialSelectResult, clearInitialSelectResult)', () => {
@@ -366,8 +366,8 @@ describe('productionServices', () => {
   describe('wiring completeness - productionServices keys vs mockServices keys', () => {
     // These properties are NOT in productionServices — they are injected externally:
     // - eventBus, getInitialSelectResult, clearInitialSelectResult: injected by handler.ts
-    // - createNewWindow: injected by windowFactory.ts via setupTRPCHandler serviceOverrides
-    const HANDLER_INJECTED_KEYS = ['eventBus', 'getInitialSelectResult', 'clearInitialSelectResult', 'createNewWindow'];
+    // multi-window-integration Task 7.3: createNewWindow is now wired in productionServices via WindowManager
+    const HANDLER_INJECTED_KEYS = ['eventBus', 'getInitialSelectResult', 'clearInitialSelectResult'];
 
     it('should cover all ContextServices properties that mockServices covers (minus handler.ts injected)', () => {
       const productionKeys = new Set(Object.keys(createProductionServices()));
@@ -456,10 +456,10 @@ describe('productionServices', () => {
       expect(typeof services.showOpenDialog).toBe('function');
     });
 
-    it('should NOT include createNewWindow (injected via windowFactory.ts → setupTRPCHandler)', () => {
-      // createNewWindow is no longer in productionServices — it's injected as a
-      // serviceOverride from windowFactory.ts to eliminate circular dependency.
-      expect(services.createNewWindow).toBeUndefined();
+    // multi-window-integration Task 7.3: createNewWindow now wired in productionServices via WindowManager
+    it('should wire createNewWindow via WindowManager', () => {
+      expect(services.createNewWindow).toBeDefined();
+      expect(typeof services.createNewWindow).toBe('function');
     });
 
     // Bug Domain (Task 1.3)

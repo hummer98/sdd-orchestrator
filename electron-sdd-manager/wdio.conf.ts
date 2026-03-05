@@ -56,6 +56,11 @@ const fixtureOverrides: Record<string, string> = {
   'worktree-execution': 'worktree-exec-test',
   'worktree-spec-sync': 'worktree-spec-sync-test',
   'worktree-two-stage-watcher': 'worktree-spec-sync-test',
+  // multi-window-integration Task 10: Multi-window E2E tests
+  'multi-window-creation': 'multi-window-test-a',
+  'multi-window-duplicate-prevention': 'multi-window-test-a',
+  'multi-window-trpc': 'multi-window-test-a',
+  'multi-window-cleanup': 'multi-window-test-a',
 };
 
 /**

@@ -95,11 +95,11 @@ tasks:
       REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
 
   electron:test:e2e:remote:kdg069:
-    desc: Run E2E tests on KDG-069 (yuji@172.25.76.217)
+    desc: Run E2E tests on KDG-069 (yuji@172.25.76.196)
     cmds:
       - ./scripts/run-remote-e2e.sh
     env:
-      REMOTE_E2E_HOST: "172.25.76.217"
+      REMOTE_E2E_HOST: "172.25.76.196"
       REMOTE_E2E_USER: "yuji"
 
   electron:check:remote:kdg069:
@@ -107,7 +107,7 @@ tasks:
     cmds:
       - ./scripts/check-remote-environment.sh
     env:
-      REMOTE_E2E_HOST: "172.25.76.217"
+      REMOTE_E2E_HOST: "172.25.76.196"
       REMOTE_E2E_USER: "yuji"
 
   electron:check:remote:

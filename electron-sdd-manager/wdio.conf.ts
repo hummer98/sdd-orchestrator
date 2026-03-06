@@ -14,6 +14,9 @@ const fixturesDir = path.join(e2eWdioDir, 'fixtures');
 // Main process E2E log file path (Renderer console logs are forwarded here)
 const mainE2ELogPath = path.join(projectRoot, '..', 'logs', 'main-e2e.log');
 
+// Git root for fixture restoration
+const gitRoot = path.join(projectRoot, '..');
+
 /**
  * Spec file → Fixture project mapping
  *
@@ -177,6 +180,19 @@ export const config: Options.Testrunner = {
 
     if (specFile) {
       const fixturePath = resolveFixtureForSpec(specFile);
+
+      // Restore fixture to clean state before each test (prevents test pollution)
+      const relFixturePath = path.relative(gitRoot, fixturePath);
+      try {
+        const { execSync } = require('child_process');
+        execSync(`git checkout -- "${relFixturePath}"`, { cwd: gitRoot, stdio: 'pipe' });
+        // Also clean untracked files (e.g. generated design.md, tasks.md)
+        execSync(`git clean -fd "${relFixturePath}"`, { cwd: gitRoot, stdio: 'pipe' });
+        console.log(`[wdio] Fixture restored: ${relFixturePath}`);
+      } catch (e: any) {
+        console.warn(`[wdio] Fixture restore failed: ${e.message}`);
+      }
+
       process.env.SDD_PROJECT_PATH = fixturePath;
       (process.env as any)._sddProjectPathSetByWdio = 'true';
       console.log(`[wdio] SDD_PROJECT_PATH set to ${fixturePath} for ${path.basename(specFile)}`);
@@ -391,5 +407,6 @@ export const config: Options.Testrunner = {
     } catch {
       // プロセスが見つからない場合は無視
     }
+
   },
 };

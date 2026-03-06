@@ -7,8 +7,9 @@
  * from event.sender and injects window-specific services into ContextServices.
  *
  * Design Decisions:
- * - DD-002: event.sender -> BrowserWindow.fromWebContents for window identification
- * - DD-003: Focused window fallback when window cannot be identified
+ * - DD-002: event.sender.id -> WindowManager.getWindowIdByWebContents (primary, O(1) map lookup)
+ *           BrowserWindow.fromWebContents as secondary fallback
+ * - DD-003: Focused window fallback when window cannot be identified (last resort)
  * - Per-window property closure binding for selectProject, getCurrentProjectPath, etc.
  */
 
@@ -42,9 +43,10 @@ export type WindowContextCreateFn = (opts: { event: IpcMainInvokeEvent }) => Pro
  * Create a window context factory that produces per-request tRPC contexts.
  *
  * Each tRPC request's context is resolved from event.sender:
- * 1. BrowserWindow.fromWebContents(event.sender) to find the window
- * 2. WindowManager.getWindowContext(windowId) to get per-window state
- * 3. Overlay per-window services on top of shared services
+ * 1. event.sender.id -> WindowManager.getWindowIdByWebContents() (primary, O(1))
+ * 2. BrowserWindow.fromWebContents(event.sender) as secondary fallback
+ * 3. getFocusedWindowId() as last resort (for tool menu operations)
+ * 4. Overlay per-window services on top of shared services
  *
  * @param windowManager - WindowManager instance for window state lookup
  * @param sharedServices - Shared services (FileService, ConfigStore, etc.)
@@ -58,21 +60,44 @@ export function createWindowContextFactory(
     const { event } = opts;
 
     // Step 1: Resolve window from event.sender
+    // Primary path: Use WindowManager's webContentsToWindowId map (registered at createWindow time)
+    // This is more reliable than BrowserWindow.fromWebContents which can return null
+    // when the webContents is being set up or the BrowserWindow reference is stale.
     let windowId: number | undefined;
     let windowContext: ReturnType<WindowManagerLike['getWindowContext']> = null;
 
-    const browserWindow = BrowserWindow.fromWebContents(event.sender);
-    if (browserWindow) {
-      windowId = browserWindow.id;
-      windowContext = windowManager.getWindowContext(browserWindow.id);
+    const senderWebContentsId = event.sender?.id;
+
+    // Primary: WindowManager's webContentsToWindowId map (O(1) lookup, registered at window creation)
+    if (senderWebContentsId !== undefined) {
+      const resolvedWindowId = windowManager.getWindowIdByWebContents(senderWebContentsId);
+      if (resolvedWindowId !== null) {
+        windowId = resolvedWindowId;
+        windowContext = windowManager.getWindowContext(resolvedWindowId);
+      }
     }
 
-    // Fallback: If window not found, use focused window
+    // Secondary: BrowserWindow.fromWebContents (Electron API fallback)
+    if (!windowContext) {
+      const browserWindow = BrowserWindow.fromWebContents(event.sender);
+      if (browserWindow) {
+        windowId = browserWindow.id;
+        windowContext = windowManager.getWindowContext(browserWindow.id);
+        if (windowContext) {
+          projectLogger.warn('[WindowContextFactory] Resolved via BrowserWindow.fromWebContents fallback', {
+            senderWebContentsId,
+            windowId: browserWindow.id,
+          });
+        }
+      }
+    }
+
+    // Last resort: focused window (only for tool menu operations where sender may not be resolvable)
     if (!windowContext) {
       const focusedId = windowManager.getFocusedWindowId();
       if (focusedId !== null) {
         projectLogger.warn('[WindowContextFactory] Window not found from event.sender, falling back to focused window', {
-          senderWebContentsId: event.sender?.id,
+          senderWebContentsId,
           focusedWindowId: focusedId,
         });
         windowId = focusedId;

@@ -299,6 +299,33 @@ describe('createWindowContextFactory', () => {
     expect(ctxA.services.getSpecManagerService()).not.toBe(mockSpecManagerB);
   });
 
+  it('should resolve window via getWindowIdByWebContents without BrowserWindow.fromWebContents', async () => {
+    const mockSpecManager = { readSpecs: vi.fn() };
+    const mockWM = createMockWindowManager({
+      windows: new Map([
+        [1, { windowId: 1, projectPath: '/project-a', services: { specManagerService: mockSpecManager } }],
+      ]),
+      webContentsToWindowId: new Map([[101, 1]]),
+    });
+
+    // BrowserWindow.fromWebContents returns null — simulating the case where
+    // Electron API fails but WindowManager's internal map succeeds
+    mockFromWebContents.mockReturnValue(null);
+
+    const sharedServices: Partial<ContextServices> = {};
+    const contextFn = createWindowContextFactory(mockWM as any, sharedServices);
+
+    const ctx = await contextFn({ event: { sender: { id: 101 } } as any });
+
+    // Should resolve via primary path (getWindowIdByWebContents)
+    expect(mockWM.getWindowIdByWebContents).toHaveBeenCalledWith(101);
+    expect(ctx.services.windowId).toBe(1);
+    expect(ctx.services.getCurrentProjectPath()).toBe('/project-a');
+    expect(ctx.services.getSpecManagerService()).toBe(mockSpecManager);
+    // BrowserWindow.fromWebContents should NOT have been called (primary path succeeded)
+    expect(mockFromWebContents).not.toHaveBeenCalled();
+  });
+
   it('should return context with null projectPath for window without project', async () => {
     const mockWM = createMockWindowManager({
       windows: new Map([

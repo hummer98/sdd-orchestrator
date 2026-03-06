@@ -139,7 +139,7 @@ function normalizePath(projectPath: string): string {
  */
 interface IPCHandlerLike {
   attachWindow(window: BrowserWindow): void;
-  detachWindow?(window: BrowserWindow): void;
+  detachWindow?(window: BrowserWindow, webContentsId?: number): void;
 }
 
 /**
@@ -201,7 +201,7 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: !this.isE2ETest,
-        preload: join(__dirname, '../../preload/index.js'),
+        preload: join(__dirname, '../preload/index.js'),
       },
       show: false,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -244,7 +244,7 @@ export class WindowManager {
       window.loadURL('http://localhost:5173');
       window.webContents.openDevTools();
     } else {
-      window.loadFile(join(__dirname, '../../renderer/index.html'));
+      window.loadFile(join(__dirname, '../renderer/index.html'));
     }
 
     // Set project if provided
@@ -294,21 +294,22 @@ export class WindowManager {
       this.projectWindowMap.delete(normalizePath(state.projectPath));
     }
 
-    // multi-window-integration Task 1.3: Detach window from IPCHandler
-    const windowRef = this.windowReferences.get(windowId);
-    if (this.ipcHandler && windowRef) {
-      this.ipcHandler.detachWindow?.(windowRef);
-    }
-    this.windowReferences.delete(windowId);
-
-    // multi-window-integration Task 1.2: Remove webContents mapping
-    // Find and remove the webContents entry for this window
-    for (const [webContentsId, winId] of this.webContentsToWindowId) {
+    // multi-window-integration Task 1.2: Find webContents ID before detach (needed for destroyed windows)
+    let webContentsId: number | undefined;
+    for (const [wcId, winId] of this.webContentsToWindowId) {
       if (winId === windowId) {
-        this.webContentsToWindowId.delete(webContentsId);
+        webContentsId = wcId;
+        this.webContentsToWindowId.delete(wcId);
         break;
       }
     }
+
+    // multi-window-integration Task 1.3: Detach window from IPCHandler
+    const windowRef = this.windowReferences.get(windowId);
+    if (this.ipcHandler && windowRef) {
+      this.ipcHandler.detachWindow?.(windowRef, webContentsId);
+    }
+    this.windowReferences.delete(windowId);
 
     // Clean up services
     // multi-window-integration Task 1.1: Added MetricsService/AutoExecutionCoordinator cleanup
@@ -688,13 +689,21 @@ export class WindowManager {
   }
 
   /**
-   * Get the currently focused window ID
+   * Get the currently focused window ID.
+   * Falls back to the single existing window when no window has focus
+   * (e.g. during E2E tests, app startup, or window switching).
    */
   getFocusedWindowId(): number | null {
     const focusedWindow = BrowserWindow.getFocusedWindow();
     if (focusedWindow && this.windowStates.has(focusedWindow.id)) {
       return focusedWindow.id;
     }
+
+    // Fallback: if exactly one window exists, use it
+    if (this.windowStates.size === 1) {
+      return this.windowStates.keys().next().value ?? null;
+    }
+
     return null;
   }
 

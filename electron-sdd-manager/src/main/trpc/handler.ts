@@ -33,8 +33,8 @@ const getInitialSelectResult: ContextServices['getInitialSelectResult'] =
  * Extends WindowManagerLike with IPCHandler management methods.
  */
 interface WindowManagerForHandler extends WindowManagerLike {
-  getIPCHandler(): { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow): void } | null;
-  setIPCHandler(handler: { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow): void }): void;
+  getIPCHandler(): { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow, webContentsId?: number): void } | null;
+  setIPCHandler(handler: { attachWindow(win: Electron.BrowserWindow): void; detachWindow?(win: Electron.BrowserWindow, webContentsId?: number): void }): void;
 }
 
 /**

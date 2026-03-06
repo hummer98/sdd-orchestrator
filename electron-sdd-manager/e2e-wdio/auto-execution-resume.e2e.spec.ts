@@ -41,7 +41,7 @@ const REQUIREMENTS_COMPLETED_SPEC_JSON = {
   feature_name: 'resume-feature',
   name: 'resume-feature',
   description: 'E2Eテスト用：途中から再開するテスト機能',
-  phase: 'requirements',
+  phase: 'requirements-generated',
   language: 'ja',
   approvals: {
     requirements: { generated: true, approved: true },
@@ -59,7 +59,7 @@ const DESIGN_COMPLETED_SPEC_JSON = {
   feature_name: 'resume-feature',
   name: 'resume-feature',
   description: 'E2Eテスト用：途中から再開するテスト機能',
-  phase: 'design',
+  phase: 'design-generated',
   language: 'ja',
   approvals: {
     requirements: { generated: true, approved: true },
@@ -76,7 +76,7 @@ const DOCUMENT_REVIEW_COMPLETED_SPEC_JSON = {
   feature_name: 'resume-feature',
   name: 'resume-feature',
   description: 'E2Eテスト用：途中から再開するテスト機能',
-  phase: 'tasks',
+  phase: 'tasks-generated',
   language: 'ja',
   approvals: {
     requirements: { generated: true, approved: true },

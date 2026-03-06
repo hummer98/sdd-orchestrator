@@ -2,26 +2,26 @@
   "feature_name": "test-feature",
   "name": "test-feature",
   "description": "E2Eテスト用のテスト機能",
-  "phase": "requirements-generated",
+  "phase": "implementation-complete",
   "language": "ja",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "tasks": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z",
   "documentReview": {
-    "status": "pending",
+    "status": "approved",
     "roundDetails": [
       {
         "roundNumber": 1,
@@ -382,8 +382,24 @@
       {
         "roundNumber": 90,
         "status": "review_complete"
+      },
+      {
+        "roundNumber": 91,
+        "status": "review_complete"
       }
     ]
   },
-  "updated_at": "2026-02-26T06:38:06.435Z"
+  "updated_at": "2026-02-27T19:35:25.739Z",
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "deploy": false,
+      "design": true,
+      "impl": true,
+      "inspection": true,
+      "requirements": true,
+      "tasks": true,
+      "document-review": true
+    }
+  }
 }

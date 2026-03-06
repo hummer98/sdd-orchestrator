@@ -2,7 +2,7 @@
   "feature_name": "resume-feature",
   "name": "resume-feature",
   "description": "E2Eテスト用：途中から再開するテスト機能",
-  "phase": "requirements",
+  "phase": "requirements-generated",
   "language": "ja",
   "approvals": {
     "requirements": {

@@ -1,8 +1,8 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2Eテスト用のテスト機能（tasks承認済み）",
-  "phase": "tasks-approved",
+  "description": "E2E test: impl complete state for phase SSOT verification",
+  "phase": "implementation-complete",
   "language": "ja",
   "approvals": {
     "requirements": {

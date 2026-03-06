@@ -192,6 +192,7 @@ export const config: Options.Testrunner = {
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
 
+    // Zombie Electron cleanup
     try {
       const { stdout } = await execAsync(
         'bash -c \'./scripts/cleanup-zombie-electrons.sh 2>/dev/null || true\'',
@@ -202,6 +203,52 @@ export const config: Options.Testrunner = {
       }
     } catch {
       // Cleanup script not found or failed, ignore
+    }
+
+    // Auto-build: rebuild if source files are newer than dist
+    if (process.env.E2E_SKIP_BUILD !== 'true') {
+      const distMain = path.join(projectRoot, 'dist', 'main', 'index.js');
+      let needsBuild = !fs.existsSync(distMain);
+
+      if (!needsBuild) {
+        const distMtime = fs.statSync(distMain).mtimeMs;
+        // Check if any source file is newer than dist (cross-platform, no shell dependency)
+        const srcDirs = ['src/main', 'src/renderer', 'src/shared'];
+        const findNewerFile = (dir: string): string | null => {
+          if (!fs.existsSync(dir)) return null;
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              const found = findNewerFile(fullPath);
+              if (found) return found;
+            } else if (/\.(ts|tsx)$/.test(entry.name)) {
+              if (fs.statSync(fullPath).mtimeMs > distMtime) return fullPath;
+            }
+          }
+          return null;
+        };
+        for (const dir of srcDirs) {
+          const newerFile = findNewerFile(path.join(projectRoot, dir));
+          if (newerFile) {
+            needsBuild = true;
+            console.log(`[wdio] Source newer than dist: ${newerFile}`);
+            break;
+          }
+        }
+      }
+
+      if (needsBuild) {
+        console.log('[wdio] Building app before E2E tests...');
+        try {
+          await execAsync('npm run build', { cwd: projectRoot, timeout: 120000 });
+          console.log('[wdio] Build completed.');
+        } catch (buildError) {
+          console.error('[wdio] Build failed:', buildError);
+          throw new Error('E2E pre-test build failed. Fix build errors before running tests.');
+        }
+      } else {
+        console.log('[wdio] Dist is up-to-date, skipping build.');
+      }
     }
   },
 

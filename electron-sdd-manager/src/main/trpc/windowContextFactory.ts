@@ -112,17 +112,19 @@ export function createWindowContextFactory(
       perWindowOverrides.windowId = windowId;
     }
 
-    if (windowContext) {
-      const projectPath = windowContext.projectPath;
-      const services = windowContext.services;
+    if (windowId !== undefined) {
+      // Dynamic lookups: always fetch latest state from WindowManager
+      // (not snapshots, which go stale when selectProject runs after context creation)
+      perWindowOverrides.getCurrentProjectPath = () =>
+        windowManager.getWindowProject(windowId) ?? null;
 
-      // Per-window getCurrentProjectPath closure
-      perWindowOverrides.getCurrentProjectPath = () => projectPath;
-
-      // Per-window getSpecManagerService closure
-      if (services?.specManagerService) {
-        perWindowOverrides.getSpecManagerService = () => services.specManagerService;
-      }
+      perWindowOverrides.getSpecManagerService = () => {
+        const svc = windowManager.getWindowServices(windowId);
+        if (!svc?.specManagerService) {
+          throw new Error('SpecManagerService not initialized. Call setProjectPath first.');
+        }
+        return svc.specManagerService as any;
+      };
 
       // Per-window selectProject closure binding (windowId is baked in)
       if (sharedServices.selectProject) {

@@ -326,6 +326,39 @@ describe('createWindowContextFactory', () => {
     expect(mockFromWebContents).not.toHaveBeenCalled();
   });
 
+  it('should dynamically reflect projectPath changes after context creation (no stale snapshot)', async () => {
+    // This test verifies the core fix: getCurrentProjectPath() uses dynamic lookup
+    // so that projectPath changes (e.g. from selectProject) are reflected in
+    // contexts created BEFORE the change (like tRPC subscription contexts).
+    const windowsMap = new Map([
+      [1, { windowId: 1, projectPath: null as string | null, services: null as any }],
+    ]);
+
+    const mockWM = createMockWindowManager({
+      windows: windowsMap,
+      webContentsToWindowId: new Map([[101, 1]]),
+    });
+
+    const sharedServices: Partial<ContextServices> = {};
+    const contextFn = createWindowContextFactory(mockWM as any, sharedServices);
+
+    // Create context BEFORE project is selected (projectPath is null)
+    const ctx = await contextFn({ event: { sender: { id: 101 } } as any });
+    expect(ctx.services.getCurrentProjectPath()).toBeNull();
+
+    // Simulate selectProject updating WindowManager state
+    windowsMap.set(1, {
+      windowId: 1,
+      projectPath: '/newly-selected-project',
+      services: { specManagerService: { readSpecs: vi.fn() } },
+    });
+
+    // The SAME context should now return the updated projectPath (dynamic lookup)
+    expect(ctx.services.getCurrentProjectPath()).toBe('/newly-selected-project');
+    // getSpecManagerService should also return the newly initialized service
+    expect(ctx.services.getSpecManagerService()).toEqual({ readSpecs: expect.any(Function) });
+  });
+
   it('should return context with null projectPath for window without project', async () => {
     const mockWM = createMockWindowManager({
       windows: new Map([

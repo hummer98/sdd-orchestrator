@@ -64,21 +64,7 @@ describe('API types', () => {
       expect(content).toContain('updateApproval(');
     });
 
-    // Bug operations
-    it('should have getBugs method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('getBugs():');
-    });
-
-    it('should have getBugDetail method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('getBugDetail(');
-    });
-
-    it('should have executeBugPhase method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('executeBugPhase(');
-    });
+    // Bug operations removed (github-issue-integration)
 
     // Agent operations
     it('should have getAgents method', () => {
@@ -161,10 +147,7 @@ describe('API types', () => {
       expect(content).toContain('onSpecsUpdated(');
     });
 
-    it('should have onBugsUpdated subscription', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('onBugsUpdated(');
-    });
+    // onBugsUpdated removed (github-issue-integration)
 
     it('should have onAgentOutput subscription', () => {
       const content = readFileSync(typesPath, 'utf-8');
@@ -176,44 +159,7 @@ describe('API types', () => {
       expect(content).toContain('onAgentStatusChange(');
     });
 
-    // =========================================================================
-    // bugs-view-unification: Task 1.1 - Bug monitoring methods
-    // Requirements: 4.1, 4.2, 4.3, 4.4
-    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
-    // =========================================================================
-
-    it('should have startBugsWatcher method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('startBugsWatcher():');
-    });
-
-    it('should have stopBugsWatcher method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('stopBugsWatcher():');
-    });
-
-    it('should have onBugsChanged subscription', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('onBugsChanged(');
-    });
-  });
-
-  // ===========================================================================
-  // bugs-view-unification: Task 1.1 - BugsChangeEvent type
-  // Requirements: 4.4
-  // ===========================================================================
-
-  describe('BugsChangeEvent type', () => {
-    it('should import BugsChangeEvent from renderer/types/bug', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      // SSOT: BugsChangeEvent is defined in renderer/types/bug and re-exported
-      expect(content).toContain("import type { BugsChangeEvent } from '@renderer/types/bug'");
-    });
-
-    it('should re-export BugsChangeEvent type', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('export type { BugsChangeEvent }');
-    });
+    // Bug monitoring methods removed (github-issue-integration)
   });
 
   describe('WorkflowPhase type', () => {

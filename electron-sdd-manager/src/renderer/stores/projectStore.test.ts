@@ -65,8 +65,7 @@ vi.mock('../../shared/trpc/vanillaClient', () => ({
 
 import { useProjectStore } from './projectStore';
 import { useSpecStore } from './specStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 
 describe('useProjectStore', () => {
   beforeEach(() => {
@@ -86,8 +85,7 @@ describe('useProjectStore', () => {
     });
     // Reset specStore and bugStore
     useSpecStore.setState({ specs: [], selectedSpec: null, specDetail: null });
-    // bugs-view-unification Task 6.1: Use shared bugStore
-    resetSharedBugStore();
+    // bugStore removed (github-issue-integration)
     vi.clearAllMocks();
   });
 
@@ -156,8 +154,7 @@ describe('useProjectStore', () => {
       expect(state.kiroValidation).toEqual(mockValidation);
       // specs/bugs are delegated to specStore/bugStore (SSOT)
       expect(useSpecStore.getState().specs).toEqual(mockSpecs);
-      // bugs-view-unification Task 6.1: Use shared bugStore
-      expect(useSharedBugStore.getState().bugs).toEqual(mockBugs);
+      // bugStore removed (github-issue-integration)
       // spec-metadata-ssot-refactor: Verify specJsonMap is set from IPC result
       const specJsonMap = useSpecStore.getState().specJsonMap;
       expect(specJsonMap.get('test-spec')).toEqual(mockSpecJson);
@@ -1031,7 +1028,7 @@ describe('useProjectStore', () => {
 
       // Verify specs/bugs are synced to their stores
       expect(useSpecStore.getState().specs).toEqual(mockResult.specs);
-      expect(useSharedBugStore.getState().bugs).toEqual(mockResult.bugs);
+      // bugStore removed (github-issue-integration)
 
       // Verify specJsonMap is synced
       const specJsonMap = useSpecStore.getState().specJsonMap;

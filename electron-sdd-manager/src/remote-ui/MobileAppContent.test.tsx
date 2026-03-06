@@ -32,7 +32,7 @@ const mockPopPage = vi.fn();
 
 let mockNavigationState = {
   activeTab: 'specs' as const,
-  detailContext: null as null | { type: 'spec' | 'bug'; spec?: unknown; bug?: unknown },
+  detailContext: null as null | { type: 'spec'; spec?: unknown },
   showTabBar: true,
 };
 
@@ -53,12 +53,10 @@ vi.mock('./hooks/useNavigationStack', () => ({
 const mockApiClient = {
   getSpecs: () => Promise.resolve({ ok: true, value: [] }),
   getSpecDetail: () => Promise.resolve({ ok: true, value: { metadata: {}, specJson: {} } }),
-  getBugs: () => Promise.resolve({ ok: true, value: [] }),
-  getBugDetail: () => Promise.resolve({ ok: true, value: { metadata: {}, bugJson: {} } }),
+  // Bug methods removed (github-issue-integration)
   getAgents: () => Promise.resolve({ ok: true, value: [] }),
   stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
   onSpecsUpdated: () => () => {},
-  onBugsUpdated: () => () => {},
   onAgentOutput: () => () => {},
   onAgentStatusChange: () => () => {},
   onAutoExecutionStatusChanged: () => () => {},
@@ -130,10 +128,10 @@ vi.mock('./layouts', async () => {
           onClick: () => onTabChange?.('specs'),
         }, 'Specs'),
         React.createElement('button', {
-          key: 'bugs-tab',
-          'data-testid': 'tab-bugs',
-          onClick: () => onTabChange?.('bugs'),
-        }, 'Bugs'),
+          key: 'issues-tab',
+          'data-testid': 'tab-issues',
+          onClick: () => onTabChange?.('issues'),
+        }, 'Issues'),
         React.createElement('button', {
           key: 'agents-tab',
           'data-testid': 'tab-agents',
@@ -159,16 +157,7 @@ vi.mock('./views', () => ({
   ProjectView: () => null,
 }));
 
-// Mock bugAutoExecutionStore
-vi.mock('../shared/stores/bugAutoExecutionStore', () => ({
-  useBugAutoExecutionStore: vi.fn(() => ({
-    isAutoExecuting: false,
-    currentAutoPhase: null,
-    autoExecutionStatus: 'idle',
-    lastFailedPhase: null,
-  })),
-  initBugAutoExecutionWebSocketListeners: () => () => {},
-}));
+// bugAutoExecutionStore mock removed (github-issue-integration)
 
 // Mock hooks that set up WebSocket subscriptions (prevent hang from real subscriptions after vi.resetModules())
 vi.mock('./hooks/useAgentStoreInit', () => ({
@@ -347,11 +336,11 @@ describe('Task 8.1: MobileAppContent useNavigationStack Integration', () => {
       expect(capturedMobileLayoutProps.onTabChange).toBeDefined();
 
       // Simulate tab change
-      const bugsTab = screen.getByTestId('tab-bugs');
-      await userEvent.click(bugsTab);
+      const issuesTab = screen.getByTestId('tab-issues');
+      await userEvent.click(issuesTab);
 
       // Verify setActiveTab from useNavigationStack was called
-      expect(mockSetActiveTab).toHaveBeenCalledWith('bugs');
+      expect(mockSetActiveTab).toHaveBeenCalledWith('issues');
     });
 
     it('should call setActiveTab when switching to agents tab', async () => {
@@ -397,21 +386,21 @@ describe('Task 8.1: MobileAppContent useNavigationStack Integration', () => {
         expect(screen.getByTestId('mobile-layout')).toBeInTheDocument();
       });
 
-      // Switch to bugs tab
-      const bugsTab = screen.getByTestId('tab-bugs');
-      await userEvent.click(bugsTab);
+      // Switch to issues tab
+      const issuesTab = screen.getByTestId('tab-issues');
+      await userEvent.click(issuesTab);
 
       // setActiveTab from useNavigationStack handles clearing detailContext
       // The hook's setActiveTab implementation clears detailContext automatically
-      expect(mockSetActiveTab).toHaveBeenCalledWith('bugs');
+      expect(mockSetActiveTab).toHaveBeenCalledWith('issues');
     });
   });
 
   describe('activeTab State from Hook', () => {
     it('should display correct activeTab from hook state', async () => {
-      // Set bugs as active tab
+      // Set issues as active tab (github-issue-integration)
       mockNavigationState = {
-        activeTab: 'bugs',
+        activeTab: 'issues',
         detailContext: null,
         showTabBar: true,
       };
@@ -424,7 +413,7 @@ describe('Task 8.1: MobileAppContent useNavigationStack Integration', () => {
         expect(screen.getByTestId('mobile-layout')).toBeInTheDocument();
       });
 
-      expect(capturedMobileLayoutProps.activeTab).toBe('bugs');
+      expect(capturedMobileLayoutProps.activeTab).toBe('issues');
     });
 
     it('should display agents tab when set in hook state', async () => {
@@ -993,9 +982,9 @@ describe('Task 8.4: Agents Tab Integration with AgentsTabView', () => {
       expect(screen.queryByTestId('agents-tab-view')).not.toBeInTheDocument();
     });
 
-    it('should not render AgentsTabView when activeTab is bugs', async () => {
+    it('should not render AgentsTabView when activeTab is issues', async () => {
       mockNavigationState = {
-        activeTab: 'bugs',
+        activeTab: 'issues',
         detailContext: null,
         showTabBar: true,
       };
@@ -1018,7 +1007,7 @@ describe('Task 8.4: Agents Tab Integration with AgentsTabView', () => {
         expect(screen.getByTestId('mobile-layout')).toBeInTheDocument();
       });
 
-      // AgentsTabView should not be rendered when on bugs tab
+      // AgentsTabView should not be rendered when on issues tab
       expect(screen.queryByTestId('agents-tab-view')).not.toBeInTheDocument();
     });
   });

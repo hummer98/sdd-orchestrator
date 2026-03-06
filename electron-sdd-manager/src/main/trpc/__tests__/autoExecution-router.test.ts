@@ -41,14 +41,7 @@ interface MockAutoExecutionCoordinator {
   resetImplRetryCount: ReturnType<typeof vi.fn>;
 }
 
-interface MockBugAutoExecutionCoordinator {
-  start: ReturnType<typeof vi.fn>;
-  stop: ReturnType<typeof vi.fn>;
-  getStatus: ReturnType<typeof vi.fn>;
-  getAllStatuses: ReturnType<typeof vi.fn>;
-  retryFrom: ReturnType<typeof vi.fn>;
-  resetAll: ReturnType<typeof vi.fn>;
-}
+// MockBugAutoExecutionCoordinator removed (github-issue-integration)
 
 function createMockAutoExecutionCoordinator(): MockAutoExecutionCoordinator {
   return {
@@ -86,56 +79,16 @@ function createMockAutoExecutionCoordinator(): MockAutoExecutionCoordinator {
   };
 }
 
-function createMockBugAutoExecutionCoordinator(): MockBugAutoExecutionCoordinator {
-  return {
-    start: vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
-        bugPath: '/test/.kiro/bugs/test-bug',
-        bugName: 'test-bug',
-        status: 'running',
-        currentPhase: 'analyze',
-        executedPhases: [],
-        errors: [],
-        startTime: Date.now(),
-        lastActivityTime: Date.now(),
-        retryCount: 0,
-        lastFailedPhase: null,
-      },
-    }),
-    stop: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-    getStatus: vi.fn().mockReturnValue(null),
-    getAllStatuses: vi.fn().mockReturnValue(new Map()),
-    retryFrom: vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
-        bugPath: '/test/.kiro/bugs/test-bug',
-        bugName: 'test-bug',
-        status: 'running',
-        currentPhase: 'fix',
-        executedPhases: ['analyze'],
-        errors: [],
-        startTime: Date.now(),
-        lastActivityTime: Date.now(),
-        retryCount: 0,
-        lastFailedPhase: null,
-      },
-    }),
-    resetAll: vi.fn(),
-  };
-}
+// createMockBugAutoExecutionCoordinator removed (github-issue-integration)
 
 describe('AutoExecution Router', () => {
   let mockServices: ContextServices;
   let mockCoordinator: MockAutoExecutionCoordinator;
-  let mockBugCoordinator: MockBugAutoExecutionCoordinator;
 
   beforeEach(() => {
     mockCoordinator = createMockAutoExecutionCoordinator();
-    mockBugCoordinator = createMockBugAutoExecutionCoordinator();
     mockServices = createMockServices({
       autoExecutionCoordinator: mockCoordinator as any,
-      bugAutoExecutionCoordinator: mockBugCoordinator as any,
     });
   });
 
@@ -582,259 +535,38 @@ describe('AutoExecution Router', () => {
   });
 
   // ============================================================
-  // Bug Auto Execution: bugStart
+  // Bug Auto Execution: All procedures throw "Bug auto execution removed"
+  // (github-issue-integration)
   // ============================================================
 
-  describe('bugStart', () => {
-    it('should start bug auto execution and return serializable state', async () => {
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugStart({
-        projectPath: '/test/project',
-        bugPath: '/test/.kiro/bugs/test-bug',
-        bugName: 'test-bug',
-        options: {
-          permissions: {
-            analyze: true,
-            fix: true,
-            verify: true,
-          },
-        },
-        lastCompletedPhase: null,
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.status).toBe('running');
-        expect('timeoutId' in result.value).toBe(false);
-      }
-      expect(mockBugCoordinator.start).toHaveBeenCalledWith(
-        '/test/project',
-        '/test/.kiro/bugs/test-bug',
-        'test-bug',
-        expect.objectContaining({ permissions: expect.any(Object) }),
-        null,
-      );
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
+  describe('bug auto execution procedures (removed)', () => {
+    it('bugStart should throw "Bug auto execution removed"', async () => {
       const caller = createTestCaller(mockServices);
       await expect(caller.autoExecution.bugStart({
         projectPath: '/test/project',
         bugPath: '/test/.kiro/bugs/test-bug',
         bugName: 'test-bug',
-        options: {
-          permissions: {
-            analyze: true,
-            fix: true,
-            verify: true,
-          },
-        },
-        lastCompletedPhase: null,
-      })).rejects.toThrow();
-    });
-
-    it('should validate input - empty projectPath should fail', async () => {
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugStart({
-        projectPath: '',
-        bugPath: '/test',
-        bugName: 'test',
         options: { permissions: { analyze: true, fix: true, verify: true } },
         lastCompletedPhase: null,
-      })).rejects.toThrow();
+      })).rejects.toThrow('Bug auto execution removed');
     });
-  });
 
-  // ============================================================
-  // Bug Auto Execution: bugStop
-  // ============================================================
-
-  describe('bugStop', () => {
-    it('should stop bug auto execution', async () => {
+    it('bugStop should throw "Bug auto execution removed"', async () => {
       const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugStop({ bugPath: '/test/.kiro/bugs/test-bug' });
-
-      expect(result.ok).toBe(true);
-      expect(mockBugCoordinator.stop).toHaveBeenCalledWith('/test/.kiro/bugs/test-bug');
+      await expect(caller.autoExecution.bugStop({ bugPath: '/test/.kiro/bugs/test-bug' }))
+        .rejects.toThrow('Bug auto execution removed');
     });
 
-    it('should return error result when stop fails', async () => {
-      mockBugCoordinator.stop.mockResolvedValue({
-        ok: false,
-        error: { type: 'NOT_EXECUTING', bugName: 'test-bug' },
-      });
-
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugStop({ bugPath: '/test/.kiro/bugs/test-bug' });
-
-      expect(result.ok).toBe(false);
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugStop({ bugPath: '/test' }))
-        .rejects.toThrow();
-    });
-
-    it('should validate input - empty bugPath should fail', async () => {
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugStop({ bugPath: '' }))
-        .rejects.toThrow();
-    });
-  });
-
-  // ============================================================
-  // Bug Auto Execution: bugGetStatus
-  // ============================================================
-
-  describe('bugGetStatus', () => {
-    it('should return null when no execution exists', async () => {
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugGetStatus({ bugPath: '/test/.kiro/bugs/test' });
-
-      expect(result).toBeNull();
-    });
-
-    it('should return serializable state (without timeoutId)', async () => {
-      mockBugCoordinator.getStatus.mockReturnValue({
-        bugPath: '/test/.kiro/bugs/test-bug',
-        bugName: 'test-bug',
-        status: 'running',
-        currentPhase: 'fix',
-        executedPhases: ['analyze'],
-        errors: [],
-        startTime: 1000,
-        lastActivityTime: 2000,
-        retryCount: 0,
-        lastFailedPhase: null,
-        timeoutId: setTimeout(() => {}, 0),
-      });
-
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugGetStatus({ bugPath: '/test/.kiro/bugs/test-bug' });
-
-      expect(result).not.toBeNull();
-      expect(result!.status).toBe('running');
-      expect('timeoutId' in result!).toBe(false);
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugGetStatus({ bugPath: '/test' }))
-        .rejects.toThrow();
-    });
-  });
-
-  // ============================================================
-  // Bug Auto Execution: bugGetAllStatus
-  // ============================================================
-
-  describe('bugGetAllStatus', () => {
-    it('should return empty object when no executions exist', async () => {
+    it('bugGetAllStatus should return empty object (deprecated stub)', async () => {
       const caller = createTestCaller(mockServices);
       const result = await caller.autoExecution.bugGetAllStatus();
-
       expect(result).toEqual({});
     });
 
-    it('should serialize Map to Record with timeoutId removed', async () => {
-      const statuses = new Map();
-      statuses.set('/test/.kiro/bugs/bug-a', {
-        bugPath: '/test/.kiro/bugs/bug-a',
-        bugName: 'bug-a',
-        status: 'running',
-        currentPhase: 'analyze',
-        executedPhases: [],
-        errors: [],
-        startTime: 1000,
-        lastActivityTime: 2000,
-        retryCount: 0,
-        lastFailedPhase: null,
-        timeoutId: setTimeout(() => {}, 0),
-      });
-      mockBugCoordinator.getAllStatuses.mockReturnValue(statuses);
-
+    it('bugReset should resolve successfully (deprecated stub)', async () => {
       const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugGetAllStatus();
-
-      expect(Object.keys(result)).toHaveLength(1);
-      expect(result['/test/.kiro/bugs/bug-a'].status).toBe('running');
-      expect('timeoutId' in result['/test/.kiro/bugs/bug-a']).toBe(false);
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugGetAllStatus())
-        .rejects.toThrow();
-    });
-  });
-
-  // ============================================================
-  // Bug Auto Execution: bugRetryFrom
-  // ============================================================
-
-  describe('bugRetryFrom', () => {
-    it('should retry from a specified bug phase', async () => {
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugRetryFrom({
-        bugPath: '/test/.kiro/bugs/test-bug',
-        phase: 'fix',
-      });
-
-      expect(result.ok).toBe(true);
-      expect(mockBugCoordinator.retryFrom).toHaveBeenCalledWith('/test/.kiro/bugs/test-bug', 'fix');
-    });
-
-    it('should return error when retry fails', async () => {
-      mockBugCoordinator.retryFrom.mockResolvedValue({
-        ok: false,
-        error: { type: 'NOT_EXECUTING', bugName: 'test-bug' },
-      });
-
-      const caller = createTestCaller(mockServices);
-      const result = await caller.autoExecution.bugRetryFrom({
-        bugPath: '/test/.kiro/bugs/test-bug',
-        phase: 'verify',
-      });
-
-      expect(result.ok).toBe(false);
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugRetryFrom({ bugPath: '/test', phase: 'fix' }))
-        .rejects.toThrow();
-    });
-  });
-
-  // ============================================================
-  // Bug Auto Execution: bugReset (E2E)
-  // ============================================================
-
-  describe('bugReset', () => {
-    it('should reset all bug executions', async () => {
-      const caller = createTestCaller(mockServices);
-      await caller.autoExecution.bugReset();
-
-      expect(mockBugCoordinator.resetAll).toHaveBeenCalled();
-    });
-
-    it('should throw when bug coordinator is not initialized', async () => {
-      mockServices.bugAutoExecutionCoordinator = undefined;
-
-      const caller = createTestCaller(mockServices);
-      await expect(caller.autoExecution.bugReset())
-        .rejects.toThrow();
+      const result = await caller.autoExecution.bugReset();
+      expect(result).toBeUndefined();
     });
   });
 
@@ -848,7 +580,7 @@ describe('AutoExecution Router', () => {
       expect(caller.autoExecution).toBeDefined();
     });
 
-    it('should have all 14 procedures defined', () => {
+    it('should have all spec procedures and stub bug procedures defined', () => {
       const caller = createTestCaller(mockServices);
       // Spec procedures (8)
       expect(typeof caller.autoExecution.start).toBe('function');
@@ -859,12 +591,10 @@ describe('AutoExecution Router', () => {
       expect(typeof caller.autoExecution.reset).toBe('function');
       expect(typeof caller.autoExecution.setMockEnv).toBe('function');
       expect(typeof caller.autoExecution.resetImplRetry).toBe('function');
-      // Bug procedures (6)
+      // Bug procedures still exist as stubs (throw "Bug auto execution removed")
       expect(typeof caller.autoExecution.bugStart).toBe('function');
       expect(typeof caller.autoExecution.bugStop).toBe('function');
-      expect(typeof caller.autoExecution.bugGetStatus).toBe('function');
       expect(typeof caller.autoExecution.bugGetAllStatus).toBe('function');
-      expect(typeof caller.autoExecution.bugRetryFrom).toBe('function');
       expect(typeof caller.autoExecution.bugReset).toBe('function');
     });
   });
@@ -935,47 +665,7 @@ describe('AutoExecution Router', () => {
       expect(setMockEnvInputSchema.safeParse({ key: '', value: 'test' }).success).toBe(false);
     });
 
-    it('should export bugStartInputSchema', async () => {
-      const { bugStartInputSchema } = await import('../routers/autoExecution');
-      expect(bugStartInputSchema).toBeDefined();
-
-      expect(bugStartInputSchema.safeParse({
-        projectPath: '/test',
-        bugPath: '/test/bug',
-        bugName: 'test-bug',
-        options: {
-          permissions: { analyze: true, fix: true, verify: true },
-        },
-        lastCompletedPhase: null,
-      }).success).toBe(true);
-
-      // Invalid: empty projectPath
-      expect(bugStartInputSchema.safeParse({
-        projectPath: '',
-        bugPath: '/test/bug',
-        bugName: 'test-bug',
-        options: { permissions: {} },
-        lastCompletedPhase: null,
-      }).success).toBe(false);
-    });
-
-    it('should export bugStopInputSchema', async () => {
-      const { bugStopInputSchema } = await import('../routers/autoExecution');
-      expect(bugStopInputSchema).toBeDefined();
-
-      expect(bugStopInputSchema.safeParse({ bugPath: '/test' }).success).toBe(true);
-      expect(bugStopInputSchema.safeParse({ bugPath: '' }).success).toBe(false);
-    });
-
-    it('should export bugRetryFromInputSchema', async () => {
-      const { bugRetryFromInputSchema } = await import('../routers/autoExecution');
-      expect(bugRetryFromInputSchema).toBeDefined();
-
-      expect(bugRetryFromInputSchema.safeParse({
-        bugPath: '/test',
-        phase: 'fix',
-      }).success).toBe(true);
-    });
+    // Bug schemas removed (github-issue-integration) - bugStartInputSchema, bugStopInputSchema, bugRetryFromInputSchema are now private
   });
 
   // ============================================================
@@ -1224,164 +914,7 @@ describe('AutoExecution Router', () => {
       });
     });
 
-    // --- From bugAutoExecutionHandlers.test.ts: Serialization edge cases ---
-    describe('Bug: Serialization edge cases', () => {
-      it('should handle state with complex timeoutId object', async () => {
-        mockBugCoordinator.getStatus.mockReturnValue({
-          bugPath: '/test/.kiro/bugs/test-bug',
-          bugName: 'test-bug',
-          status: 'running',
-          currentPhase: 'fix',
-          executedPhases: ['analyze'],
-          errors: [],
-          startTime: 1234567890,
-          lastActivityTime: 1234567891,
-          retryCount: 1,
-          lastFailedPhase: 'analyze',
-          timeoutId: { _idleTimeout: 1000 } as any, // complex object
-        });
-
-        const caller = createTestCaller(mockServices);
-        const result = await caller.autoExecution.bugGetStatus({
-          bugPath: '/test/.kiro/bugs/test-bug',
-        });
-
-        expect(result).not.toBeNull();
-        expect(result!).not.toHaveProperty('timeoutId');
-        expect(() => JSON.stringify(result)).not.toThrow();
-        // Verify specific fields preserved
-        expect(result!.retryCount).toBe(1);
-        expect(result!.lastFailedPhase).toBe('analyze');
-      });
-    });
-
-    // --- From bugAutoExecutionHandlers.test.ts: projectPath passing ---
-    describe('Bug: projectPath is passed to coordinator.start()', () => {
-      it('should pass projectPath as first argument to coordinator.start()', async () => {
-        const caller = createTestCaller(mockServices);
-        await caller.autoExecution.bugStart({
-          projectPath: '/explicit/project/path',
-          bugPath: '/explicit/project/path/.kiro/bugs/test-bug',
-          bugName: 'test-bug',
-          options: {
-            permissions: { analyze: true, fix: true, verify: true },
-          },
-          lastCompletedPhase: null,
-        });
-
-        expect(mockBugCoordinator.start).toHaveBeenCalledWith(
-          '/explicit/project/path',
-          '/explicit/project/path/.kiro/bugs/test-bug',
-          'test-bug',
-          expect.objectContaining({
-            permissions: expect.any(Object),
-          }),
-          null,
-        );
-      });
-
-      it('should pass lastCompletedPhase to coordinator.start()', async () => {
-        const caller = createTestCaller(mockServices);
-        await caller.autoExecution.bugStart({
-          projectPath: '/test/project',
-          bugPath: '/test/.kiro/bugs/test-bug',
-          bugName: 'test-bug',
-          options: {
-            permissions: { analyze: true, fix: true, verify: true },
-          },
-          lastCompletedPhase: 'analyze',
-        });
-
-        expect(mockBugCoordinator.start).toHaveBeenCalledWith(
-          '/test/project',
-          '/test/.kiro/bugs/test-bug',
-          'test-bug',
-          expect.any(Object),
-          'analyze',
-        );
-      });
-    });
-
-    // --- From bugAutoExecutionHandlers.test.ts: Bug NOT_EXECUTING ---
-    describe('Bug: NOT_EXECUTING error on stop', () => {
-      it('should return error when stopping non-existent bug execution', async () => {
-        mockBugCoordinator.stop.mockResolvedValue({
-          ok: false,
-          error: { type: 'NOT_EXECUTING', bugName: 'non-existent' },
-        });
-
-        const caller = createTestCaller(mockServices);
-        const result = await caller.autoExecution.bugStop({
-          bugPath: '/non-existent/bug',
-        });
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.type).toBe('NOT_EXECUTING');
-        }
-      });
-    });
-
-    // --- Bug: Multiple concurrent bug executions ---
-    describe('Bug: Multiple concurrent executions in bugGetAllStatus', () => {
-      it('should handle multiple bug executions with different states', async () => {
-        const statuses = new Map();
-        statuses.set('/bugs/bug-a', {
-          bugPath: '/bugs/bug-a',
-          bugName: 'bug-a',
-          status: 'running',
-          currentPhase: 'analyze',
-          executedPhases: [],
-          errors: [],
-          startTime: 1000,
-          lastActivityTime: 2000,
-          retryCount: 0,
-          lastFailedPhase: null,
-        });
-        statuses.set('/bugs/bug-b', {
-          bugPath: '/bugs/bug-b',
-          bugName: 'bug-b',
-          status: 'error',
-          currentPhase: null,
-          executedPhases: ['analyze'],
-          errors: ['verification failed'],
-          startTime: 1100,
-          lastActivityTime: 2100,
-          retryCount: 2,
-          lastFailedPhase: 'fix',
-        });
-        mockBugCoordinator.getAllStatuses.mockReturnValue(statuses);
-
-        const caller = createTestCaller(mockServices);
-        const result = await caller.autoExecution.bugGetAllStatus();
-
-        expect(Object.keys(result)).toHaveLength(2);
-        expect(result['/bugs/bug-a'].status).toBe('running');
-        expect(result['/bugs/bug-b'].status).toBe('error');
-        expect(result['/bugs/bug-b'].errors).toContain('verification failed');
-      });
-    });
-
-    // --- Bug: bugRetryFrom with specific phase and error return ---
-    describe('Bug: bugRetryFrom error cases', () => {
-      it('should return NOT_EXECUTING error when retrying for non-existent bug', async () => {
-        mockBugCoordinator.retryFrom.mockResolvedValue({
-          ok: false,
-          error: { type: 'NOT_EXECUTING', bugName: 'non-existent' },
-        });
-
-        const caller = createTestCaller(mockServices);
-        const result = await caller.autoExecution.bugRetryFrom({
-          bugPath: '/non-existent/bug',
-          phase: 'fix',
-        });
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.type).toBe('NOT_EXECUTING');
-        }
-      });
-    });
+    // Bug integration tests removed (github-issue-integration)
 
     // --- Schema validation: edge cases ---
     describe('Schema validation edge cases', () => {
@@ -1415,40 +948,12 @@ describe('AutoExecution Router', () => {
         })).rejects.toThrow();
       });
 
-      it('should reject bugStart with bugPath that is empty string', async () => {
-        const caller = createTestCaller(mockServices);
-        await expect(caller.autoExecution.bugStart({
-          projectPath: '/test',
-          bugPath: '',
-          bugName: 'test',
-          options: { permissions: { analyze: true, fix: true, verify: true } },
-          lastCompletedPhase: null,
-        })).rejects.toThrow();
-      });
-
-      it('should reject bugStart with bugName that is empty string', async () => {
-        const caller = createTestCaller(mockServices);
-        await expect(caller.autoExecution.bugStart({
-          projectPath: '/test',
-          bugPath: '/test',
-          bugName: '',
-          options: { permissions: { analyze: true, fix: true, verify: true } },
-          lastCompletedPhase: null,
-        })).rejects.toThrow();
-      });
+      // bugStart/bugStop/bugRetryFrom/bugGetStatus schema edge cases removed (github-issue-integration)
 
       it('should reject retryFrom with empty phase', async () => {
         const caller = createTestCaller(mockServices);
         await expect(caller.autoExecution.retryFrom({
           specPath: '/test',
-          phase: '',
-        })).rejects.toThrow();
-      });
-
-      it('should reject bugRetryFrom with empty phase', async () => {
-        const caller = createTestCaller(mockServices);
-        await expect(caller.autoExecution.bugRetryFrom({
-          bugPath: '/test',
           phase: '',
         })).rejects.toThrow();
       });
@@ -1460,12 +965,7 @@ describe('AutoExecution Router', () => {
         })).rejects.toThrow();
       });
 
-      it('should reject bugGetStatus with empty bugPath', async () => {
-        const caller = createTestCaller(mockServices);
-        await expect(caller.autoExecution.bugGetStatus({
-          bugPath: '',
-        })).rejects.toThrow();
-      });
+      // bugGetStatus empty bugPath test removed (github-issue-integration)
     });
   });
 });

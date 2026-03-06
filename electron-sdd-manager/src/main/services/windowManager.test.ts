@@ -278,7 +278,7 @@ describe('WindowManager', () => {
         expect(services?.specManagerService).toBeDefined();
         expect(services?.specsWatcherService).toBeDefined();
         expect(services?.agentRecordWatcherService).toBeDefined();
-        expect(services?.bugsWatcherService).toBeDefined();
+        // bugsWatcherService removed (github-issue-integration)
       });
     });
   });

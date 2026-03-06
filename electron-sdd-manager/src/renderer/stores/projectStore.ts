@@ -8,8 +8,7 @@
 import { create } from 'zustand';
 import type { KiroValidation, SelectProjectResult } from '../types';
 import { useSpecStore } from './specStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 // trpc-full-migration Task 11.4: tRPC vanilla client replaces IpcApiClient
 // trpc-bug-migration: BugsChangeEvent import removed (adapter eliminated)
 import { useAgentStore, type AgentInfo } from './agentStore';
@@ -221,14 +220,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         return;
       }
 
-      // Bug fix: empty bug directory handling - show warning toast for skipped directories
-      if (result.bugWarnings && result.bugWarnings.length > 0) {
-        const { notify } = await import('./notificationStore');
-        for (const warning of result.bugWarnings) {
-          notify.warning(warning);
-        }
-      }
-
       // Bug fix: agent-log-shows-selection-without-spec
       // Clear agent selection when switching projects to prevent stale agent logs
       useAgentStore.getState().selectAgent(null);
@@ -241,9 +232,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler
       // Here we only register the event listeners on Renderer side
       await useSpecStore.getState().startWatching();
-      // trpc-bug-migration: Set project path and start watching via tRPC (apiClient=null)
-      useSharedBugStore.getState().setProjectPath(path);
-      useSharedBugStore.getState().startWatching(null);
+      // bugStore watching removed (github-issue-integration)
 
       // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();
@@ -444,18 +433,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       useSpecStore.getState().setSpecs(result.specs);
       useSpecStore.getState().setSpecJsonMap(result.specJsonMap);
     }
-    if (result.bugs) {
-      useSharedBugStore.getState().updateBugs(result.bugs);
-    }
-
     // Register Renderer-side file watcher event listeners
-    // Both startWatching implementations are idempotent (clean up existing subscriptions first)
-    // This ensures watchers are registered in both the SDD_PROJECT_PATH startup path
-    // (which only calls applySelectProjectResult) and the UI selection path
-    // (which calls selectProject → applySelectProjectResult → startWatching again)
     await useSpecStore.getState().startWatching();
-    useSharedBugStore.getState().setProjectPath(result.projectPath);
-    useSharedBugStore.getState().startWatching(null);
+    // bugStore watching removed (github-issue-integration)
   },
 
   // trpc-full-migration Task 3.2: Use tRPC for getRecentProjects

@@ -41,6 +41,10 @@ export * from './toolCheck';
 export * from './agentStartError';
 export * from './agentStartErrorMessages';
 
+// GitHub types (github-issue-integration feature)
+// Requirements: 4.1
+export * from './github';
+
 // Result type for consistent error handling (git-diff-viewer feature)
 export type Result<T, E> =
   | { success: true; data: T }

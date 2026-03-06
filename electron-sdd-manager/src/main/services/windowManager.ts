@@ -16,7 +16,7 @@ import { existsSync, realpathSync } from 'fs';
 import { SpecManagerService } from './specManagerService';
 import { SpecsWatcherService } from './specsWatcherService';
 import { AgentRecordWatcherService } from './agentRecordWatcherService';
-import { BugsWatcherService } from './bugsWatcherService';
+// BugsWatcherService removed (github-issue-integration)
 import { MetricsService } from './metricsService';
 import { MetricsFileWriter } from './metricsFileWriter';
 import { MetricsFileReader } from './metricsFileReader';
@@ -57,7 +57,7 @@ export interface PerWindowServices {
   specManagerService: SpecManagerService;
   specsWatcherService: SpecsWatcherService;
   agentRecordWatcherService: AgentRecordWatcherService;
-  bugsWatcherService: BugsWatcherService;
+  bugsWatcherService?: unknown; // Deprecated: github-issue-integration
   metricsService: MetricsService;
   autoExecutionCoordinator: AutoExecutionCoordinator;
 }
@@ -316,7 +316,7 @@ export class WindowManager {
     if (services) {
       services.specsWatcherService.stop();
       services.agentRecordWatcherService.stop();
-      services.bugsWatcherService.stop();
+      // bugsWatcherService removed (github-issue-integration)
       // multi-window-integration Task 1.1: Stop new services
       services.autoExecutionCoordinator.resetAll();
     }
@@ -537,7 +537,7 @@ export class WindowManager {
     if (existingServices) {
       existingServices.specsWatcherService.stop();
       existingServices.agentRecordWatcherService.stop();
-      existingServices.bugsWatcherService.stop();
+      // bugsWatcherService removed (github-issue-integration)
       existingServices.autoExecutionCoordinator.resetAll();
     }
 
@@ -548,7 +548,7 @@ export class WindowManager {
       specManagerService: new SpecManagerService(projectPath, { layoutConfigService }),
       specsWatcherService: new SpecsWatcherService(projectPath, fileService),
       agentRecordWatcherService: new AgentRecordWatcherService(projectPath),
-      bugsWatcherService: new BugsWatcherService(projectPath),
+      // bugsWatcherService removed (github-issue-integration)
       // multi-window-integration Task 1.1: Per-window MetricsService and AutoExecutionCoordinator
       metricsService: new MetricsService(logger, new MetricsFileWriter(logger), new MetricsFileReader(logger)),
       autoExecutionCoordinator: new AutoExecutionCoordinator(),

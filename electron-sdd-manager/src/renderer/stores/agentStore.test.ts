@@ -16,8 +16,7 @@ import { useAgentStore, resetAgentStore, type AgentInfo, type AgentStatus } from
 import { useSharedAgentStore, resetSharedAgentStore } from '@shared/stores/agentStore';
 // Bug fix: agent-log-dynamic-import-issue - Import stores for state-based mocking
 import { useSpecDetailStore } from './spec/specDetailStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 
 // trpc-full-migration Task 6.2: Mock tRPC vanilla client for agent operations
 // Task 9.2: Added events namespace for tRPC Subscription mocks
@@ -564,21 +563,7 @@ describe('useAgentStore (Action-Only Facade)', () => {
         expect(useSharedAgentStore.getState().selectedAgentId).toBeNull();
       });
 
-      it('should auto-select Bug Agent when selected bug matches', async () => {
-        useSpecDetailStore.setState({ selectedSpec: null });
-        useSharedBugStore.setState({ selectedBugId: 'my-bug' });
-
-        mockVanillaClient.agent.getAllAgents.query.mockResolvedValue({
-          'bug:my-bug': [{ ...mockAgentInfo, agentId: 'bug-agent-1', specId: 'bug:my-bug' }],
-        });
-
-        useAgentStore.getState().setupEventListeners();
-        emitMockEvent('onAgentRecordChanged', { type: 'add', data: { agentId: 'bug-agent-1', specId: 'bug:my-bug' } });
-
-        await vi.waitFor(() => {
-          expect(useSharedAgentStore.getState().selectedAgentId).toBe('bug-agent-1');
-        });
-      });
+      // Bug agent auto-select test removed (github-issue-integration)
     });
   });
 

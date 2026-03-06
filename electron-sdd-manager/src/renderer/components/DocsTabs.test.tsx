@@ -1,6 +1,7 @@
 /**
  * DocsTabs Component Tests
  * Requirements: 1.1, 1.2, 1.3, 1.4
+ * github-issue-integration: Bugs tab replaced with Issues
  */
 
 import { useState } from 'react';
@@ -37,24 +38,11 @@ vi.mock('./SpecList', () => ({
   SpecList: () => <div data-testid="spec-list">SpecList</div>,
 }));
 
-vi.mock('./BugList', () => ({
-  BugList: () => <div data-testid="bug-list">BugList</div>,
-}));
-
 vi.mock('./CreateSpecDialog', () => ({
   CreateSpecDialog: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? (
       <div data-testid="create-spec-dialog">
         <button onClick={onClose} data-testid="close-spec-dialog">Close</button>
-      </div>
-    ) : null,
-}));
-
-vi.mock('./CreateBugDialog', () => ({
-  CreateBugDialog: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
-    isOpen ? (
-      <div data-testid="create-bug-dialog">
-        <button onClick={onClose} data-testid="close-bug-dialog">Close</button>
       </div>
     ) : null,
 }));
@@ -73,6 +61,7 @@ describe('DocsTabs', () => {
   // ============================================================
   // Task 8.1: Tab display and switching
   // Requirements: 1.1, 1.3, 1.4
+  // github-issue-integration: Bugs tab replaced with Issues
   // ============================================================
   describe('tab display and switching', () => {
     it('should render tabs container', () => {
@@ -81,18 +70,18 @@ describe('DocsTabs', () => {
       expect(screen.getByTestId('docs-tabs')).toBeInTheDocument();
     });
 
-    it('should display Specs and Bugs tabs', () => {
+    it('should display Specs and Issues tabs', () => {
       render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-bugs')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-issues')).toBeInTheDocument();
     });
 
     it('should show Specs tab as active by default', () => {
       render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByTestId('tab-issues')).toHaveAttribute('aria-selected', 'false');
     });
 
     it('should show SpecList by default', () => {
@@ -100,33 +89,22 @@ describe('DocsTabs', () => {
 
       expect(screen.getByTestId('tabpanel-specs')).toBeInTheDocument();
       expect(screen.getByTestId('spec-list')).toBeInTheDocument();
-      expect(screen.queryByTestId('tabpanel-bugs')).not.toBeInTheDocument();
     });
 
-    it('should switch to Bugs tab when clicked', () => {
+    it('should switch to Issues tab when clicked', () => {
       render(<DocsTabsWrapper />);
 
-      fireEvent.click(screen.getByTestId('tab-bugs'));
+      fireEvent.click(screen.getByTestId('tab-issues'));
 
-      expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('tab-issues')).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-selected', 'false');
-    });
-
-    it('should show BugList when Bugs tab is selected', () => {
-      render(<DocsTabsWrapper />);
-
-      fireEvent.click(screen.getByTestId('tab-bugs'));
-
-      expect(screen.getByTestId('tabpanel-bugs')).toBeInTheDocument();
-      expect(screen.getByTestId('bug-list')).toBeInTheDocument();
-      expect(screen.queryByTestId('tabpanel-specs')).not.toBeInTheDocument();
     });
 
     it('should switch back to Specs tab when clicked', () => {
       render(<DocsTabsWrapper />);
 
-      // Switch to bugs
-      fireEvent.click(screen.getByTestId('tab-bugs'));
+      // Switch to issues
+      fireEvent.click(screen.getByTestId('tab-issues'));
       // Switch back to specs
       fireEvent.click(screen.getByTestId('tab-specs'));
 
@@ -134,16 +112,11 @@ describe('DocsTabs', () => {
       expect(screen.getByTestId('tabpanel-specs')).toBeInTheDocument();
     });
 
-    // Feature: タブ毎の選択状態を維持
-    // App.tsxがactiveTabベースで条件分岐するようになったため、
-    // タブ切り替え時に選択状態をクリアする必要がなくなった
-    // 注: clearSelectedSpec/clearSelectedBugはDocsTabsから呼び出されなくなったため、
-    // ストアの選択状態は各タブで独立して維持される
     it('should preserve selection state when switching tabs (no clear calls)', () => {
       render(<DocsTabsWrapper />);
 
-      // Switch to bugs and back to specs
-      fireEvent.click(screen.getByTestId('tab-bugs'));
+      // Switch to issues and back to specs
+      fireEvent.click(screen.getByTestId('tab-issues'));
       fireEvent.click(screen.getByTestId('tab-specs'));
 
       // Only agent selection should be cleared (twice, once per tab switch)
@@ -151,11 +124,10 @@ describe('DocsTabs', () => {
       expect(mockSelectAgent).toHaveBeenCalledWith(null);
     });
 
-    // Bug fix: agent-log-shows-selection-without-spec
     it('should clear agent selection when switching tabs', () => {
       render(<DocsTabsWrapper />);
 
-      fireEvent.click(screen.getByTestId('tab-bugs'));
+      fireEvent.click(screen.getByTestId('tab-issues'));
 
       expect(mockSelectAgent).toHaveBeenCalledWith(null);
     });
@@ -166,7 +138,7 @@ describe('DocsTabs', () => {
   // Requirements: 1.1, 1.2
   // ============================================================
   describe('create button', () => {
-    it('should display create button when project is selected', () => {
+    it('should display create button when project is selected and on specs tab', () => {
       render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('create-button')).toBeInTheDocument();
@@ -189,15 +161,10 @@ describe('DocsTabs', () => {
       expect(screen.getByTestId('create-spec-dialog')).toBeInTheDocument();
     });
 
-    it('should open CreateBugDialog when create button is clicked on Bugs tab', () => {
-      render(<DocsTabsWrapper />);
+    it('should not show create button on Issues tab (no createLabel)', () => {
+      render(<DocsTabsWrapper initialTab="issues" />);
 
-      // Switch to bugs tab
-      fireEvent.click(screen.getByTestId('tab-bugs'));
-      // Click create
-      fireEvent.click(screen.getByTestId('create-button'));
-
-      expect(screen.getByTestId('create-bug-dialog')).toBeInTheDocument();
+      expect(screen.queryByTestId('create-button')).not.toBeInTheDocument();
     });
 
     it('should close CreateSpecDialog when close is called', () => {
@@ -208,17 +175,6 @@ describe('DocsTabs', () => {
 
       fireEvent.click(screen.getByTestId('close-spec-dialog'));
       expect(screen.queryByTestId('create-spec-dialog')).not.toBeInTheDocument();
-    });
-
-    it('should close CreateBugDialog when close is called', () => {
-      render(<DocsTabsWrapper />);
-
-      fireEvent.click(screen.getByTestId('tab-bugs'));
-      fireEvent.click(screen.getByTestId('create-button'));
-      expect(screen.getByTestId('create-bug-dialog')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('close-bug-dialog'));
-      expect(screen.queryByTestId('create-bug-dialog')).not.toBeInTheDocument();
     });
   });
 
@@ -281,7 +237,7 @@ describe('DocsTabs', () => {
       render(<DocsTabsWrapper />);
 
       const tabs = screen.getAllByRole('tab');
-      // Now 3 tabs: specs, bugs, project
+      // Now 3 tabs: specs, issues, project
       expect(tabs).toHaveLength(3);
     });
 
@@ -295,7 +251,7 @@ describe('DocsTabs', () => {
       render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-controls', 'tabpanel-specs');
-      expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-controls', 'tabpanel-bugs');
+      expect(screen.getByTestId('tab-issues')).toHaveAttribute('aria-controls', 'tabpanel-issues');
     });
   });
 
@@ -307,15 +263,15 @@ describe('DocsTabs', () => {
     it('should maintain tab state when re-rendered', () => {
       const { rerender } = render(<DocsTabsWrapper />);
 
-      // Switch to bugs
-      fireEvent.click(screen.getByTestId('tab-bugs'));
-      expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'true');
+      // Switch to issues
+      fireEvent.click(screen.getByTestId('tab-issues'));
+      expect(screen.getByTestId('tab-issues')).toHaveAttribute('aria-selected', 'true');
 
       // Re-render
       rerender(<DocsTabsWrapper />);
 
       // Tab state should be maintained (component state is preserved in rerender)
-      expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('tab-issues')).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

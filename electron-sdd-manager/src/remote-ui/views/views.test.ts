@@ -48,19 +48,7 @@ describe('views/index.ts barrel exports (Task 10.2)', () => {
     });
   });
 
-  describe('BugDetailPage exports (Req 4.1)', () => {
-    it('should export BugDetailPage component', () => {
-      expect(content).toContain('BugDetailPage');
-    });
-
-    it('should export BugDetailPageProps type', () => {
-      expect(content).toContain('BugDetailPageProps');
-    });
-
-    it('should export BugSubTab type for sub-tab navigation', () => {
-      expect(content).toContain('BugSubTab');
-    });
-  });
+  // BugDetailPage exports removed (github-issue-integration: replaced by IssuePane)
 
   describe('AgentsTabView exports (Req 5.1)', () => {
     it('should export AgentsTabView component', () => {

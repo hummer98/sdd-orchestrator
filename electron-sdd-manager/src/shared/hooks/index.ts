@@ -40,13 +40,7 @@ export type {
   UseSubmitShortcutReturn,
 } from './useSubmitShortcut';
 
-// bugs-view-unification: Shared bug list sorting/filtering logic
-export { useBugListLogic, BUG_PHASE_FILTER_OPTIONS } from './useBugListLogic';
-export type {
-  UseBugListLogicOptions,
-  UseBugListLogicResult,
-  BugPhaseFilter,
-} from './useBugListLogic';
+// bugs-view-unification: Bug list logic removed (github-issue-integration)
 
 // agent-log-store-unification: Shared agent log subscription hook
 export { useAgentLogSubscription } from './useAgentLogSubscription';

@@ -28,7 +28,7 @@ import {
   UnifiedInstallStatus,
 } from './unifiedCommandsetInstaller';
 import { CcSddWorkflowInstaller } from './ccSddWorkflowInstaller';
-import { BugWorkflowInstaller } from './bugWorkflowInstaller';
+// BugWorkflowInstaller removed (github-issue-integration)
 
 describe('UnifiedCommandsetInstaller', () => {
   let installer: UnifiedCommandsetInstaller;
@@ -45,10 +45,9 @@ describe('UnifiedCommandsetInstaller', () => {
     // Create template files
     await createTemplateFiles();
 
-    // Create installers
+    // Create installers (BugWorkflowInstaller removed in github-issue-integration)
     const ccSddInstaller = new CcSddWorkflowInstaller(templateDir);
-    const bugInstaller = new BugWorkflowInstaller(templateDir);
-    installer = new UnifiedCommandsetInstaller(ccSddInstaller, bugInstaller, templateDir);
+    installer = new UnifiedCommandsetInstaller(ccSddInstaller, templateDir);
   });
 
   afterEach(async () => {
@@ -226,14 +225,7 @@ describe('UnifiedCommandsetInstaller', () => {
       }
     });
 
-    it('should install bug commandset successfully', async () => {
-      const result = await installer.installCommandset(tempDir, 'bug');
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.installed.length).toBeGreaterThan(0);
-      }
-    });
+    // Bug commandset removed (github-issue-integration)
 
     it('should install document-review commandset successfully', async () => {
       const result = await installer.installCommandset(tempDir, 'document-review');
@@ -465,8 +457,8 @@ describe('UnifiedCommandsetInstaller', () => {
       const content = await fs.readFile(configPath, 'utf-8');
       const config = JSON.parse(content);
 
-      // All commandsets in the profile should be recorded
-      const expectedCommandsets = ['cc-sdd-agent', 'bug', 'document-review'];
+      // All commandsets in the profile should be recorded (bug removed)
+      const expectedCommandsets = ['cc-sdd-agent', 'document-review'];
       for (const name of expectedCommandsets) {
         expect(config.commandsets[name]).toBeDefined();
         expect(config.commandsets[name].version).toBeDefined();

@@ -10,8 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useNotificationStore, notify } from './notificationStore';
 import type { ExecutionSummary } from './workflowStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 
 // Mock the electronAPI
 const mockLogRenderer = vi.fn();
@@ -330,8 +329,7 @@ describe('useNotificationStore', () => {
     beforeEach(() => {
       // Reset stores
       useSpecDetailStore.setState({ specDetail: null });
-      // bugs-view-unification Task 6.1: Use shared bugStore
-      resetSharedBugStore();
+      // bugStore removed (github-issue-integration)
       // Reset rendererLogger mock
       vi.mocked(rendererLogger.logWithContext).mockClear();
     });

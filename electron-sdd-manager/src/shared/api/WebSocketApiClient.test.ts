@@ -93,32 +93,7 @@ describe('WebSocketApiClient', () => {
   // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
   // ===========================================================================
 
-  describe('Bug monitoring methods', () => {
-    it('should implement startBugsWatcher via WebSocket', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      expect(content).toContain('async startBugsWatcher()');
-      expect(content).toContain("'START_BUGS_WATCHER'");
-    });
-
-    it('should implement stopBugsWatcher via WebSocket', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      expect(content).toContain('async stopBugsWatcher()');
-      expect(content).toContain("'STOP_BUGS_WATCHER'");
-    });
-
-    it('should implement onBugsChanged with WebSocket event subscription', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      expect(content).toContain('onBugsChanged(');
-      // Should subscribe to bugsChanged event internally
-      expect(content).toMatch(/onBugsChanged[\s\S]*bugsChanged/);
-    });
-
-    it('should implement detectBugsChanges for event format normalization', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      // Function to convert WebSocket BugMetadata[] to BugsChangeEvent[]
-      expect(content).toContain('detectBugsChanges');
-    });
-  });
+  // Bug monitoring methods removed (github-issue-integration)
 
   // ===========================================================================
   // safari-websocket-stability: Task 3.1 - Heartbeat tests
@@ -473,6 +448,43 @@ describe('WebSocketApiClient', () => {
       const content = readFileSync(clientPath, 'utf-8');
       // Should use wrapRequest which returns Result type
       expect(content).toMatch(/rebaseFromMain[\s\S]*?wrapRequest/);
+    });
+  });
+
+  // ===========================================================================
+  // github-issue-integration: Task 12.1
+  // Requirements: 11.5
+  // ===========================================================================
+
+  describe('GitHub Issue/PR API methods', () => {
+    it('should implement getIssues method using GET_ISSUES message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async getIssues');
+      expect(content).toMatch(/['"]GET_ISSUES['"]/);
+    });
+
+    it('should implement getIssueDetail method using GET_ISSUE_DETAIL message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async getIssueDetail');
+      expect(content).toMatch(/['"]GET_ISSUE_DETAIL['"]/);
+    });
+
+    it('should implement getPullRequests method using GET_PULL_REQUESTS message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async getPullRequests');
+      expect(content).toMatch(/['"]GET_PULL_REQUESTS['"]/);
+    });
+
+    it('should implement createIssue method using CREATE_ISSUE message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async createIssue');
+      expect(content).toMatch(/['"]CREATE_ISSUE['"]/);
+    });
+
+    it('should implement getGitHubConnectionStatus method using GET_GITHUB_CONNECTION_STATUS message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async getGitHubConnectionStatus');
+      expect(content).toMatch(/['"]GET_GITHUB_CONNECTION_STATUS['"]/);
     });
   });
 });

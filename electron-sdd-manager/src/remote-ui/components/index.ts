@@ -9,11 +9,7 @@ export { RemoteArtifactEditor } from './RemoteArtifactEditor';
 
 export { CreateSpecDialogRemote } from './CreateSpecDialogRemote';
 
-export { CreateBugDialogRemote } from './CreateBugDialogRemote';
-
-export { CreateBugButtonRemote } from './CreateBugButtonRemote';
-
-export { BugAutoExecutionPermissionsRemote } from './BugAutoExecutionPermissionsRemote';
+// github-issue-integration Task 12.2: Bug-related exports removed (files deleted in Task 13.6)
 
 export { SpecDetailPage } from './SpecDetailPage';
 export type { SpecDetailPageProps, SpecSubTab } from './SpecDetailPage';
@@ -21,8 +17,7 @@ export type { SpecDetailPageProps, SpecSubTab } from './SpecDetailPage';
 export { AgentsTabView } from './AgentsTabView';
 export type { AgentsTabViewProps } from './AgentsTabView';
 
-export { BugDetailPage } from './BugDetailPage';
-export type { BugDetailPageProps, BugSubTab } from './BugDetailPage';
+// github-issue-integration Task 12.2: BugDetailPage export removed (file deleted in Task 13.6)
 
 export { AgentDetailDrawer } from './AgentDetailDrawer';
 export type { AgentDetailDrawerProps } from './AgentDetailDrawer';

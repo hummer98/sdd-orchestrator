@@ -189,41 +189,20 @@ describe('watcherUtils - Task 6.2: Per-window watcher management', () => {
   });
 
   // ============================================================
-  // Per-window bugs watcher
+  // Per-window bugs watcher (removed - github-issue-integration)
   // ============================================================
 
-  describe('startBugsWatcher with windowId', () => {
-    it('should use WindowManager per-window bugsWatcherService when windowId is provided', async () => {
-      const perWindowBugsWatcher = {
-        onChange: vi.fn(),
-        start: vi.fn().mockResolvedValue(undefined),
-        stop: vi.fn().mockResolvedValue(undefined),
-      };
-      mockWindowManager.getWindowServices.mockReturnValue({
-        bugsWatcherService: perWindowBugsWatcher,
-      });
-
-      await startBugsWatcher(() => '/test/project', 42);
-
-      expect(perWindowBugsWatcher.onChange).toHaveBeenCalled();
-      expect(perWindowBugsWatcher.start).toHaveBeenCalled();
+  describe('startBugsWatcher (no-op)', () => {
+    it('should be a no-op function', async () => {
+      // Bugs watcher removed (github-issue-integration)
+      await expect(startBugsWatcher(() => '/test/project', 42)).resolves.toBeUndefined();
     });
   });
 
-  describe('stopBugsWatcher with windowId', () => {
-    it('should stop per-window bugsWatcherService when windowId is provided', async () => {
-      const perWindowBugsWatcher = {
-        onChange: vi.fn(),
-        start: vi.fn().mockResolvedValue(undefined),
-        stop: vi.fn().mockResolvedValue(undefined),
-      };
-      mockWindowManager.getWindowServices.mockReturnValue({
-        bugsWatcherService: perWindowBugsWatcher,
-      });
-
-      await stopBugsWatcher(42);
-
-      expect(perWindowBugsWatcher.stop).toHaveBeenCalled();
+  describe('stopBugsWatcher (no-op)', () => {
+    it('should be a no-op function', async () => {
+      // Bugs watcher removed (github-issue-integration)
+      await expect(stopBugsWatcher(42)).resolves.toBeUndefined();
     });
   });
 
@@ -289,22 +268,7 @@ describe('watcherUtils - Task 6.2: Per-window watcher management', () => {
       );
     });
 
-    it('should emit BUGS_CHANGED with projectPath in payload', async () => {
-      let capturedHandler: Function;
-      mockBugsWatcher.onChange.mockImplementation((handler: Function) => {
-        capturedHandler = handler;
-      });
-
-      await startBugsWatcher(() => '/test/project');
-
-      // Simulate a change event
-      capturedHandler!({ type: 'change', path: '/test/project/.kiro/bugs/test' });
-
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        'events:bugs-changed',
-        expect.objectContaining({ projectPath: '/test/project' }),
-      );
-    });
+    // BUGS_CHANGED event emission test removed (github-issue-integration - bugsWatcher is no-op)
 
     it('should emit AGENT_RECORD_CHANGED with projectPath in payload', () => {
       let capturedHandler: Function;

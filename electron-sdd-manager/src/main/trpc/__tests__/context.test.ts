@@ -85,11 +85,7 @@ describe('tRPC Context (context.ts) - Service DI', () => {
     expect(typeof ctx.services.getSpecManagerService).toBe('function');
   });
 
-  it('should provide bugService via ctx.services', async () => {
-    const { createContext } = await import('../context');
-    const ctx = createContext();
-    expect(ctx.services).toHaveProperty('bugService');
-  });
+  // bugService removed (github-issue-integration)
 
   it('should merge partial overrides with defaults', async () => {
     const { createContext } = await import('../context');

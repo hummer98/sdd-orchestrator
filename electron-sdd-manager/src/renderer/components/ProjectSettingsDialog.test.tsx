@@ -19,6 +19,11 @@ vi.mock('../../shared/trpc/vanillaClient', () => ({
   getVanillaClient: () => mockVanillaClient,
 }));
 
+// github-issue-integration: Mock GitHubSettingsSection to avoid button collision
+vi.mock('../../shared/components/issue', () => ({
+  GitHubSettingsSection: () => <div data-testid="github-settings-section">GitHubSettingsSection</div>,
+}));
+
 import { ProjectSettingsDialog } from './ProjectSettingsDialog';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';

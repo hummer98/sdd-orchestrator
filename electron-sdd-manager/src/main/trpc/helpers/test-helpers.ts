@@ -78,21 +78,13 @@ export function createMockServices(
       setLayout: vi.fn(),
       resetLayout: vi.fn(),
       setToolPath: vi.fn(),
-      // Bug Domain (Task 5.2)
-      getBugsWorktreeDefault: vi.fn().mockReturnValue(false),
-      setBugsWorktreeDefault: vi.fn(),
+      // Bug Domain removed (github-issue-integration)
       // MCP Domain (Task 10.3)
       getMcpSettings: vi.fn().mockReturnValue({ enabled: true, port: 3001 }),
       setMcpSettings: vi.fn(),
     },
 
-    bugService: {
-      readBugs: vi.fn().mockResolvedValue({ ok: true, value: { bugs: [], warnings: [] } }),
-      readBugDetail: vi.fn().mockResolvedValue({ ok: true, value: null }),
-      updateBugJsonPhase: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-      bugExists: vi.fn().mockResolvedValue({ ok: true, value: true }),
-      readBugJson: vi.fn().mockResolvedValue({ ok: true, value: null }),
-    } as any,
+    // bugService removed (github-issue-integration)
 
     getSpecManagerService: vi.fn().mockReturnValue({
       readSpecs: vi.fn().mockResolvedValue([]),
@@ -147,14 +139,36 @@ export function createMockServices(
     createNewWindow: vi.fn().mockResolvedValue(undefined),
     getIsE2ETest: vi.fn().mockReturnValue(false),
 
-    // Bug Domain Services (Task 5.2: bug router)
-    bugsWatcherStart: vi.fn().mockResolvedValue(undefined),
-    bugsWatcherStop: vi.fn().mockResolvedValue(undefined),
-    bugWorktreeCreate: vi.fn().mockResolvedValue({ ok: true, value: { path: '/test/worktree', branch: 'bugfix/test' } }),
-    bugWorktreeRemove: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-    bugWorktreeAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: null }),
-    bugConvertToWorktree: vi.fn().mockResolvedValue({ ok: true, value: { path: '/test/worktree', branch: 'bugfix/test' } }),
-    validateWorktreeMainBranch: vi.fn().mockResolvedValue({ ok: true }),
+    // GitHub Integration Services (github-issue-integration: Task 4)
+    gitHubApiService: {
+      detectRepoInfo: vi.fn().mockResolvedValue({ ok: true, data: { owner: 'test-owner', repo: 'test-repo', baseUrl: 'https://api.github.com' } }),
+      listIssues: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      getIssue: vi.fn().mockResolvedValue({ ok: true, data: { number: 1, title: 'Test', body: '', state: 'open', labels: [], assignees: [], milestone: null, created_at: '', updated_at: '', comments: 0, user: { login: 'test', avatar_url: '' } } }),
+      createIssue: vi.fn().mockResolvedValue({ ok: true, data: { number: 1, title: 'Test', body: '', state: 'open', labels: [], assignees: [], milestone: null, created_at: '', updated_at: '', comments: 0, user: { login: 'test', avatar_url: '' } } }),
+      getIssueComments: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      addIssueComment: vi.fn().mockResolvedValue({ ok: true, data: { id: 1, body: '', user: { login: 'test', avatar_url: '' }, created_at: '', updated_at: '' } }),
+      setIssueLabels: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      updateStatusLabel: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+      ensureStatusLabels: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+      listPullRequests: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      getPullRequest: vi.fn().mockResolvedValue({ ok: true, data: { number: 1, title: 'Test PR', body: '', state: 'open', head: { ref: 'feature', sha: 'abc' }, base: { ref: 'main' }, mergeable: true, merged: false, labels: [], user: { login: 'test', avatar_url: '' }, created_at: '', updated_at: '', diff_url: '' } }),
+      createPullRequest: vi.fn().mockResolvedValue({ ok: true, data: { number: 1, title: 'Test PR', body: '', state: 'open', head: { ref: 'feature', sha: 'abc' }, base: { ref: 'main' }, mergeable: true, merged: false, labels: [], user: { login: 'test', avatar_url: '' }, created_at: '', updated_at: '', diff_url: '' } }),
+      mergePullRequest: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+      getPRCIStatus: vi.fn().mockResolvedValue({ ok: true, data: { state: 'success', statuses: [] } }),
+      getPRFiles: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      testConnection: vi.fn().mockResolvedValue({ ok: true, data: { login: 'test-user', avatar_url: 'https://example.com/avatar' } }),
+    } as any,
+    gitHubCredentialService: {
+      storeToken: vi.fn(),
+      getToken: vi.fn().mockReturnValue('ghp_test_token'),
+      removeToken: vi.fn(),
+      storeEnterpriseUrl: vi.fn(),
+      getEnterpriseUrl: vi.fn().mockReturnValue(null),
+      removeEnterpriseUrl: vi.fn(),
+      hasCredentials: vi.fn().mockReturnValue(true),
+    } as any,
+
+    // Bug Domain Services removed (github-issue-integration)
 
     // Spec Domain Services (trpc-service-wiring-completion: confirmCommonCommands)
     confirmCommonCommands: vi.fn().mockResolvedValue({ ok: true, value: { totalInstalled: 0, totalSkipped: 0, totalFailed: 0, installedCommands: [], skippedCommands: [], failedCommands: [] } }),
@@ -176,14 +190,7 @@ export function createMockServices(
       resetAll: vi.fn(),
       resetImplRetryCount: vi.fn(),
     },
-    bugAutoExecutionCoordinator: {
-      start: vi.fn().mockResolvedValue({ ok: true, value: { bugPath: '/test', bugName: 'test-bug', status: 'running', currentPhase: 'analyze', executedPhases: [], errors: [], startTime: Date.now(), lastActivityTime: Date.now(), retryCount: 0, lastFailedPhase: null } }),
-      stop: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-      getStatus: vi.fn().mockReturnValue(null),
-      getAllStatuses: vi.fn().mockReturnValue(new Map()),
-      retryFrom: vi.fn().mockResolvedValue({ ok: true, value: { bugPath: '/test', bugName: 'test-bug', status: 'running', currentPhase: 'fix', executedPhases: [], errors: [], startTime: Date.now(), lastActivityTime: Date.now(), retryCount: 0, lastFailedPhase: null } }),
-      resetAll: vi.fn(),
-    },
+    // bugAutoExecutionCoordinator removed (github-issue-integration)
 
     // Git Domain Services (Task 8.1: git router)
     gitGetStatus: vi.fn().mockResolvedValue({ success: true, data: { files: [], mode: 'normal' } }),

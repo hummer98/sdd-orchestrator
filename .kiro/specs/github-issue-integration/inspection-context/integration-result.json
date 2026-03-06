@@ -1,0 +1,921 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-03-06T12:00:00Z",
+  "round": 2,
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete"
+    },
+    {
+      "id": "task-3.3",
+      "checkType": "task-completion",
+      "target": "3.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.3 marked as complete"
+    },
+    {
+      "id": "task-3.4",
+      "checkType": "task-completion",
+      "target": "3.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.4 marked as complete"
+    },
+    {
+      "id": "task-3.5",
+      "checkType": "task-completion",
+      "target": "3.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.5 marked as complete"
+    },
+    {
+      "id": "task-3.6",
+      "checkType": "task-completion",
+      "target": "3.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.6 marked as complete"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 marked as complete"
+    },
+    {
+      "id": "task-4.4",
+      "checkType": "task-completion",
+      "target": "4.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.4 marked as complete"
+    },
+    {
+      "id": "task-4.5",
+      "checkType": "task-completion",
+      "target": "4.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.5 marked as complete"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 marked as complete"
+    },
+    {
+      "id": "task-7.2",
+      "checkType": "task-completion",
+      "target": "7.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.2 marked as complete"
+    },
+    {
+      "id": "task-7.3",
+      "checkType": "task-completion",
+      "target": "7.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.3 marked as complete"
+    },
+    {
+      "id": "task-7.4",
+      "checkType": "task-completion",
+      "target": "7.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.4 marked as complete"
+    },
+    {
+      "id": "task-8.1",
+      "checkType": "task-completion",
+      "target": "8.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.1 marked as complete"
+    },
+    {
+      "id": "task-8.2",
+      "checkType": "task-completion",
+      "target": "8.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.2 marked as complete"
+    },
+    {
+      "id": "task-9.1",
+      "checkType": "task-completion",
+      "target": "9.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.1 marked as complete"
+    },
+    {
+      "id": "task-10.1",
+      "checkType": "task-completion",
+      "target": "10.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.1 marked as complete"
+    },
+    {
+      "id": "task-10.2",
+      "checkType": "task-completion",
+      "target": "10.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.2 marked as complete"
+    },
+    {
+      "id": "task-10.3",
+      "checkType": "task-completion",
+      "target": "10.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.3 marked as complete"
+    },
+    {
+      "id": "task-10.4",
+      "checkType": "task-completion",
+      "target": "10.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.4 marked as complete"
+    },
+    {
+      "id": "task-11.1",
+      "checkType": "task-completion",
+      "target": "11.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 11.1 marked as complete"
+    },
+    {
+      "id": "task-11.2",
+      "checkType": "task-completion",
+      "target": "11.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 11.2 marked as complete"
+    },
+    {
+      "id": "task-12.1",
+      "checkType": "task-completion",
+      "target": "12.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 12.1 marked as complete"
+    },
+    {
+      "id": "task-12.2",
+      "checkType": "task-completion",
+      "target": "12.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 12.2 marked as complete"
+    },
+    {
+      "id": "task-12.3",
+      "checkType": "task-completion",
+      "target": "12.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 12.3 marked as complete"
+    },
+    {
+      "id": "task-13.1",
+      "checkType": "task-completion",
+      "target": "13.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.1 marked as complete"
+    },
+    {
+      "id": "task-13.2",
+      "checkType": "task-completion",
+      "target": "13.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.2 marked as complete"
+    },
+    {
+      "id": "task-13.3",
+      "checkType": "task-completion",
+      "target": "13.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.3 marked as complete"
+    },
+    {
+      "id": "task-13.4",
+      "checkType": "task-completion",
+      "target": "13.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.4 marked as complete"
+    },
+    {
+      "id": "task-13.5",
+      "checkType": "task-completion",
+      "target": "13.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.5 marked as complete"
+    },
+    {
+      "id": "task-13.6",
+      "checkType": "task-completion",
+      "target": "13.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 13.6 marked as complete"
+    },
+    {
+      "id": "task-14.1",
+      "checkType": "task-completion",
+      "target": "14.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.1 marked as complete"
+    },
+    {
+      "id": "task-14.2",
+      "checkType": "task-completion",
+      "target": "14.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.2 marked as complete"
+    },
+    {
+      "id": "task-14.3",
+      "checkType": "task-completion",
+      "target": "14.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.3 marked as complete"
+    },
+    {
+      "id": "task-14.4",
+      "checkType": "task-completion",
+      "target": "14.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.4 marked as complete"
+    },
+    {
+      "id": "task-14.5",
+      "checkType": "task-completion",
+      "target": "14.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.5 marked as complete"
+    },
+    {
+      "id": "task-14.6",
+      "checkType": "task-completion",
+      "target": "14.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.6 marked as complete"
+    },
+    {
+      "id": "task-14.7",
+      "checkType": "task-completion",
+      "target": "14.7",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 14.7 marked as complete"
+    },
+    {
+      "id": "task-15.1",
+      "checkType": "task-completion",
+      "target": "15.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.1 marked as complete"
+    },
+    {
+      "id": "task-15.2",
+      "checkType": "task-completion",
+      "target": "15.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.2 marked as complete"
+    },
+    {
+      "id": "task-15.3",
+      "checkType": "task-completion",
+      "target": "15.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.3 marked as complete"
+    },
+    {
+      "id": "task-15.4",
+      "checkType": "task-completion",
+      "target": "15.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.4 marked as complete"
+    },
+    {
+      "id": "task-15.5",
+      "checkType": "task-completion",
+      "target": "15.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.5 marked as complete"
+    },
+    {
+      "id": "task-15.6",
+      "checkType": "task-completion",
+      "target": "15.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.6 marked as complete (with asterisk)"
+    },
+    {
+      "id": "task-15.7",
+      "checkType": "task-completion",
+      "target": "15.7",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.7 marked as complete (with asterisk)"
+    },
+    {
+      "id": "task-15.8",
+      "checkType": "task-completion",
+      "target": "15.8",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 15.8 marked as complete (with asterisk)"
+    },
+    {
+      "id": "task-16.1",
+      "checkType": "task-completion",
+      "target": "16.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.1 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.2",
+      "checkType": "task-completion",
+      "target": "16.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.2 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.3",
+      "checkType": "task-completion",
+      "target": "16.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.3 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.4",
+      "checkType": "task-completion",
+      "target": "16.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.4 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.5",
+      "checkType": "task-completion",
+      "target": "16.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.5 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.6",
+      "checkType": "task-completion",
+      "target": "16.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.6 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.7",
+      "checkType": "task-completion",
+      "target": "16.7",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.7 (Inspection Fix) marked as complete. Bug procedures remain as NOT_IMPLEMENTED stubs for router contract compatibility."
+    },
+    {
+      "id": "task-16.8",
+      "checkType": "task-completion",
+      "target": "16.8",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.8 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.9",
+      "checkType": "task-completion",
+      "target": "16.9",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.9 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.10",
+      "checkType": "task-completion",
+      "target": "16.10",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.10 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.11",
+      "checkType": "task-completion",
+      "target": "16.11",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.11 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.12",
+      "checkType": "task-completion",
+      "target": "16.12",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.12 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.13",
+      "checkType": "task-completion",
+      "target": "16.13",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.13 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "task-16.14",
+      "checkType": "task-completion",
+      "target": "16.14",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 16.14 (Inspection Fix) marked as complete"
+    },
+    {
+      "id": "import-GitHubApiService",
+      "checkType": "import",
+      "target": "GitHubApiService",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubApiService is imported in productionServices.ts, context.ts, issue.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts",
+        "electron-sdd-manager/src/main/trpc/context.ts"
+      ]
+    },
+    {
+      "id": "import-GitHubCredentialService",
+      "checkType": "import",
+      "target": "GitHubCredentialService",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService is imported in productionServices.ts, context.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/productionServices.ts",
+        "electron-sdd-manager/src/main/trpc/context.ts"
+      ]
+    },
+    {
+      "id": "import-issueRouter",
+      "checkType": "import",
+      "target": "issueRouter",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueRouter is imported in router.ts",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/router.ts"
+      ]
+    },
+    {
+      "id": "import-issueStore",
+      "checkType": "import",
+      "target": "issueStore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueStore is exported from shared/stores/index.ts and imported in IssuePane.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/index.ts",
+        "electron-sdd-manager/src/shared/components/issue/IssuePane.tsx"
+      ]
+    },
+    {
+      "id": "import-IssuePane",
+      "checkType": "import",
+      "target": "IssuePane",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane is imported in renderer/App.tsx and remote-ui/App.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx",
+        "electron-sdd-manager/src/remote-ui/App.tsx"
+      ]
+    },
+    {
+      "id": "import-CreateIssueDialog",
+      "checkType": "import",
+      "target": "CreateIssueDialog",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog is imported and rendered in renderer/App.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx",
+        "electron-sdd-manager/src/renderer/components/index.ts"
+      ]
+    },
+    {
+      "id": "import-CreateIssueDialogRemote",
+      "checkType": "import",
+      "target": "CreateIssueDialogRemote",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialogRemote is imported and rendered in remote-ui/App.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx"
+      ]
+    },
+    {
+      "id": "import-GitHubSettingsSection",
+      "checkType": "import",
+      "target": "GitHubSettingsSection",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubSettingsSection is exported from shared/components/issue/index.ts and imported in ProjectSettingsDialog.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/index.ts",
+        "electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx"
+      ]
+    },
+    {
+      "id": "import-agentIssueIntegration",
+      "checkType": "import",
+      "target": "agentIssueIntegration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentIssueIntegration is imported in projectSetup.ts via getGitHubApiService",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/helpers/projectSetup.ts"
+      ]
+    },
+    {
+      "id": "usage-IssuePane-renderer",
+      "checkType": "usage",
+      "target": "IssuePane in renderer/App.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane is rendered when activeTab === 'issues' at line 821"
+    },
+    {
+      "id": "usage-IssuePane-remoteui",
+      "checkType": "usage",
+      "target": "IssuePane in remote-ui/App.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane is rendered in remote-ui/App.tsx at lines 287 and 1008"
+    },
+    {
+      "id": "usage-CreateIssueDialog",
+      "checkType": "usage",
+      "target": "CreateIssueDialog in renderer/App.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog is rendered at line 954 with isOpen, onClose, onSubmit props"
+    },
+    {
+      "id": "usage-GitHubSettingsSection",
+      "checkType": "usage",
+      "target": "GitHubSettingsSection in ProjectSettingsDialog",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubSettingsSection is rendered at line 194 of ProjectSettingsDialog.tsx"
+    },
+    {
+      "id": "usage-GitHubApiService-production",
+      "checkType": "usage",
+      "target": "GitHubApiService in productionServices.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubApiService instantiated at line 124 and wired into ContextServices at line 173"
+    },
+    {
+      "id": "usage-GitHubCredentialService-production",
+      "checkType": "usage",
+      "target": "GitHubCredentialService in productionServices.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService instantiated at line 123 and wired into ContextServices at line 174"
+    },
+    {
+      "id": "wiring-productionServices-github",
+      "checkType": "wiring",
+      "target": "Task 16.1: productionServices.ts GitHub service wiring",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService and GitHubApiService are both instantiated and included in createProductionServices() return object"
+    },
+    {
+      "id": "wiring-renderer-app-issuepane",
+      "checkType": "wiring",
+      "target": "Task 16.2: renderer/App.tsx IssuePane integration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane imported and rendered conditionally for activeTab === 'issues'. CreateIssueDialog also integrated."
+    },
+    {
+      "id": "wiring-websocket-bug-removal",
+      "checkType": "wiring",
+      "target": "Task 16.3: webSocketHandler.ts Bug handler removal",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GET_BUGS, EXECUTE_BUG_PHASE, CREATE_BUG, GET_BUG_DETAIL handlers removed (only removal comments remain). Issue handlers (GET_ISSUES, GET_ISSUE_DETAIL, etc.) are present."
+    },
+    {
+      "id": "wiring-shared-api-types-bug-cleanup",
+      "checkType": "wiring",
+      "target": "Task 16.4: shared/api/types.ts Bug type removal",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugMetadata, BugDetail, BugAction, BugAutoExecution types removed (only removal comments remain)"
+    },
+    {
+      "id": "wiring-websocketapiclient-bug-cleanup",
+      "checkType": "wiring",
+      "target": "Task 16.5: WebSocketApiClient.ts Bug method removal",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug operation methods removed (only removal comments remain)"
+    },
+    {
+      "id": "wiring-docstabs-issues",
+      "checkType": "wiring",
+      "target": "DocsTabs: Bugs tab replaced with Issues",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTab type is 'specs' | 'issues' | 'project'. Tab config includes Issues tab with CircleDot icon."
+    },
+    {
+      "id": "wiring-context-github",
+      "checkType": "wiring",
+      "target": "context.ts: GitHub services in ContextServices",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts imports GitHubApiService and GitHubCredentialService types and includes them in ContextServices interface"
+    },
+    {
+      "id": "wiring-router-issue",
+      "checkType": "wiring",
+      "target": "router.ts: issueRouter registered",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueRouter imported from './routers/issue' in router.ts"
+    },
+    {
+      "id": "wiring-agent-issue-integration",
+      "checkType": "wiring",
+      "target": "Task 16.12: agentIssueIntegration connected to production",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentIssueIntegration imported in projectSetup.ts, getGitHubApiService() exported from productionServices.ts and called at line 756"
+    },
+    {
+      "id": "placeholder-IssuePane-clean",
+      "checkType": "placeholder",
+      "target": "IssuePane.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER comments found in IssuePane.tsx (only historical reference comment at line 100)"
+    },
+    {
+      "id": "placeholder-gitHubApiService-clean",
+      "checkType": "placeholder",
+      "target": "gitHubApiService.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER comments found"
+    },
+    {
+      "id": "placeholder-issueRouter-clean",
+      "checkType": "placeholder",
+      "target": "issue.ts (router)",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER comments found"
+    },
+    {
+      "id": "residual-claudemd-merge-bug",
+      "checkType": "placeholder",
+      "target": "resources/templates/agents/kiro/claudemd-merge.md",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "claudemd-merge.md still contains Bug Fix (Lightweight Workflow) section with /kiro:bug-* commands at lines 103-120. This agent template should reference Issue workflow instead."
+    },
+    {
+      "id": "residual-autoexecution-bug-stubs",
+      "checkType": "wiring",
+      "target": "autoExecution.ts: Bug procedure stubs",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bugStart/bugStop/bugGetStatus/bugRetryFrom/bugReset retained as NOT_IMPLEMENTED stubs for router contract compatibility. This is intentional per code comments."
+    },
+    {
+      "id": "file-exists-IssueListPanel",
+      "checkType": "import",
+      "target": "IssueListPanel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueListPanel.tsx exists in shared/components/issue/"
+    },
+    {
+      "id": "file-exists-IssueDetailView",
+      "checkType": "import",
+      "target": "IssueDetailView",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueDetailView.tsx exists in shared/components/issue/"
+    },
+    {
+      "id": "file-exists-PRListView",
+      "checkType": "import",
+      "target": "PRListView",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRListView.tsx exists in shared/components/issue/"
+    },
+    {
+      "id": "file-exists-PRDetailView",
+      "checkType": "import",
+      "target": "PRDetailView",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRDetailView.tsx exists in shared/components/issue/"
+    },
+    {
+      "id": "file-exists-gh-issue-sh",
+      "checkType": "import",
+      "target": "gh-issue.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "gh-issue.sh exists in both scripts/ and resources/templates/scripts/"
+    },
+    {
+      "id": "file-exists-issue-commands",
+      "checkType": "import",
+      "target": "issue command templates",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 4 command templates exist: issue-analyze.md, issue-fix.md, issue-verify.md, issue-ask.md"
+    },
+    {
+      "id": "file-exists-agentIssueIntegration",
+      "checkType": "import",
+      "target": "agentIssueIntegration.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentIssueIntegration.ts exists in main/services/"
+    },
+    {
+      "id": "cleanup-e2eshim",
+      "checkType": "wiring",
+      "target": "Task 16.14: E2EShim bugAutoExecution cleanup",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2EShim.ts no longer contains bugAutoExecution references"
+    },
+    {
+      "id": "cleanup-mobileappcontent-test",
+      "checkType": "wiring",
+      "target": "Task 16.14: MobileAppContent.test.tsx bugAutoExecutionStore cleanup",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "MobileAppContent.test.tsx bugAutoExecutionStore mock removed (only removal comment remains)"
+    },
+    {
+      "id": "cleanup-eventbus-bug",
+      "checkType": "wiring",
+      "target": "Task 16.6: eventBus.ts Bug subscriptions cleanup",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No bugAutoExecution references found in eventBus.ts"
+    },
+    {
+      "id": "cleanup-workflowstore-bug",
+      "checkType": "wiring",
+      "target": "Task 16.8: workflowStore.ts Bug permissions cleanup",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bugAutoExecutionPermissions removed from workflowStore.ts (only removal comments remain)"
+    },
+    {
+      "id": "logging-github-api",
+      "checkType": "usage",
+      "target": "Task 16.13: GitHubApiService logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "gitHubApiService.ts imports projectLogger for logging"
+    }
+  ],
+  "stats": {
+    "total": 104,
+    "passed": 103,
+    "failed": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 103
+  }
+}

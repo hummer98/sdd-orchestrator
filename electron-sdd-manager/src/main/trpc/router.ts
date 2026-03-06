@@ -11,7 +11,7 @@ import { systemRouter } from './routers/system';
 import { configRouter } from './routers/config';
 import { projectRouter } from './routers/project';
 import { fileRouter } from './routers/file';
-import { bugRouter } from './routers/bug';
+
 import { specRouter } from './routers/spec';
 import { agentRouter } from './routers/agent';
 import { autoExecutionRouter } from './routers/autoExecution';
@@ -22,13 +22,14 @@ import { scheduleRouter } from './routers/schedule';
 import { cloudflareRouter } from './routers/cloudflare';
 import { installRouter } from './routers/install';
 import { miscRouter } from './routers/misc';
+import { issueRouter } from './routers/issue';
 
 export const appRouter = router({
   system: systemRouter,
   config: configRouter,
   project: projectRouter,
   file: fileRouter,
-  bug: bugRouter,
+
   spec: specRouter,
   agent: agentRouter,
   autoExecution: autoExecutionRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   cloudflare: cloudflareRouter,
   install: installRouter,
   misc: miscRouter,
+  issue: issueRouter,
 });
 
 // Export AppRouter type for client-side type inference (Requirements: 2.5)

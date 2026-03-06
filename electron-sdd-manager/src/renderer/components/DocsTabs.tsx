@@ -1,20 +1,20 @@
 /**
  * DocsTabs Component
- * Parent component for Specs/Bugs tab switching
+ * Parent component for Specs/Issues tab switching
  * Requirements: 1.1, 1.2, 1.3, 1.4
+ * github-issue-integration: Bugs tab replaced with Issues
  */
 
 import { useState } from 'react';
-import { FileText, Bug, Plus, FolderOpen } from 'lucide-react';
+import { FileText, CircleDot, Plus, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecList } from './SpecList';
-import { BugList } from './BugList';
 import { CreateSpecDialog } from './CreateSpecDialog';
-import { CreateBugDialog } from './CreateBugDialog';
 import { useProjectStore, useAgentStore } from '../stores';
 
 // project-config-editor Task 1.1: Add 'project' tab type
-export type DocsTab = 'specs' | 'bugs' | 'project';
+// github-issue-integration: 'bugs' replaced with 'issues'
+export type DocsTab = 'specs' | 'issues' | 'project';
 
 interface DocsTabsProps {
   className?: string;
@@ -33,21 +33,21 @@ interface TabConfig {
 }
 
 // project-config-editor Task 4.1: Add Project tab
+// github-issue-integration: Bugs tab replaced with Issues
 const TAB_CONFIGS: TabConfig[] = [
   { id: 'specs', label: 'Specs', icon: FileText, createLabel: 'Spec' },
-  { id: 'bugs', label: 'Bugs', icon: Bug, createLabel: 'Bug' },
+  { id: 'issues', label: 'Issues', icon: CircleDot, createLabel: null },
   { id: 'project', label: 'Project', icon: FolderOpen, createLabel: null },
 ];
 
 /**
- * DocsTabs - Parent component for Specs/Bugs tab switching
- * - Shows Specs/Bugs tabs
- * - Switches between SpecList and BugList
+ * DocsTabs - Parent component for Specs/Issues tab switching
+ * - Shows Specs/Issues tabs
+ * - Switches between SpecList and IssuePane (rendered by App.tsx)
  * - Shows create button for current tab type
  */
 export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): React.ReactElement {
   const [isCreateSpecDialogOpen, setIsCreateSpecDialogOpen] = useState(false);
-  const [isCreateBugDialogOpen, setIsCreateBugDialogOpen] = useState(false);
   // zustand-selector-optimization: individual selectors for 1 state field each
   const currentProject = useProjectStore(s => s.currentProject);
   const selectAgent = useAgentStore(s => s.selectAgent);
@@ -70,8 +70,6 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
   const handleCreateClick = () => {
     if (activeTab === 'specs') {
       setIsCreateSpecDialogOpen(true);
-    } else {
-      setIsCreateBugDialogOpen(true);
     }
   };
 
@@ -128,7 +126,7 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
         )}
       </div>
 
-      {/* Tab content - only show Specs/Bugs content, Project is handled by App.tsx */}
+      {/* Tab content - only show Specs content, Issues/Project handled by App.tsx */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'specs' && (
           <div
@@ -141,17 +139,7 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
             <SpecList />
           </div>
         )}
-        {activeTab === 'bugs' && (
-          <div
-            role="tabpanel"
-            id="tabpanel-bugs"
-            aria-labelledby="tab-bugs"
-            className="h-full"
-            data-testid="tabpanel-bugs"
-          >
-            <BugList />
-          </div>
-        )}
+        {/* Note: activeTab === 'issues' content is rendered in App.tsx as IssuePane */}
         {/* Note: activeTab === 'project' content is rendered in App.tsx as ProjectPane */}
       </div>
 
@@ -159,10 +147,6 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
       <CreateSpecDialog
         isOpen={isCreateSpecDialogOpen}
         onClose={() => setIsCreateSpecDialogOpen(false)}
-      />
-      <CreateBugDialog
-        isOpen={isCreateBugDialogOpen}
-        onClose={() => setIsCreateBugDialogOpen(false)}
       />
     </div>
   );

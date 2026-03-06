@@ -52,14 +52,8 @@ import { getToolPathResolverService } from '../services/toolPathResolverService'
 import { SettingsFileManager } from '../services/settingsFileManager';
 import { getTemplatesPath } from '../utils/resourcePaths';
 
-// File/Bug Services
+// File Service
 import { FileService } from '../services/fileService';
-import { BugService } from '../services/bugService';
-
-// Bug Domain
-// BugsWatcherService: now managed via watcherUtils.startBugsWatcher
-import { BugWorkflowService } from '../services/bugWorkflowService';
-import { ConvertBugWorktreeService } from '../services/convertBugWorktreeService';
 
 // Agent Domain
 import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
@@ -76,7 +70,6 @@ import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService } from '../services/commandInstallerService';
 import { UnifiedCommandsetInstaller } from '../services/unifiedCommandsetInstaller';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
-import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { ExperimentalToolsInstallerService } from '../services/experimentalToolsInstallerService';
 import { CommandsetVersionService } from '../services/commandsetVersionService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
@@ -93,12 +86,14 @@ import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { projectLogger } from '../services/projectLogger';
 import { sshUriParser } from '../services/ssh/sshUriParser';
 import { readParsedLogs } from '../services/logFileService';
-import { startBugsWatcher, stopBugsWatcher } from './helpers/watcherUtils';
 // multi-window-integration Task 7.3: WindowManager for createNewWindow
 import { getWindowManager } from '../services/windowManager';
 
+// GitHub Integration (github-issue-integration)
+import { GitHubCredentialService } from '../services/gitHubCredentialService';
+import { GitHubApiService } from '../services/gitHubApiService';
+
 // AutoExecution / Cloudflare / MCP / Schedule
-import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
 import { getCloudflareConfigStore } from '../services/cloudflareConfigStore';
 import { getCloudflareTunnelManager } from '../services/cloudflareTunnelManager';
 import { getCloudflaredBinaryChecker } from '../services/cloudflaredBinaryChecker';
@@ -111,7 +106,6 @@ import { getAccessTokenService } from '../services/accessTokenService';
 // Service Instances (created once at module level)
 // ============================================================
 const fileService = new FileService();
-const bugService = new BugService();
 const settingsFileManager = new SettingsFileManager();
 const gitService = new GitService();
 const gitFileWatcherService = new GitFileWatcherService(gitService);
@@ -120,11 +114,23 @@ const gitFileWatcherService = new GitFileWatcherService(gitService);
 const templateDir = getTemplatesPath();
 const commandInstallerService = new CommandInstallerService(templateDir);
 const ccSddInstaller = new CcSddWorkflowInstaller(templateDir);
-const bugWorkflowInstaller = new BugWorkflowInstaller(templateDir);
-const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(ccSddInstaller, bugWorkflowInstaller, templateDir);
+const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(ccSddInstaller, templateDir);
 const experimentalToolsInstaller = new ExperimentalToolsInstallerService(templateDir);
 const commandsetVersionService = new CommandsetVersionService();
 const projectChecker = new ProjectChecker();
+
+// GitHub Integration (github-issue-integration: Task 16.1)
+const gitHubCredentialService = new GitHubCredentialService();
+const gitHubApiService = new GitHubApiService(gitHubCredentialService);
+
+/**
+ * Getter for the module-level GitHubApiService singleton.
+ * Used by agent-issue integration hooks in projectSetup.ts.
+ * github-issue-integration: Task 16.12
+ */
+export function getGitHubApiService(): GitHubApiService {
+  return gitHubApiService;
+}
 
 /**
  * Create production services for tRPC context DI.
@@ -158,8 +164,13 @@ export function createProductionServices(): Partial<ContextServices> {
     // ============================================================
     fileService,
     configStore: getConfigStore(),
-    bugService,
     getSpecManagerService,
+
+    // ============================================================
+    // GitHub Integration Services (github-issue-integration: Task 16.1)
+    // ============================================================
+    gitHubApiService,
+    gitHubCredentialService,
 
     // ============================================================
     // Config Domain Services
@@ -202,53 +213,6 @@ export function createProductionServices(): Partial<ContextServices> {
       getWindowManager().createWindow();
     },
     getIsE2ETest: () => process.argv.includes('--e2e-test'),
-
-    // ============================================================
-    // Bug Domain Services (Task 1.3)
-    // DD-004: Closure pattern for project-path-dependent services
-    // ============================================================
-    bugsWatcherStart: async () => {
-      await startBugsWatcher(getCurrentProjectPath);
-    },
-    bugsWatcherStop: async () => {
-      // Stop is handled at application level via watcherUtils
-      await stopBugsWatcher();
-    },
-    bugWorktreeCreate: (async (bugName: string) => {
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
-      const worktreeService = new WorktreeService(projectPath);
-      return worktreeService.createBugWorktree(bugName);
-    }) as ContextServices['bugWorktreeCreate'],
-    bugWorktreeRemove: (async (bugName: string) => {
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
-      const worktreeService = new WorktreeService(projectPath);
-      return worktreeService.removeBugWorktree(bugName);
-    }) as ContextServices['bugWorktreeRemove'],
-    bugWorktreeAutoExecution: (async (bugName: string) => {
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
-      const configStore = getConfigStore();
-      const worktreeServiceFactory = (pp: string) => new WorktreeService(pp);
-      const bugWorkflowService = new BugWorkflowService(configStore, worktreeServiceFactory, bugService);
-      const bugPath = join(projectPath, '.kiro', 'bugs', bugName);
-      return bugWorkflowService.startBugFixWithAutoWorktree(bugName, projectPath, bugPath);
-    }) as ContextServices['bugWorktreeAutoExecution'],
-    bugConvertToWorktree: (async (bugName: string) => {
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
-      const worktreeService = new WorktreeService(projectPath);
-      const convertService = new ConvertBugWorktreeService(worktreeService, bugService);
-      const bugPath = join(projectPath, '.kiro', 'bugs', bugName);
-      return convertService.convertToWorktree(projectPath, bugPath, bugName);
-    }) as ContextServices['bugConvertToWorktree'],
-    validateWorktreeMainBranch: async (projectPath: string) => {
-      const worktreeService = new WorktreeService(projectPath);
-      const result = await worktreeService.isOnMainBranch();
-      if (!result.ok) return { ok: false, error: { message: 'Failed to check branch' } };
-      return { ok: result.value };
-    },
 
     // ============================================================
     // Spec Domain Services (Task 2.1)
@@ -586,7 +550,6 @@ export function createProductionServices(): Partial<ContextServices> {
     // AutoExecution / Cloudflare / MCP / Schedule (Task 5.4)
     // ============================================================
     autoExecutionCoordinator: getAutoExecutionCoordinator() as unknown as ContextServices['autoExecutionCoordinator'],
-    bugAutoExecutionCoordinator: getBugAutoExecutionCoordinator() as unknown as ContextServices['bugAutoExecutionCoordinator'],
     cloudflareService: {
       getAllSettings: () => {
         const store = getCloudflareConfigStore();

@@ -11,7 +11,7 @@
  */
 
 import { SpecsWatcherService } from '../../services/specsWatcherService';
-import { BugsWatcherService } from '../../services/bugsWatcherService';
+// BugsWatcherService removed (github-issue-integration)
 import { AgentRecordWatcherService } from '../../services/agentRecordWatcherService';
 import type { FileService } from '../../services/fileService';
 import { projectLogger as logger } from '../../services/projectLogger';
@@ -107,79 +107,19 @@ export async function stopSpecsWatcher(windowId?: number): Promise<void> {
 }
 
 // ============================================================
-// Bugs Watcher
+// Bugs Watcher (removed - github-issue-integration)
+// Stub functions kept for backward compatibility
 // ============================================================
 
-let bugsWatcherService: BugsWatcherService | null = null;
-
 export async function startBugsWatcher(
-  getCurrentProjectPath: () => string | null,
-  windowId?: number,
+  _getCurrentProjectPath: () => string | null,
+  _windowId?: number,
 ): Promise<void> {
-  const currentProjectPath = getCurrentProjectPath();
-  if (!currentProjectPath) {
-    logger.warn('[watcherUtils] Cannot start bugs watcher: no project path set');
-    return;
-  }
-
-  // multi-window-integration Task 6.2: Per-window watcher delegation
-  let watcher: BugsWatcherService;
-  if (windowId !== undefined) {
-    try {
-      const wm = getWindowManager();
-      const services = wm.getWindowServices(windowId);
-      if (services?.bugsWatcherService) {
-        watcher = services.bugsWatcherService;
-      } else {
-        logger.warn('[watcherUtils] No per-window bugsWatcherService for window', { windowId });
-        watcher = new BugsWatcherService(currentProjectPath);
-      }
-    } catch {
-      logger.debug('[watcherUtils] WindowManager not available, using global bugs watcher');
-      watcher = new BugsWatcherService(currentProjectPath);
-    }
-  } else {
-    // Backward compat: global variable path
-    if (bugsWatcherService) {
-      await bugsWatcherService.stop();
-    }
-    bugsWatcherService = new BugsWatcherService(currentProjectPath);
-    watcher = bugsWatcherService;
-  }
-
-  watcher.onChange((event) => {
-    logger.info('[watcherUtils] Bugs changed', { event });
-    // Emit to EventBus for tRPC Subscription (primary path)
-    // multi-window-integration Task 6.3: Include projectPath for window-scoped event filtering
-    getGlobalEventBus().emit(EVENT_NAMES.BUGS_CHANGED, { ...event, projectPath: currentProjectPath });
-  });
-
-  await watcher.start();
-  logger.info('[watcherUtils] Bugs watcher started', { projectPath: currentProjectPath, windowId });
+  // Bugs watcher removed (github-issue-integration)
 }
 
-export async function stopBugsWatcher(windowId?: number): Promise<void> {
-  // multi-window-integration Task 6.2: Per-window watcher stop
-  if (windowId !== undefined) {
-    try {
-      const wm = getWindowManager();
-      const services = wm.getWindowServices(windowId);
-      if (services?.bugsWatcherService) {
-        await services.bugsWatcherService.stop();
-        logger.info('[watcherUtils] Per-window bugs watcher stopped', { windowId });
-        return;
-      }
-    } catch {
-      logger.debug('[watcherUtils] WindowManager not available for bugs watcher stop');
-    }
-  }
-
-  // Backward compat: global variable path
-  if (bugsWatcherService) {
-    await bugsWatcherService.stop();
-    bugsWatcherService = null;
-    logger.info('[watcherUtils] Bugs watcher stopped');
-  }
+export async function stopBugsWatcher(_windowId?: number): Promise<void> {
+  // Bugs watcher removed (github-issue-integration)
 }
 
 // ============================================================

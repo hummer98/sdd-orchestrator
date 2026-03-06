@@ -27,7 +27,8 @@ describe('LeftSidebar - Create Buttons Feature', () => {
       expect(content).toContain('Plus');
       // Check for conditional create button (shows spec or bug based on active tab)
       expect(content).toContain("'create-spec-button'");
-      expect(content).toContain("'create-bug-button'");
+      // create-bug-button replaced with create-issue-button (github-issue-integration)
+      expect(content).toContain("'create-issue-button'");
     });
   });
 
@@ -38,10 +39,10 @@ describe('LeftSidebar - Create Buttons Feature', () => {
     });
   });
 
-  describe('CreateBugDialogRemote integration (Task 3.4)', () => {
-    it('should import CreateBugDialogRemote', () => {
+  describe('CreateIssueDialogRemote integration (github-issue-integration)', () => {
+    it('should import CreateIssueDialogRemote', () => {
       const content = readFileSync(appPath, 'utf-8');
-      expect(content).toContain('CreateBugDialogRemote');
+      expect(content).toContain('CreateIssueDialogRemote');
     });
   });
 

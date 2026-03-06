@@ -158,11 +158,11 @@ describe('MobileLayout', () => {
   });
 
   describe('tab bar basic functionality', () => {
-    it('should render three tabs (Specs, Bugs, Agents)', () => {
+    it('should render tabs (Specs, Issues, Agents)', () => {
       renderMobileLayout({});
 
       expect(screen.getByTestId('remote-tab-specs')).toBeInTheDocument();
-      expect(screen.getByTestId('remote-tab-bugs')).toBeInTheDocument();
+      expect(screen.getByTestId('remote-tab-issues')).toBeInTheDocument();
       expect(screen.getByTestId('remote-tab-agents')).toBeInTheDocument();
     });
 
@@ -171,15 +171,15 @@ describe('MobileLayout', () => {
       const user = userEvent.setup();
       renderMobileLayout({ onTabChange });
 
-      await user.click(screen.getByTestId('remote-tab-bugs'));
-      expect(onTabChange).toHaveBeenCalledWith('bugs');
+      await user.click(screen.getByTestId('remote-tab-issues'));
+      expect(onTabChange).toHaveBeenCalledWith('issues');
     });
 
     it('should highlight active tab', () => {
-      renderMobileLayout({ activeTab: 'bugs' });
+      renderMobileLayout({ activeTab: 'issues' });
 
-      const bugsTab = screen.getByTestId('remote-tab-bugs');
-      expect(bugsTab).toHaveAttribute('aria-selected', 'true');
+      const issuesTab = screen.getByTestId('remote-tab-issues');
+      expect(issuesTab).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

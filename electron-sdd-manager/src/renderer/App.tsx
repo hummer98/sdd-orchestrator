@@ -32,7 +32,8 @@ import {
   ProjectValidationPanel,
   // Bug fix: bugs-tab-agent-list-missing - タブベースのペイン切り替え
   SpecPane,
-  BugPane,
+  // github-issue-integration: Task 16.2 - CreateIssueDialog
+  CreateIssueDialog,
   // project-config-editor Task 4.2: Project view integration
   ProjectPane,
   // debatex-document-review Task 4.1: Project Settings Dialog
@@ -43,11 +44,12 @@ import {
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useShallow } from 'zustand/react/shallow';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useSharedBugStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
 import type { CommandPrefix, ProfileConfig } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
-// bug-auto-execution-per-bug-state: Import bug auto-execution IPC listeners
-import { initBugAutoExecutionIpcListeners, cleanupBugAutoExecutionIpcListeners } from '../shared/stores/bugAutoExecutionStore';
+// bugAutoExecutionStore removed (github-issue-integration)
+// github-issue-integration: Task 16.2 - IssuePane for Issues tab
+import { IssuePane } from '../shared/components/issue';
 // Task 8.2: Shared providers for API abstraction and platform capabilities
 import { ApiClientProvider } from '../shared/api';
 import { PlatformProvider } from '../shared/providers';
@@ -109,11 +111,7 @@ export function App() {
   const checkSpecManagerFiles = useProjectStore(s => s.checkSpecManagerFiles);
   const specDetail = useSpecStore(s => s.specDetail);
   const isDirty = useEditorStore(s => s.isDirty);
-  // bugs-view-unification Task 6.1: Use shared bugStore
-  // Compute selectedBug from bugs + selectedBugId
-  const bugs = useSharedBugStore(s => s.bugs);
-  const selectedBugId = useSharedBugStore(s => s.selectedBugId);
-  const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
+  // bugStore removed (github-issue-integration)
   const setupEventListeners = useAgentStore(s => s.setupEventListeners);
   const setCommandPrefix = useWorkflowStore(s => s.setCommandPrefix);
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore(
@@ -150,6 +148,8 @@ export function App() {
   const [activeTab, setActiveTab] = useState<DocsTab>('specs');
   // debatex-document-review Task 4.2: Project Settings Dialog
   const [isProjectSettingsDialogOpen, setIsProjectSettingsDialogOpen] = useState(false);
+  // github-issue-integration: Task 16.2 - CreateIssueDialog state
+  const [isCreateIssueDialogOpen, setIsCreateIssueDialogOpen] = useState(false);
   // project-config-editor Task 4.2: Project files state
   const [projectFiles, setProjectFiles] = useState<ProjectFilesState>({
     claudeMd: null,
@@ -585,19 +585,7 @@ export function App() {
   }, []);
 
   // bug-auto-execution-per-bug-state Task 7.1: Initialize bug auto-execution IPC listeners
-  // This enables bugAutoExecutionStore to receive state updates from Main Process
-  const bugAutoExecutionIpcInitialized = useRef(false);
-  useEffect(() => {
-    if (bugAutoExecutionIpcInitialized.current) {
-      return;
-    }
-    bugAutoExecutionIpcInitialized.current = true;
-    initBugAutoExecutionIpcListeners();
-    return () => {
-      bugAutoExecutionIpcInitialized.current = false;
-      cleanupBugAutoExecutionIpcListeners();
-    };
-  }, []);
+  // bugAutoExecution IPC listeners removed (github-issue-integration)
 
   // startup-project-selection-race-condition: applySelectProjectResult used by Pull useEffect
   const applySelectProjectResult = useProjectStore(s => s.applySelectProjectResult);
@@ -715,15 +703,7 @@ export function App() {
                 </span>
               </div>
             )}
-            {/* Bug title in header (when bug is selected and no spec is selected) */}
-            {selectedBug && !specDetail && (
-              <div className="ml-4 flex items-center gap-2">
-                <span className="text-gray-400">/</span>
-                <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                  {selectedBug.name}
-                </span>
-              </div>
-            )}
+            {/* Bug title removed (github-issue-integration) */}
           </div>
           <div className="flex items-center gap-3">
             {/* debatex-document-review Task 4.2: Project Settings Button */}
@@ -837,15 +817,11 @@ export function App() {
                   onAgentListResize={handleAgentListResize}
                   onResizeEnd={saveLayout}
                 />
-              ) : (
-                <BugPane
-                  rightPaneWidth={rightPaneWidth}
-                  agentListHeight={agentListHeight}
-                  onRightResize={handleRightResize}
-                  onAgentListResize={handleAgentListResize}
-                  onResizeEnd={saveLayout}
+              ) : activeTab === 'issues' ? (
+                <IssuePane
+                  projectPath={currentProject}
                 />
-              )
+              ) : null
             ) : (
               /* 未選択時: プロジェクト選択画面 or .kiro初期化プロンプト */
               currentProject ? (
@@ -973,6 +949,22 @@ export function App() {
             onCancel={cancelProjectSwitch}
           />
         )}
+
+        {/* github-issue-integration: Task 16.2 - CreateIssueDialog */}
+        <CreateIssueDialog
+          isOpen={isCreateIssueDialogOpen}
+          onClose={() => setIsCreateIssueDialogOpen(false)}
+          onSubmit={async (data) => {
+            if (!currentProject) return;
+            await getVanillaClient().issue.createIssue.mutate({
+              projectPath: currentProject,
+              title: data.title,
+              body: data.body,
+              labels: data.labels,
+              assignees: data.assignees,
+            });
+          }}
+        />
 
         {/* debatex-document-review Task 4.2: Project Settings Dialog */}
         <ProjectSettingsDialog

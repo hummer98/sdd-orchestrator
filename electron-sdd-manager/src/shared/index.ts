@@ -24,8 +24,7 @@ export {
   Toast,
   // Spec components
   SpecListItem,
-  // Bug components
-  BugListItem,
+  // Bug components removed (github-issue-integration)
   // Workflow components
   PhaseItem,
 } from './components';
@@ -43,7 +42,7 @@ export type {
   ToastType,
   ToastAction,
   SpecListItemProps,
-  BugListItemProps,
+  // BugListItemProps removed (github-issue-integration)
   PhaseItemProps,
   // Workflow types from components
   WorkflowPhase,

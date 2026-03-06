@@ -12,7 +12,7 @@
  * 5. Environment detection uses electronTRPC instead of electronAPI
  * 6. ApiClient interface comment no longer mentions IpcApiClient as an implementation
  * 7. ScheduleTaskSettingView does not reference window.electronAPI
- * 8. SpecPane and BugPane do not reference window.electronAPI
+ * 8. SpecPane does not reference window.electronAPI (BugPane removed)
  * 9. test/setup.ts does not expose window.electronAPI mock
  */
 import { describe, it, expect } from 'vitest';
@@ -171,19 +171,7 @@ describe('Task 11.4: window.electronAPI全削除とIpcApiClient物理削除', ()
     });
   });
 
-  describe('BugPane.tsxの更新', () => {
-    it('window.electronAPIを参照していないこと', () => {
-      const path = join(srcDir, 'renderer/components/BugPane.tsx');
-      const content = readFileSync(path, 'utf-8');
-      expect(content).not.toContain('window.electronAPI');
-    });
-
-    it('tRPCを使用してlayoutConfig操作を行っていること', () => {
-      const path = join(srcDir, 'renderer/components/BugPane.tsx');
-      const content = readFileSync(path, 'utf-8');
-      expect(content).toContain('getVanillaClient');
-    });
-  });
+  // BugPane.tsx removed (github-issue-integration)
 
   describe('ScheduleTaskSettingView.tsxの更新', () => {
     it('window.electronAPIを参照していないこと', () => {

@@ -44,13 +44,10 @@ export { InfoDialog } from './InfoDialog';
 // Task 5.1 (mobile-remote-access): Remote Access Control Panel
 export { RemoteAccessPanel } from './RemoteAccessPanel';
 export { RemoteAccessDialog } from './RemoteAccessDialog';
-// Bug Workflow UI Components
-export { BugProgressIndicator, BugPhaseLabel } from './BugProgressIndicator';
-// BugListItem is now exported from @shared/components/bug
-export { BugListItem, type BugListItemProps } from '@shared/components/bug';
-export { BugActionButtons, getNextActionLabel } from './BugActionButtons';
-export { BugList } from './BugList';
-export { CreateBugDialog } from './CreateBugDialog';
+// Bug components removed (github-issue-integration)
+// github-issue-integration: Task 16.2 - Issue components
+export { CreateIssueDialog } from './CreateIssueDialog';
+export type { CreateIssueDialogProps, CreateIssueFormData } from './CreateIssueDialog';
 export { DocsTabs } from './DocsTabs';
 export type { DocsTab } from './DocsTabs';
 // SSH Remote Project Components
@@ -62,14 +59,8 @@ export { ProjectSwitchConfirmDialog } from './ProjectSwitchConfirmDialog';
 // Unified Commandset Install Dialog
 export { CommandsetInstallDialog } from './CommandsetInstallDialog';
 export type { ProfileName } from './CommandsetInstallDialog';
-// Task 2, 3: bugs-pane-integration - BugPhaseItem, BugWorkflowViewコンポーネント
-// Note: BugArtifactEditor removed - using shared ArtifactEditor (bugs-tab-spec-editing-feature)
-export { BugPhaseItem } from './BugPhaseItem';
-export { BugWorkflowView } from './BugWorkflowView';
-// Bug fix: bugs-tab-agent-list-missing - SpecPane, BugPaneコンポーネント
-// Bug fix: agent-list-panel-dry-violation - BugAgentListPanelをAgentListPanelに統合
+// BugPhaseItem, BugWorkflowView, BugPane removed (github-issue-integration)
 export { SpecPane } from './SpecPane';
-export { BugPane } from './BugPane';
 // Cloudflare Tunnel Integration (Task 15.1.1, 15.1.2)
 export { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
 export { InstallCloudflaredDialog } from './InstallCloudflaredDialog';

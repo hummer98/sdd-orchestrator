@@ -20,12 +20,12 @@ import { projectLogger as logger } from './projectLogger';
 import { setMenuRemoteServerStatus } from '../menu';
 import { getGlobalEventBus } from '../trpc/services/globalEventBus';
 import { EVENT_NAMES } from '../trpc/services/eventBus';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider, BugDetailResult } from './webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider } from './webSocketHandler';
 import { FileService } from './fileService';
 import { projectConfigService } from './layoutConfigService';
 import type { SpecManagerService } from './specManagerService';
-import { buildClaudeArgs, getAllowedToolsForPhase } from './specManagerService';
-import { BugService } from './bugService';
+import { buildClaudeArgs } from './specManagerService';
+// BugService removed (github-issue-integration)
 import { join } from 'path';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
 import { getDefaultAgentRecordService } from './agentRecordService';
@@ -196,42 +196,13 @@ export function createWorkflowController(
       };
     },
 
-    executeBugPhase: async (bugName: string, phase: BugAction): Promise<WorkflowResult<AgentInfo>> => {
-      const bugCommandMap: Record<BugAction, string> = {
-        analyze: '/kiro:bug-analyze',
-        fix: '/kiro:bug-fix',
-        verify: '/kiro:bug-verify',
-      };
-
-      const slashCommand = bugCommandMap[phase];
-      const bugPhase = `bug-${phase}`;
-      const allowedTools = getAllowedToolsForPhase(bugPhase);
-
-      const projectPath = specManagerService.getProjectPath();
-      const bugPath = join(projectPath, '.kiro', 'bugs', bugName);
-      const bugService = new BugService();
-      const worktreeCwd = await bugService.getAgentCwd(bugPath, projectPath);
-
-      const result = await specManagerService.startAgent({
-        specId: '',
-        phase: bugPhase,
-        args: buildClaudeArgs({ command: `${slashCommand} ${bugName}`, allowedTools }),
-        worktreeCwd,
-        engineId: 'claude',
-      });
-
-      if (result.ok) {
-        return {
-          ok: true,
-          value: { agentId: result.value.agentId },
-        };
-      }
-
+    executeBugPhase: async (_bugName: string, _phase: BugAction): Promise<WorkflowResult<AgentInfo>> => {
+      // Bug workflow removed (github-issue-integration)
       return {
         ok: false,
         error: {
-          type: result.error.type,
-          message: 'message' in result.error ? result.error.message : undefined,
+          type: 'NOT_SUPPORTED',
+          message: 'Bug workflow has been replaced by GitHub Issue integration',
         },
       };
     },
@@ -544,56 +515,21 @@ export function setupSpecDetailProvider(projectPath: string): void {
 }
 
 /**
- * Create a BugDetailProvider for WebSocketHandler
+ * Create a BugDetailProvider for WebSocketHandler (deprecated - github-issue-integration)
  */
 export function createBugDetailProvider(_projectPath: string): BugDetailProvider {
-  const bugService = new BugService();
-  const fileService = new FileService();
-
   return {
-    getBugDetail: async (bugPath: string) => {
-      try {
-        const result = await bugService.readBugDetail(bugPath);
-
-        if (!result.ok) {
-          return {
-            ok: false as const,
-            error: { type: result.error.type, message: `Bug not found: ${result.error.path}` },
-          };
-        }
-
-        const markdownFilesResult = await fileService.listMarkdownFilesInSpec(bugPath, 'bug');
-        const markdownFiles = markdownFilesResult.ok ? markdownFilesResult.value : [];
-
-        const bugDetailResult: BugDetailResult = {
-          metadata: {
-            name: result.value.metadata.name,
-            path: bugPath,
-            phase: result.value.metadata.phase,
-            reportedAt: result.value.metadata.reportedAt,
-            updatedAt: result.value.metadata.updatedAt,
-          },
-          artifacts: result.value.artifacts,
-          markdownFiles,
-        };
-
-        return {
-          ok: true as const,
-          value: bugDetailResult,
-        };
-      } catch (error) {
-        logger.error('[remoteAccessSetup] Failed to get bug detail', { bugPath, error });
-        return {
-          ok: false as const,
-          error: { type: 'ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
-        };
-      }
+    getBugDetail: async (_bugPath: string) => {
+      return {
+        ok: false as const,
+        error: { type: 'NOT_SUPPORTED', message: 'Bug workflow has been replaced by GitHub Issue integration' },
+      };
     },
   };
 }
 
 /**
- * Set up BugDetailProvider on the WebSocketHandler
+ * Set up BugDetailProvider on the WebSocketHandler (deprecated)
  */
 export function setupBugDetailProvider(projectPath: string): void {
   const server = getRemoteAccessServer();
@@ -602,7 +538,6 @@ export function setupBugDetailProvider(projectPath: string): void {
   if (wsHandler) {
     const bugDetailProvider = createBugDetailProvider(projectPath);
     wsHandler.setBugDetailProvider(bugDetailProvider);
-    logger.info('[remoteAccessSetup] BugDetailProvider set up successfully', { projectPath });
   }
 }
 

@@ -1,0 +1,662 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-03-06T13:30:00Z",
+  "reinspection": true,
+  "round": 2,
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PAT input field exists in GitHubSettingsSection component with safeStorage encryption via GitHubCredentialService",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx",
+        "electron-sdd-manager/src/main/services/gitHubCredentialService.ts"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Electron safeStorage API used for token encryption in GitHubCredentialService with test coverage",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/gitHubCredentialService.ts:63-76",
+        "electron-sdd-manager/src/main/services/__tests__/gitHubCredentialService.test.ts"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHub Enterprise URL support with custom baseURL in GitHubApiService and GitHubCredentialService",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/gitHubApiService.ts",
+        "electron-sdd-manager/src/main/services/gitHubCredentialService.ts"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Auto-detection of owner/repo from git remote via parseGitRemoteUrl and detectRepoInfo methods",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/gitHubApiService.ts:59-75",
+        "electron-sdd-manager/src/main/services/gitHubApiService.ts:92"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "testConnection procedure exists in issueRouter with clear error messaging on invalid/expired PAT",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:147-153",
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx"
+      ]
+    },
+    {
+      "id": "req-1.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Connection test button and result display in GitHubSettingsSection with success/failure UI",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx:42-48"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bugs tab replaced with 'Issues' tab in DocsTabs component, with IssuePane as content",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/DocsTabs.tsx:39"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Issue list loading via issueStore.loadIssues with listIssues tRPC procedure, default filter state='open'",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/issueStore.ts:65",
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:114-123",
+        "electron-sdd-manager/src/shared/components/issue/IssueListPanel.tsx"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Filter functionality in IssueListPanel including state, labels, assignee, milestone filters via IssueFilters type",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/IssueListPanel.tsx",
+        "electron-sdd-manager/src/shared/types/github.ts"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueDetailView component displays issue body, comments, labels, assignees with test coverage",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/IssueDetailView.tsx",
+        "electron-sdd-manager/src/shared/components/issue/IssueDetailView.test.tsx"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "StatusLabelBadge component displays status: prefix labels in IssueListPanel and IssueDetailView",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/StatusLabelBadge.tsx",
+        "electron-sdd-manager/src/shared/components/issue/StatusLabelBadge.test.tsx"
+      ]
+    },
+    {
+      "id": "req-2.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "60-second polling interval (POLLING_INTERVAL_MS=60000) with manual refresh via issueStore.refresh()",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/issueStore.ts:33-34",
+        "electron-sdd-manager/src/shared/stores/issueStore.ts:73-74"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog for Electron and CreateIssueDialogRemote for Remote UI, with test coverage",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/CreateIssueDialog.tsx",
+        "electron-sdd-manager/src/renderer/components/CreateIssueDialog.test.tsx",
+        "electron-sdd-manager/src/remote-ui/components/CreateIssueDialogRemote.tsx"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createIssue tRPC mutation calls GitHubApiService.createIssue with GitHub API",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:209-237"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Auto-assignment of status:triage label on issue creation via updateStatusLabel('triage') call in createIssue mutation",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:229"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog supports title, body, labels, assignees input via CreateIssueInput type",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/CreateIssueDialog.tsx",
+        "electron-sdd-manager/src/shared/types/github.ts"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "STATUS_LABELS constant defines all 5 status labels: triage, in-progress, in-review, changes-requested, done with colors",
+      "evidence": [
+        "electron-sdd-manager/src/shared/types/github.ts:131-137"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "updateStatusLabel tRPC mutation handles old label removal + new label addition. Slash commands update labels via gh-issue.sh label command",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:258-273",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md:81"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ensureStatusLabels method in GitHubApiService auto-creates missing status:* labels on first connection",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/gitHubApiService.ts:345"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "startImplementation mutation creates branch with issue/{number}-{slug} format for worktree mode",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:440-445"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "startImplementation supports direct mode returning branch='current' for direct modifications",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:464-467"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation mode selection UI (worktree/direct radio buttons) in IssueDetailView component",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/IssueDetailView.tsx:157-182"
+      ]
+    },
+    {
+      "id": "req-5.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Label auto-update to status:in-progress on branch creation in startImplementation procedure",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:470"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 4 slash commands created: issue-analyze.md, issue-fix.md, issue-verify.md, issue-ask.md",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-fix.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-verify.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-ask.md"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All slash commands use 'gh-issue.sh read' to fetch issue context before execution",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md:40",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-fix.md:40",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-verify.md:40",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-ask.md:40"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All slash commands post result summary as issue comment via 'gh-issue.sh comment'",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md:63",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-fix.md:61",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-verify.md:63",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-ask.md:59"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issue-analyze updates label to status:in-progress via 'gh-issue.sh label set'",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md:81"
+      ]
+    },
+    {
+      "id": "req-6.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Old /kiro:bug-* command templates deleted (commands/bug/ directory empty)",
+      "evidence": [
+        "git status: D for all bug-*.md files in resources/templates/commands/bug/"
+      ]
+    },
+    {
+      "id": "req-7.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "scripts/gh-issue.sh exists as single entry point with subcommand dispatch",
+      "evidence": [
+        "scripts/gh-issue.sh:1-20"
+      ]
+    },
+    {
+      "id": "req-7.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 5 subcommands implemented: read, comment, label (add/remove/set), list, create",
+      "evidence": [
+        "scripts/gh-issue.sh:46-58"
+      ]
+    },
+    {
+      "id": "req-7.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GITHUB_TOKEN env var with gh auth status fallback in setup_auth function",
+      "evidence": [
+        "scripts/gh-issue.sh:78-80"
+      ]
+    },
+    {
+      "id": "req-7.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GH_HOST environment variable support for GitHub Enterprise",
+      "evidence": [
+        "scripts/gh-issue.sh:15"
+      ]
+    },
+    {
+      "id": "req-7.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Git remote auto-detection for owner/repo via 'git remote get-url origin' with URL parsing",
+      "evidence": [
+        "scripts/gh-issue.sh:93-105"
+      ]
+    },
+    {
+      "id": "req-8.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "createPullRequest includes 'Closes #{number}' in PR body when issueNumber is provided",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/gitHubApiService.ts:398"
+      ]
+    },
+    {
+      "id": "req-8.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRListView component displays PR list within IssuePane with test coverage",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/PRListView.tsx",
+        "electron-sdd-manager/src/shared/components/issue/PRListView.test.tsx"
+      ]
+    },
+    {
+      "id": "req-8.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRDetailView shows diff files and CI status via getPRFiles and getPRCIStatus procedures",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/PRDetailView.tsx",
+        "electron-sdd-manager/src/shared/components/issue/PRDetailView.test.tsx",
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:301-321"
+      ]
+    },
+    {
+      "id": "req-8.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Merge operation provided via mergePullRequest tRPC mutation with merge/squash/rebase method selection",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:360-380",
+        "electron-sdd-manager/src/shared/components/issue/PRDetailView.tsx"
+      ]
+    },
+    {
+      "id": "req-8.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "mergePullRequest updates related issue label to status:done on successful merge",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:373-375"
+      ]
+    },
+    {
+      "id": "req-9.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "buildIssueContext function fetches issue body + comments and builds context string for Agent injection",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.ts:71-90",
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.test.ts"
+      ]
+    },
+    {
+      "id": "req-9.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handleAgentCompletionForIssue posts execution summary as Issue comment via addIssueComment",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.ts",
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.test.ts"
+      ]
+    },
+    {
+      "id": "req-9.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Existing Agent UI reused with issue:{number} specId pattern in agentStore, no new UI created",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.ts:32-34"
+      ]
+    },
+    {
+      "id": "req-9.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "handleAgentStartForIssue sets status:in-progress label during agent execution",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/agentIssueIntegration.ts"
+      ]
+    },
+    {
+      "id": "req-10.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All Bug renderer components deleted: BugPane, BugList, BugWorkflowView, BugListItem (no files found)",
+      "evidence": [
+        "git status: D for all Bug*.tsx files in src/renderer/components/"
+      ]
+    },
+    {
+      "id": "req-10.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useSharedBugStore (bugStore.ts) and useBugAutoExecutionStore (bugAutoExecutionStore.ts) deleted",
+      "evidence": [
+        "git status: D for bugStore.ts and bugAutoExecutionStore.ts"
+      ]
+    },
+    {
+      "id": "req-10.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug tRPC router (routers/bug.ts) deleted, replaced by issueRouter",
+      "evidence": [
+        "git status: D for routers/bug.ts"
+      ]
+    },
+    {
+      "id": "req-10.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "BugService (bugService.ts) and BugsWatcherService (bugsWatcherService.ts) deleted",
+      "evidence": [
+        "git status: D for bugService.ts, bugsWatcherService.ts"
+      ]
+    },
+    {
+      "id": "req-10.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All bug-* CLI command templates deleted (bug-create, bug-analyze, bug-fix, bug-verify, bug-status, bug-merge)",
+      "evidence": [
+        "git status: D for all bug-*.md in resources/templates/commands/bug/"
+      ]
+    },
+    {
+      "id": "req-10.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug template files deleted from settings/templates/bugs/ directory",
+      "evidence": [
+        "git status: D for all files in settings/templates/bugs/"
+      ]
+    },
+    {
+      "id": "req-10.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug scripts deleted: create-bug-worktree.sh and merge-bug.sh",
+      "evidence": [
+        "git status: D for create-bug-worktree.sh, merge-bug.sh"
+      ]
+    },
+    {
+      "id": "req-10.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug commandset definition deprecated with empty files array in commandsetDefinitionManager (effectively disabled)",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/commandsetDefinitionManager.ts:89-96"
+      ]
+    },
+    {
+      "id": "req-10.9",
+      "category": "requirements-coverage",
+      "status": "PARTIAL",
+      "severity": "Major",
+      "details": "Main CLAUDE.md template (resources/templates/CLAUDE.md) correctly updated: Bug Fix section replaced with 'Issue Workflow (GitHub Integration)' section at lines 40-54. However, the claudemd-merge.md agent file (resources/templates/agents/kiro/claudemd-merge.md) still contains the old 'Bug Fix (Lightweight Workflow)' section with /kiro:bug-* commands in its built-in fallback template at lines 103-121. This fallback template is used when the main template is unavailable, creating an inconsistency.",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/CLAUDE.md:40-54 (FIXED - Issue Workflow)",
+        "electron-sdd-manager/resources/templates/agents/kiro/claudemd-merge.md:103-121 (STILL OLD - Bug Fix)"
+      ]
+    },
+    {
+      "id": "req-10.10",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug type definitions deleted: bug.ts, bugJson.ts, bugAutoExecution.ts from renderer/types/",
+      "evidence": [
+        "git status: D for bug.ts, bugJson.ts, bugAutoExecution.ts in renderer/types/"
+      ]
+    },
+    {
+      "id": "req-11.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane component integrated into Remote UI DesktopLayout via App.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx"
+      ]
+    },
+    {
+      "id": "req-11.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Issue browsing and filtering available in Remote UI via shared IssueListPanel and IssuePane components",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx",
+        "electron-sdd-manager/src/remote-ui/App.issues.test.tsx"
+      ]
+    },
+    {
+      "id": "req-11.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialogRemote component provides issue creation from Remote UI with test coverage",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/components/CreateIssueDialogRemote.tsx",
+        "electron-sdd-manager/src/remote-ui/components/CreateIssueDialogRemote.test.tsx"
+      ]
+    },
+    {
+      "id": "req-11.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Remote UI DesktopLayout uses same shared IssuePane component, conforming to Electron layout",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx"
+      ]
+    },
+    {
+      "id": "req-11.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "WebSocketApiClient has Issue/PR API methods: getIssues, getIssueDetail, createIssue",
+      "evidence": [
+        "electron-sdd-manager/src/shared/api/WebSocketApiClient.ts:797-824"
+      ]
+    },
+    {
+      "id": "req-12.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubSettingsSection component added to project settings UI",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx"
+      ]
+    },
+    {
+      "id": "req-12.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PAT input field (masked) and GitHub Enterprise URL input field in GitHubSettingsSection",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx:56-57"
+      ]
+    },
+    {
+      "id": "req-12.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Auto-detection of owner/repo from git remote displayed in settings via getConnectionStatus procedure",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx",
+        "electron-sdd-manager/src/main/trpc/routers/issue.ts:155-195"
+      ]
+    },
+    {
+      "id": "req-12.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Connection status indicator (not configured / connected / error) displayed in GitHubSettingsSection",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx:58-60"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 57,
+    "passed": 56,
+    "failed": 0,
+    "partial": 1,
+    "critical": 0,
+    "major": 1,
+    "minor": 0,
+    "info": 56
+  }
+}

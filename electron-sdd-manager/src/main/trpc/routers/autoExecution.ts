@@ -92,36 +92,25 @@ export const setMockEnvInputSchema = z.object({
   value: z.string(),
 });
 
-// --- Bug Auto Execution Schemas ---
-
-const bugAutoExecutionPermissionsSchema = z.object({
-  analyze: z.boolean(),
-  fix: z.boolean(),
-  verify: z.boolean(),
-}).passthrough();
-
-const bugAutoExecutionOptionsSchema = z.object({
-  permissions: bugAutoExecutionPermissionsSchema,
-  timeoutMs: z.number().optional(),
-});
-
-export const bugStartInputSchema = z.object({
+// Bug Auto Execution Schemas removed (github-issue-integration)
+// Minimal stubs retained for router contract compatibility
+const bugStartInputSchema = z.object({
   projectPath: z.string().min(1),
   bugPath: z.string().min(1),
   bugName: z.string().min(1),
-  options: bugAutoExecutionOptionsSchema,
+  options: z.object({ permissions: z.record(z.boolean()) }),
   lastCompletedPhase: z.string().nullable(),
 });
 
-export const bugStopInputSchema = z.object({
+const bugStopInputSchema = z.object({
   bugPath: z.string().min(1),
 });
 
-export const bugStatusInputSchema = z.object({
+const bugStatusInputSchema = z.object({
   bugPath: z.string().min(1),
 });
 
-export const bugRetryFromInputSchema = z.object({
+const bugRetryFromInputSchema = z.object({
   bugPath: z.string().min(1),
   phase: z.string().min(1),
 });
@@ -399,149 +388,49 @@ export const autoExecutionRouter = router({
    * Start bug auto execution.
    * Delegates to bugAutoExecutionCoordinator.start().
    */
+  // Bug auto execution procedures removed (github-issue-integration)
+  // bugStart, bugStop, bugGetStatus, bugGetAllStatus, bugRetryFrom, bugReset
+  // These procedures are kept as stubs to avoid breaking the router contract
   bugStart: publicProcedure
     .input(bugStartInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      const result = await coordinator.start(
-        input.projectPath,
-        input.bugPath,
-        input.bugName,
-        input.options as Record<string, unknown>,
-        input.lastCompletedPhase,
-      );
-      return toSerializableResult(result);
+    .mutation(async () => {
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Bug auto execution removed (github-issue-integration)',
+      });
     }),
 
-  // ============================================================
-  // Bug Auto Execution: bugStop (mutation)
-  // Legacy: BUG_AUTO_EXECUTION_STOP (bugAutoExecutionHandlers.ts)
-  // ============================================================
-
-  /**
-   * Stop bug auto execution.
-   * Delegates to bugAutoExecutionCoordinator.stop().
-   */
   bugStop: publicProcedure
     .input(bugStopInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      return coordinator.stop(input.bugPath);
+    .mutation(async () => {
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Bug auto execution removed (github-issue-integration)',
+      });
     }),
 
-  // ============================================================
-  // Bug Auto Execution: bugGetStatus (query)
-  // Legacy: BUG_AUTO_EXECUTION_STATUS (bugAutoExecutionHandlers.ts)
-  // ============================================================
-
-  /**
-   * Get bug auto execution status.
-   * Returns serializable state or null.
-   */
   bugGetStatus: publicProcedure
     .input(bugStatusInputSchema)
-    .query(({ ctx, input }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      return toSerializableState(
-        coordinator.getStatus(input.bugPath) as Record<string, unknown> | null,
-      );
+    .query(() => {
+      return null;
     }),
 
-  // ============================================================
-  // Bug Auto Execution: bugGetAllStatus (query)
-  // Legacy: BUG_AUTO_EXECUTION_ALL_STATUS (bugAutoExecutionHandlers.ts)
-  // ============================================================
-
-  /**
-   * Get all bug auto execution statuses.
-   * Converts Map to Record and serializes each state.
-   */
   bugGetAllStatus: publicProcedure
-    .query(({ ctx }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      const statuses = coordinator.getAllStatuses();
-      const result: Record<string, Record<string, unknown>> = {};
-      for (const [key, value] of statuses) {
-        const serializable = toSerializableState(value);
-        if (serializable) {
-          result[key] = serializable;
-        }
-      }
-      return result;
+    .query(() => {
+      return {} as Record<string, Record<string, unknown>>;
     }),
 
-  // ============================================================
-  // Bug Auto Execution: bugRetryFrom (mutation)
-  // Legacy: BUG_AUTO_EXECUTION_RETRY_FROM (bugAutoExecutionHandlers.ts)
-  // ============================================================
-
-  /**
-   * Retry bug auto execution from a specific phase.
-   * Delegates to bugAutoExecutionCoordinator.retryFrom().
-   */
   bugRetryFrom: publicProcedure
     .input(bugRetryFromInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      const result = await coordinator.retryFrom(input.bugPath, input.phase);
-      return toSerializableResult(result);
+    .mutation(async () => {
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Bug auto execution removed (github-issue-integration)',
+      });
     }),
 
-  // ============================================================
-  // Bug Auto Execution: bugReset (mutation)
-  // Legacy: BUG_AUTO_EXECUTION_RESET (bugAutoExecutionHandlers.ts)
-  // WARNING: E2E test support only
-  // ============================================================
-
-  /**
-   * Reset all bug auto executions.
-   * E2E test support only.
-   */
   bugReset: publicProcedure
-    .mutation(({ ctx }) => {
-      const coordinator = ctx.services.bugAutoExecutionCoordinator;
-      if (!coordinator) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'bugAutoExecutionCoordinator not initialized',
-        });
-      }
-
-      coordinator.resetAll();
+    .mutation(() => {
+      // No-op (github-issue-integration)
     }),
 });

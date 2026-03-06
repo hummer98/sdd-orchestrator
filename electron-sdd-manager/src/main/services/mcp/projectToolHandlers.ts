@@ -15,9 +15,7 @@ import type { ToolRegistration, McpToolResult, ToolHandler } from './mcpToolRegi
 import type { SpecManagerService } from '../specManagerService';
 import type { AgentInfo as AgentRecordInfo } from '../agentRecordService';
 import type { FileService } from '../fileService';
-import type { BugService } from '../bugService';
 import type { SpecPhase } from '../../../renderer/types';
-import type { BugPhase } from '../../../renderer/types/bug';
 
 // =============================================================================
 // Types
@@ -119,35 +117,26 @@ export interface SpecListResult {
 }
 
 /**
- * Bug information for MCP tool responses
- * Requirements: 2.4, 2.5 - project_list_bugs
+ * Bug information for MCP tool responses (deprecated - github-issue-integration)
  */
 export interface McpBugInfo {
-  /** Bug name */
   readonly name: string;
-  /** Current phase */
-  readonly phase: BugPhase;
-  /** Last updated timestamp */
+  readonly phase: string;
   readonly updatedAt: string;
 }
 
 /**
- * Filter options for listBugs
- * Requirements: 2.5 - filter parameter
+ * Filter options for listBugs (deprecated)
  */
 export interface BugListFilter {
-  /** Filter by phase */
-  readonly phase?: BugPhase;
+  readonly phase?: string;
 }
 
 /**
- * Result of listBugs operation
- * Requirements: 2.4 - project_list_bugs
+ * Result of listBugs operation (deprecated)
  */
 export interface BugListResult {
-  /** List of bugs */
   readonly bugs: McpBugInfo[];
-  /** Total count of bugs */
   readonly total: number;
 }
 
@@ -212,8 +201,7 @@ export class ProjectToolHandlers {
   private specManagerService: SpecManagerService | null = null;
   /** FileService instance for spec operations */
   private fileService: FileService | null = null;
-  /** BugService instance for bug operations */
-  private bugService: BugService | null = null;
+  /** BugService removed (github-issue-integration) */
 
   /**
    * Get project information
@@ -440,8 +428,8 @@ export class ProjectToolHandlers {
    * Set the BugService instance for bug operations
    * @param service - BugService instance
    */
-  setBugService(service: BugService): void {
-    this.bugService = service;
+  setBugService(_service: unknown): void {
+    // Bug service removed (github-issue-integration)
   }
 
   /**
@@ -563,36 +551,9 @@ export class ProjectToolHandlers {
    * @param filter - Optional filter options
    * @returns Bug list result
    */
-  async listBugs(projectPath: string, filter?: BugListFilter): Promise<BugListResult> {
-    if (!this.bugService) {
-      return { bugs: [], total: 0 };
-    }
-
-    // Read all bugs from BugService
-    const readResult = await this.bugService.readBugs(projectPath);
-    if (!readResult.ok) {
-      return { bugs: [], total: 0 };
-    }
-
-    // Map bugs to MCP format with filtering
-    const bugs: McpBugInfo[] = [];
-    for (const bugMetadata of readResult.value.bugs) {
-      // Apply filter
-      if (filter && filter.phase !== undefined && bugMetadata.phase !== filter.phase) {
-        continue;
-      }
-
-      bugs.push({
-        name: bugMetadata.name,
-        phase: bugMetadata.phase,
-        updatedAt: bugMetadata.updatedAt,
-      });
-    }
-
-    return {
-      bugs,
-      total: bugs.length,
-    };
+  async listBugs(_projectPath: string, _filter?: BugListFilter): Promise<BugListResult> {
+    // Bug service removed (github-issue-integration)
+    return { bugs: [], total: 0 };
   }
 
   /**

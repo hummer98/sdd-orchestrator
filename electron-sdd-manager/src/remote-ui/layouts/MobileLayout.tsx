@@ -17,7 +17,7 @@
  */
 
 import React, { ReactNode, useState, useEffect } from 'react';
-import { FileText, Bug, Bot, FolderOpen } from 'lucide-react';
+import { FileText, Bug, Bot, FolderOpen, CircleDot } from 'lucide-react';
 import { ProfileBadge } from '../../shared/components/ui';
 import { useApi } from '../../shared/api';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
@@ -27,7 +27,7 @@ import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 // Types
 // =============================================================================
 
-export type MobileTab = 'specs' | 'bugs' | 'agents' | 'settings' | 'agent' | 'project';
+export type MobileTab = 'specs' | 'issues' | 'bugs' | 'agents' | 'settings' | 'agent' | 'project';
 
 export interface MobileLayoutProps {
   /**
@@ -68,9 +68,9 @@ export interface MobileLayoutProps {
  * - 1.3: Visual indication of active tab (handled in MobileTabBar)
  * - 1.5: 44x44px touch target (handled by touch-target class)
  */
-const TAB_CONFIG: { id: MobileTab; label: string; icon: 'specs' | 'bugs' | 'agents' | 'project' }[] = [
+const TAB_CONFIG: { id: MobileTab; label: string; icon: 'specs' | 'issues' | 'bugs' | 'agents' | 'project' }[] = [
   { id: 'specs', label: 'Specs', icon: 'specs' },
-  { id: 'bugs', label: 'Bugs', icon: 'bugs' },
+  { id: 'issues', label: 'Issues', icon: 'issues' },
   { id: 'agents', label: 'Agents', icon: 'agents' },
   { id: 'project', label: 'Project', icon: 'project' },
 ];
@@ -296,7 +296,7 @@ function MobileTabBar({
 }
 
 interface TabIconProps {
-  name: 'specs' | 'bugs' | 'agents' | 'project';
+  name: 'specs' | 'issues' | 'bugs' | 'agents' | 'project';
   active: boolean;
 }
 
@@ -314,6 +314,8 @@ function TabIcon({ name, active }: TabIconProps): React.ReactElement {
   switch (name) {
     case 'specs':
       return <FileText size={iconSize} className={iconClassName} />;
+    case 'issues':
+      return <CircleDot size={iconSize} className={iconClassName} />;
     case 'bugs':
       return <Bug size={iconSize} className={iconClassName} />;
     case 'agents':

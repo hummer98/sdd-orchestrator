@@ -1,0 +1,232 @@
+{
+  "spec_overview": "GitHub/GitHub Enterprise上のIssue・PRと連携する新しいUIペインを導入し、既存のBugsペインを完全に置き換える。GitHub APIをSSOTとし、UIはGitHub情報の可視化に専念、実作業はSlash Commandsで行うハイブリッド方式。",
+  "key_components": [
+    {
+      "name": "GitHubApiService",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/gitHubApiService.ts",
+      "requirements": ["1.3", "1.4", "3.2", "4.1", "4.2", "4.3", "8.1", "8.4", "8.5"]
+    },
+    {
+      "name": "GitHubCredentialService",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/gitHubCredentialService.ts",
+      "requirements": ["1.1", "1.2"]
+    },
+    {
+      "name": "issueRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/issue.ts",
+      "requirements": ["2.2", "2.4", "2.6", "3.2", "3.3", "4.2", "5.1", "5.2", "5.4", "8.1", "8.2", "8.3", "8.4", "8.5"]
+    },
+    {
+      "name": "issueStore",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/stores/issueStore.ts",
+      "requirements": ["2.2", "2.6", "9.1"]
+    },
+    {
+      "name": "IssuePane",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/issue/IssuePane.tsx",
+      "requirements": ["2.1"]
+    },
+    {
+      "name": "IssueListPanel",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/issue/IssueListPanel.tsx",
+      "requirements": ["2.2", "2.3", "2.5"]
+    },
+    {
+      "name": "IssueDetailView",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/issue/IssueDetailView.tsx",
+      "requirements": ["2.4", "2.5", "5.3"]
+    },
+    {
+      "name": "PRListView",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/issue/PRListView.tsx",
+      "requirements": ["8.2"]
+    },
+    {
+      "name": "PRDetailView",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/issue/PRDetailView.tsx",
+      "requirements": ["8.3", "8.4"]
+    },
+    {
+      "name": "CreateIssueDialog",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/CreateIssueDialog.tsx",
+      "requirements": ["3.1", "3.4"]
+    },
+    {
+      "name": "CreateIssueDialogRemote",
+      "type": "component",
+      "path": "electron-sdd-manager/src/remote-ui/components/CreateIssueDialogRemote.tsx",
+      "requirements": ["11.3"]
+    },
+    {
+      "name": "GitHubSettingsSection",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/components/project/GitHubSettingsSection.tsx",
+      "requirements": ["1.1", "1.5", "1.6", "12.1", "12.2", "12.3", "12.4"]
+    },
+    {
+      "name": "gh-issue.sh",
+      "type": "service",
+      "path": "scripts/gh-issue.sh",
+      "requirements": ["6.2", "7.1", "7.2", "7.3", "7.4", "7.5"]
+    },
+    {
+      "name": "issue-analyze.md",
+      "type": "component",
+      "path": "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md",
+      "requirements": ["6.1"]
+    },
+    {
+      "name": "issue-fix.md",
+      "type": "component",
+      "path": "electron-sdd-manager/resources/templates/commands/issue/issue-fix.md",
+      "requirements": ["6.1"]
+    },
+    {
+      "name": "issue-verify.md",
+      "type": "component",
+      "path": "electron-sdd-manager/resources/templates/commands/issue/issue-verify.md",
+      "requirements": ["6.1"]
+    },
+    {
+      "name": "issue-ask.md",
+      "type": "component",
+      "path": "electron-sdd-manager/resources/templates/commands/issue/issue-ask.md",
+      "requirements": ["6.1"]
+    },
+    {
+      "name": "agentIssueIntegration",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/agentIssueIntegration.ts",
+      "requirements": ["9.1", "9.2", "9.3", "9.4"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "issueRouter",
+      "target": "GitHubApiService",
+      "type": "call"
+    },
+    {
+      "source": "issueRouter",
+      "target": "GitHubCredentialService",
+      "type": "call"
+    },
+    {
+      "source": "GitHubApiService",
+      "target": "GitHubCredentialService",
+      "type": "call"
+    },
+    {
+      "source": "issueStore",
+      "target": "issueRouter",
+      "type": "call"
+    },
+    {
+      "source": "IssuePane",
+      "target": "issueStore",
+      "type": "import"
+    },
+    {
+      "source": "webSocketHandler",
+      "target": "GitHubApiService",
+      "type": "call"
+    },
+    {
+      "source": "agentIssueIntegration",
+      "target": "GitHubApiService",
+      "type": "call"
+    },
+    {
+      "source": "DocsTabs",
+      "target": "IssuePane",
+      "type": "import"
+    },
+    {
+      "source": "router.ts",
+      "target": "issueRouter",
+      "type": "import"
+    },
+    {
+      "source": "context.ts",
+      "target": "GitHubApiService",
+      "type": "import"
+    },
+    {
+      "source": "context.ts",
+      "target": "GitHubCredentialService",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "src/main/trpc/router.ts",
+      "action": "UPDATE",
+      "reason": "bugRouter → issueRouter に置換"
+    },
+    {
+      "target": "src/main/trpc/context.ts",
+      "action": "UPDATE",
+      "reason": "bugService 削除、gitHubApiService / gitHubCredentialService 追加"
+    },
+    {
+      "target": "src/main/trpc/productionServices.ts",
+      "action": "UPDATE",
+      "reason": "Bug関連サービス初期化削除、GitHub関連サービス初期化追加"
+    },
+    {
+      "target": "src/renderer/components/DocsTabs.tsx",
+      "action": "UPDATE",
+      "reason": "Bugs tab → Issues tab 置換"
+    },
+    {
+      "target": "src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "BugPane → IssuePane 置換、BugStore初期化削除"
+    },
+    {
+      "target": "src/main/trpc/routers/bug.ts",
+      "action": "DELETE",
+      "reason": "issueRouterに完全置換"
+    },
+    {
+      "target": "src/main/services/bugService.ts",
+      "action": "DELETE",
+      "reason": "GitHubApiServiceに完全置換"
+    },
+    {
+      "target": "src/shared/stores/bugStore.ts",
+      "action": "DELETE",
+      "reason": "issueStoreに完全置換"
+    },
+    {
+      "target": "src/shared/stores/bugAutoExecutionStore.ts",
+      "action": "DELETE",
+      "reason": "不要（GitHub API SSOTに移行）"
+    },
+    {
+      "target": "src/renderer/stores/agentStore.ts",
+      "action": "UPDATE",
+      "reason": "bug:{bugId} パターン → issue:{issueNumber} パターンに置換"
+    },
+    {
+      "target": "src/main/services/webSocketHandler.ts",
+      "action": "UPDATE",
+      "reason": "Bug関連メッセージハンドラ削除、Issue関連追加"
+    },
+    {
+      "target": "src/remote-ui/App.tsx",
+      "action": "UPDATE",
+      "reason": "Bug関連import削除、Issue関連追加"
+    }
+  ]
+}

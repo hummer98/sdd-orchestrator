@@ -8,7 +8,6 @@
 import { mkdir } from 'fs/promises';
 import path from 'path';
 import { CcSddWorkflowInstaller, InstallOptions, InstallResult, InstallError, Result } from './ccSddWorkflowInstaller';
-import { BugWorkflowInstaller } from './bugWorkflowInstaller';
 import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 import { projectConfigService, ProfileConfig, CommandsetVersionRecord } from './layoutConfigService';
@@ -118,7 +117,6 @@ interface Profile {
  */
 export class UnifiedCommandsetInstaller {
   private ccSddInstaller: CcSddWorkflowInstaller;
-  private bugInstaller: BugWorkflowInstaller;
   private definitionManager: CommandsetDefinitionManager;
   private commonCommandsInstaller: CommonCommandsInstallerService;
 
@@ -146,16 +144,13 @@ export class UnifiedCommandsetInstaller {
   /**
    * Create unified installer
    * @param ccSddInstaller - CC-SDD workflow installer
-   * @param bugInstaller - Bug workflow installer
    * @param templateDir - Template directory
    */
   constructor(
     ccSddInstaller: CcSddWorkflowInstaller,
-    bugInstaller: BugWorkflowInstaller,
     templateDir: string
   ) {
     this.ccSddInstaller = ccSddInstaller;
-    this.bugInstaller = bugInstaller;
     this.definitionManager = new CommandsetDefinitionManager();
     // common-commands-installer: Initialize common commands installer
     // Uses either provided template path or default path
@@ -228,24 +223,10 @@ export class UnifiedCommandsetInstaller {
         };
       }
       case 'bug': {
-        const result = await this.bugInstaller.installAll(projectPath, options);
-        if (!result.ok) return result;
+        // Bug commandset has been removed (github-issue-integration)
         return {
           ok: true,
-          value: {
-            installed: [
-              ...result.value.commands.installed,
-              ...result.value.templates.installed
-            ],
-            skipped: [
-              ...result.value.commands.skipped,
-              ...result.value.templates.skipped
-            ],
-            overwritten: [
-              ...result.value.commands.overwritten,
-              ...result.value.templates.overwritten
-            ]
-          }
+          value: { installed: [], skipped: [], overwritten: [] }
         };
       }
       case 'document-review': {
@@ -576,22 +557,13 @@ export class UnifiedCommandsetInstaller {
       ]
     });
 
-    // Check bug status
-    const bugStatus = await this.bugInstaller.checkInstallStatus(projectPath);
-    const bugTotalFiles = bugStatus.commands.installed.length + bugStatus.commands.missing.length +
-                          bugStatus.templates.installed.length + bugStatus.templates.missing.length;
-    const bugInstalledFiles = bugStatus.commands.installed.length + bugStatus.templates.installed.length;
-    const bugMissingFiles = bugStatus.commands.missing.length + bugStatus.templates.missing.length;
-
+    // Bug commandset removed (github-issue-integration)
     statusMap.set('bug', {
       name: 'bug',
-      installedFiles: bugInstalledFiles,
-      missingFiles: bugMissingFiles,
-      totalFiles: bugTotalFiles,
-      missingComponents: [
-        ...bugStatus.commands.missing,
-        ...bugStatus.templates.missing
-      ]
+      installedFiles: 0,
+      missingFiles: 0,
+      totalFiles: 0,
+      missingComponents: []
     });
 
     // Calculate completeness score

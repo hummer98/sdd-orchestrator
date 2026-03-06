@@ -1,0 +1,258 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-03-06T14:30:00Z",
+  "round": 2,
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog (renderer) and CreateIssueDialogRemote (remote-ui) share similar form logic but differ in API integration (tRPC vs WebSocketApiClient). This is an intentional architectural split per existing patterns.",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHub API is correctly used as SSOT. issueStore is an explicit cache. No duplicate state management detected.",
+      "evidence": []
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Architecture follows existing patterns (tRPC router, Zustand store, shared components). No over-engineering detected.",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All implemented features map to requirements in the design. No speculative features detected.",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-router",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/main/trpc/routers/bug.ts successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-service",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/main/services/bugService.ts successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-store",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/stores/bugStore.ts successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-auto-execution-store",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/stores/bugAutoExecutionStore.ts successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-commands",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "resources/templates/commands/bug/ directory and all bug CLI commands successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-bug-templates",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "resources/templates/settings/templates/bugs/ and scripts successfully deleted",
+      "evidence": []
+    },
+    {
+      "id": "impact-residual-bug-events-r2",
+      "category": "impact",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "events.ts still defines onBugsChanged subscription (line 212) and bugsChangedSchema (line 58). The onBugAutoExecution* subscriptions were successfully removed in Round 1 fix. The onBugsChanged subscription is dead (no bug watcher emits BUGS_CHANGED anymore) but retained as a vestigial router contract entry. Downgraded from Major to Minor since no functional impact.",
+      "evidence": [
+        "src/main/trpc/routers/events.ts:58: bugsChangedSchema still defined",
+        "src/main/trpc/routers/events.ts:212: onBugsChanged subscription still present"
+      ]
+    },
+    {
+      "id": "impact-residual-bug-autoexecution-r2",
+      "category": "impact",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "autoExecution.ts retains Bug auto execution schemas (bugStartInputSchema, bugStopInputSchema, bugStatusInputSchema, bugRetryFromInputSchema at lines 97-116) and stub procedures (bugStart, bugStop, bugGetStatus, bugGetAllStatus, bugRetryFrom, bugReset at lines 394-435). Comment says 'retained for router contract compatibility'. Stubs throw NOT_IMPLEMENTED or return no-op. Downgraded from Major to Minor since this is an intentional backward-compatibility decision.",
+      "evidence": [
+        "src/main/trpc/routers/autoExecution.ts:97-116: Bug schemas retained as stubs",
+        "src/main/trpc/routers/autoExecution.ts:394-435: Bug stub procedures"
+      ]
+    },
+    {
+      "id": "impact-residual-bug-eventbus-constants",
+      "category": "impact",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "eventBus.ts still defines BUG_AUTO_EXECUTION_* event name constants (lines 41-46) and BUGS_CHANGED (line 31). eventBusFilter.ts references them (lines 35, 45-50). These are dead constants - no code emits these events anymore.",
+      "evidence": [
+        "src/main/trpc/services/eventBus.ts:31: BUGS_CHANGED constant",
+        "src/main/trpc/services/eventBus.ts:41-46: BUG_AUTO_EXECUTION_* constants",
+        "src/main/trpc/services/eventBusFilter.ts:35,45-50: Bug event references in filter list"
+      ]
+    },
+    {
+      "id": "impact-residual-bug-workflowstore-r2",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.8) confirmed: workflowStore.ts no longer has bugAutoExecutionPermissions state or actions. Only removal comments remain.",
+      "evidence": []
+    },
+    {
+      "id": "impact-residual-bug-websocket-r2",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.5) confirmed: WebSocketApiClient.ts no longer contains Bug-related methods or event handlers.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-agent-issue-integration-r2",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.12) confirmed: agentIssueIntegration functions are now imported and called in src/main/trpc/helpers/projectSetup.ts (production code). handleAgentStartForIssue and handleAgentCompletionForIssue are invoked on agent status changes.",
+      "evidence": [
+        "src/main/trpc/helpers/projectSetup.ts:44: imports from agentIssueIntegration",
+        "src/main/trpc/helpers/projectSetup.ts:754-768: actual function calls in production flow"
+      ]
+    },
+    {
+      "id": "dead-code-create-issue-dialog-r2",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.2) confirmed: CreateIssueDialog is now exported from renderer/components/index.ts (line 49-50) and imported/rendered in renderer/App.tsx (lines 36, 954-956).",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-github-settings-section-r2",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.11) confirmed: GitHubSettingsSection is exported from shared/components/issue/index.ts (line 25) and imported/rendered in renderer/components/ProjectSettingsDialog.tsx (line 22, 194).",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-issue-pane-renderer-r2",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.2) confirmed: IssuePane is imported in renderer/App.tsx (line 52) and rendered when activeTab === 'issues' (line 821).",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-issue-store",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueStore is consumed by IssuePane.tsx (production) and exported via shared/stores/index.ts. Not dead code.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-issue-router",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueRouter is wired in router.ts and consumed by issueStore via vanillaClient. Not dead code.",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-github-types",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/types/github.ts exports are consumed by multiple production files (gitHubApiService, issue.ts router, IssuePane, IssueDetailView, etc.).",
+      "evidence": []
+    },
+    {
+      "id": "placeholder-issue-pane-todo-r2",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.10) confirmed: IssuePane.tsx no longer has active TODO placeholders. Line 100 contains a comment referencing the completed task, not an outstanding TODO.",
+      "evidence": []
+    },
+    {
+      "id": "placeholder-webSocketHandler-selectSpec",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "webSocketHandler.ts:1212 has 'TODO: Implement in task 3.3' but this is NOT from the github-issue-integration spec. It is pre-existing unrelated code. Not flagged.",
+      "evidence": []
+    },
+    {
+      "id": "logging-github-api-service-r2",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Round 1 fix (task 16.13) confirmed: GitHubApiService now imports projectLogger and uses it for AUTH_FAILED (warn), NETWORK_ERROR (error), RATE_LIMIT (warn/error), and testConnection auth failures (warn). Per logging.md, no console.* direct usage.",
+      "evidence": [
+        "src/main/services/gitHubApiService.ts:29: import { projectLogger as logger } from './projectLogger'",
+        "Lines 158, 191, 208, 214, 224, 434: appropriate logger calls"
+      ]
+    },
+    {
+      "id": "logging-issue-router",
+      "category": "logging",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "issueRouter (issue.ts) has no logging. While errors are thrown as TRPCError, there is no logger usage for mutations, state transitions, or error context. Other routers in the codebase typically use ProjectLogger. Since error propagation is handled by tRPC error middleware, this is Minor.",
+      "evidence": [
+        "src/main/trpc/routers/issue.ts: no logger import, no log calls"
+      ]
+    },
+    {
+      "id": "logging-credential-service",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService correctly avoids logging sensitive data (tokens). Service is simple enough that logging is not critical.",
+      "evidence": []
+    },
+    {
+      "id": "logging-console-usage",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No direct console.log/warn/error usage found in new production code. Compliant with logging.md guidelines.",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "passed": 24,
+    "failed": 4,
+    "critical": 0,
+    "major": 0,
+    "minor": 4,
+    "info": 24
+  }
+}

@@ -15,7 +15,7 @@ if ((window as any).isE2E) {
   (window as any).__TRPC__ = getVanillaClient();
   console.info('[main] window.__TRPC__ exposed for E2E tests');
 }
-import { useProjectStore, useSpecStore, useSharedBugStore, notify } from './stores';
+import { useProjectStore, useSpecStore, notify } from './stores';
 import { setNotificationHandler } from '@shared/stores/notificationStore';
 
 // agent-error-notification Task 7.2: Import getAgentStartErrorMessage for localized error display
@@ -62,7 +62,6 @@ if (import.meta.env.DEV) {
   (window as unknown as { __stores: unknown }).__stores = {
     projectStore: useProjectStore,
     specStore: useSpecStore,
-    bugStore: useSharedBugStore,
   };
 }
 

@@ -10,11 +10,11 @@
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import type { FileService } from '../fileService';
-import type { BugService } from '../bugService';
+// BugService import removed (github-issue-integration)
 import type { SpecManagerService } from '../specManagerService';
 import type { AgentInfo as SpecManagerAgentInfo } from '../agentRecordService';
 import type { SpecMetadata, SpecJson, SpecPhase } from '../../../renderer/types';
-import type { BugMetadata, BugPhase } from '../../../renderer/types/bug';
+// BugMetadata, BugPhase imports removed (github-issue-integration)
 
 // Create hoisted mocks before imports
 const { mockFs } = vi.hoisted(() => {
@@ -444,120 +444,27 @@ describe('ProjectToolHandlers', () => {
   });
 
   // ============================================================
-  // Task 3.2: project_list_bugs Tests
-  // Requirements: 2.4 - list all bugs
-  // Requirements: 2.5 - filter parameter
+  // Task 3.2: project_list_bugs (deprecated - github-issue-integration)
+  // Bug service removed; listBugs always returns empty list
   // ============================================================
 
-  describe('listBugs', () => {
-    let mockBugService: {
-      readBugs: Mock;
-    };
-
-    beforeEach(() => {
-      mockBugService = {
-        readBugs: vi.fn(),
-      };
-      handlers.setBugService(mockBugService as unknown as BugService);
-    });
-
-    it('should return all bugs with their metadata', async () => {
-      const bugList: BugMetadata[] = [
-        { name: 'bug-001', phase: 'reported' as BugPhase, updatedAt: '2024-01-02T00:00:00Z', reportedAt: '2024-01-01T00:00:00Z' },
-        { name: 'bug-002', phase: 'fixed' as BugPhase, updatedAt: '2024-01-04T00:00:00Z', reportedAt: '2024-01-03T00:00:00Z' },
-      ];
-      mockBugService.readBugs.mockResolvedValue({ ok: true, value: { bugs: bugList, warnings: [] } });
-
+  describe('listBugs (deprecated)', () => {
+    it('should always return empty list (bug service removed)', async () => {
       const result = await handlers.listBugs('/path/to/project');
-
-      expect(result.bugs).toHaveLength(2);
-      expect(result.total).toBe(2);
-      expect(result.bugs[0]).toEqual({
-        name: 'bug-001',
-        phase: 'reported',
-        updatedAt: '2024-01-02T00:00:00Z',
-      });
-      expect(result.bugs[1]).toEqual({
-        name: 'bug-002',
-        phase: 'fixed',
-        updatedAt: '2024-01-04T00:00:00Z',
-      });
-    });
-
-    it('should return empty list when no bugs exist', async () => {
-      mockBugService.readBugs.mockResolvedValue({ ok: true, value: { bugs: [], warnings: [] } });
-
-      const result = await handlers.listBugs('/path/to/project');
-
-      expect(result.bugs).toHaveLength(0);
-      expect(result.total).toBe(0);
-    });
-
-    it('should filter bugs by phase', async () => {
-      const bugList: BugMetadata[] = [
-        { name: 'bug-001', phase: 'reported' as BugPhase, updatedAt: '2024-01-02T00:00:00Z', reportedAt: '2024-01-01T00:00:00Z' },
-        { name: 'bug-002', phase: 'fixed' as BugPhase, updatedAt: '2024-01-04T00:00:00Z', reportedAt: '2024-01-03T00:00:00Z' },
-        { name: 'bug-003', phase: 'fixed' as BugPhase, updatedAt: '2024-01-06T00:00:00Z', reportedAt: '2024-01-05T00:00:00Z' },
-      ];
-      mockBugService.readBugs.mockResolvedValue({ ok: true, value: { bugs: bugList, warnings: [] } });
-
-      const result = await handlers.listBugs('/path/to/project', { phase: 'fixed' });
-
-      expect(result.bugs).toHaveLength(2);
-      expect(result.total).toBe(2);
-      expect(result.bugs.every(b => b.phase === 'fixed')).toBe(true);
-    });
-
-    it('should handle readBugs error gracefully', async () => {
-      mockBugService.readBugs.mockResolvedValue({ ok: false, error: { type: 'NOT_FOUND', path: '/path/to/project' } });
-
-      const result = await handlers.listBugs('/path/to/project');
-
       expect(result.bugs).toHaveLength(0);
       expect(result.total).toBe(0);
     });
   });
 
-  // ============================================================
-  // Task 3.2: listBugsToolHandler Tests
-  // ============================================================
-
-  describe('listBugsToolHandler', () => {
-    let mockBugService: {
-      readBugs: Mock;
-    };
-
-    beforeEach(() => {
-      mockBugService = {
-        readBugs: vi.fn(),
-      };
-      handlers.setBugService(mockBugService as unknown as BugService);
-    });
-
-    it('should return success result with bug list', async () => {
-      const bugList: BugMetadata[] = [
-        { name: 'bug-001', phase: 'reported' as BugPhase, updatedAt: '2024-01-02T00:00:00Z', reportedAt: '2024-01-01T00:00:00Z' },
-      ];
-      mockBugService.readBugs.mockResolvedValue({ ok: true, value: { bugs: bugList, warnings: [] } });
-
+  describe('listBugsToolHandler (deprecated)', () => {
+    it('should return success result with empty bug list', async () => {
       const result = await handlers.listBugsToolHandler({}, '/path/to/project');
-
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.content).toHaveLength(1);
-        expect(result.content[0].type).toBe('text');
         const parsed = JSON.parse(result.content[0].text);
-        expect(parsed.bugs).toHaveLength(1);
-        expect(parsed.total).toBe(1);
+        expect(parsed.bugs).toHaveLength(0);
+        expect(parsed.total).toBe(0);
       }
-    });
-
-    it('should pass filter to listBugs when provided', async () => {
-      mockBugService.readBugs.mockResolvedValue({ ok: true, value: { bugs: [], warnings: [] } });
-
-      await handlers.listBugsToolHandler({ filter: { phase: 'fixed' } }, '/path/to/project');
-
-      expect(mockBugService.readBugs).toHaveBeenCalledWith('/path/to/project');
     });
   });
 

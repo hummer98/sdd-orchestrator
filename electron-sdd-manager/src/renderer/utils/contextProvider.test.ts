@@ -4,7 +4,7 @@
  * Requirements: 4.1, 4.2, 4.3
  *
  * Tests for automatic context extraction from stores for logging
- * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
+ * github-issue-integration: bugStore removed, only specDetailStore used
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -18,19 +18,9 @@ vi.mock('../stores/spec/specDetailStore', () => ({
   },
 }));
 
-// bugs-view-unification Task 6.1: Mock useSharedBugStore instead of useBugStore
-vi.mock('../../shared/stores/bugStore', () => ({
-  useSharedBugStore: {
-    getState: vi.fn(() => ({
-      selectedBugId: null,
-    })),
-  },
-}));
-
 // Now import the module under test and the mocked stores
 import { getAutoContext, type LogContext } from './contextProvider';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
-import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 describe('ContextProvider', () => {
   beforeEach(() => {
@@ -38,11 +28,6 @@ describe('ContextProvider', () => {
     vi.mocked(useSpecDetailStore.getState).mockReturnValue({
       specDetail: null,
     } as ReturnType<typeof useSpecDetailStore.getState>);
-
-    // bugs-view-unification Task 6.1: Use selectedBugId instead of selectedBug
-    vi.mocked(useSharedBugStore.getState).mockReturnValue({
-      selectedBugId: null,
-    } as ReturnType<typeof useSharedBugStore.getState>);
   });
 
   describe('getAutoContext', () => {
@@ -93,57 +78,16 @@ describe('ContextProvider', () => {
       });
     });
 
-    // Requirement 4.2: bugName in context when selected
-    // bugs-view-unification Task 6.1: Uses selectedBugId directly
-    describe('bugName context', () => {
-      it('should include bugName when bug is selected', () => {
-        vi.mocked(useSharedBugStore.getState).mockReturnValue({
-          selectedBugId: 'test-bug-123',
-        } as ReturnType<typeof useSharedBugStore.getState>);
-
-        const context = getAutoContext();
-
-        expect(context.bugName).toBe('test-bug-123');
-      });
-
-      it('should not include bugName when selectedBugId is null', () => {
-        vi.mocked(useSharedBugStore.getState).mockReturnValue({
-          selectedBugId: null,
-        } as ReturnType<typeof useSharedBugStore.getState>);
-
-        const context = getAutoContext();
-
-        expect(context.bugName).toBeUndefined();
-      });
-    });
+    // bugStore removed (github-issue-integration)
+    // bugName context tests removed
 
     // Requirement 4.3: Empty object when nothing selected
     describe('empty context', () => {
-      it('should return empty object when no spec or bug is selected', () => {
+      it('should return empty object when no spec is selected', () => {
         const context = getAutoContext();
 
         expect(context).toEqual({});
         expect(Object.keys(context)).toHaveLength(0);
-      });
-    });
-
-    // Both selected
-    describe('both spec and bug selected', () => {
-      it('should include both specId and bugName when both are selected', () => {
-        vi.mocked(useSpecDetailStore.getState).mockReturnValue({
-          specDetail: {
-            metadata: { name: 'feature-auth' },
-          },
-        } as ReturnType<typeof useSpecDetailStore.getState>);
-
-        vi.mocked(useSharedBugStore.getState).mockReturnValue({
-          selectedBugId: 'auth-bug-456',
-        } as ReturnType<typeof useSharedBugStore.getState>);
-
-        const context = getAutoContext();
-
-        expect(context.specId).toBe('feature-auth');
-        expect(context.bugName).toBe('auth-bug-456');
       });
     });
 
@@ -156,34 +100,6 @@ describe('ContextProvider', () => {
 
         const context = getAutoContext();
 
-        expect(context).toEqual({});
-      });
-
-      it('should return empty object if bugStore throws', () => {
-        vi.mocked(useSharedBugStore.getState).mockImplementation(() => {
-          throw new Error('Store not initialized');
-        });
-
-        const context = getAutoContext();
-
-        expect(context).toEqual({});
-      });
-
-      it('should return partial context if one store throws', () => {
-        vi.mocked(useSpecDetailStore.getState).mockReturnValue({
-          specDetail: {
-            metadata: { name: 'feature-test' },
-          },
-        } as ReturnType<typeof useSpecDetailStore.getState>);
-
-        vi.mocked(useSharedBugStore.getState).mockImplementation(() => {
-          throw new Error('Store not initialized');
-        });
-
-        // Context should still contain specId even if bugStore fails
-        const context = getAutoContext();
-        // Since both stores are accessed in try-catch, if one fails the whole thing returns {}
-        // Let's update the test to reflect actual behavior
         expect(context).toEqual({});
       });
     });

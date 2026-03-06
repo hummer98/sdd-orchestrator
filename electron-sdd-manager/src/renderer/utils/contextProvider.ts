@@ -8,8 +8,7 @@
  */
 
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 
 /**
  * Context object for logging
@@ -44,12 +43,7 @@ export function getAutoContext(): LogContext {
       context.specId = specDetail.metadata.name;
     }
 
-    // Requirement 4.2: Get bugName from shared bugStore
-    // bugs-view-unification Task 6.1: Use selectedBugId instead of selectedBug
-    const selectedBugId = useSharedBugStore.getState().selectedBugId;
-    if (selectedBugId) {
-      context.bugName = selectedBugId;
-    }
+    // bugStore removed (github-issue-integration)
   } catch {
     // Requirement 4.3: Return empty object on error (store not initialized)
     // This handles cases where stores are not yet initialized

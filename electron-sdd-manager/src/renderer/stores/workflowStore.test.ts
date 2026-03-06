@@ -8,7 +8,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from './workflowStore';
 import type { ExecutionSummary } from './workflowStore';
-import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
+// bugAutoExecution types removed (github-issue-integration)
+// DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS is now empty object inline in workflowStore
 
 describe('useWorkflowStore', () => {
   beforeEach(() => {
@@ -23,8 +24,8 @@ describe('useWorkflowStore', () => {
       executionSummary: null,
       // Reset document review options to default 'pause'
       documentReviewOptions: { autoExecutionFlag: 'pause' },
-      // bugs-workflow-auto-execution: Reset bug auto execution permissions
-      bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
+      // bugs-workflow-auto-execution: Reset bug auto execution permissions (now empty)
+      bugAutoExecutionPermissions: {},
       // inspection-permission-unification: inspectionAutoExecutionFlag removed from state
     });
   });
@@ -350,76 +351,14 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // bugs-workflow-auto-execution Task 1.1, 1.2, 1.3: Bug Auto Execution Settings
-  // Requirements: 2.1, 2.2, 7.1-7.4
+  // Bug Auto Execution Settings removed (github-issue-integration)
+  // bugAutoExecutionPermissions is now an empty stub
   // ============================================================
-  describe('Bug Auto Execution Settings', () => {
-    describe('initial state', () => {
-      it('should have bugAutoExecutionPermissions with defaults', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions).toBeDefined();
-        expect(state.bugAutoExecutionPermissions.analyze).toBe(true);
-        expect(state.bugAutoExecutionPermissions.fix).toBe(true);
-        expect(state.bugAutoExecutionPermissions.verify).toBe(true);
-        expect(state.bugAutoExecutionPermissions.deploy).toBe(false);
-      });
-    });
-
-    describe('toggleBugAutoPermission', () => {
-      it('should toggle permission for a phase', () => {
-        useWorkflowStore.getState().toggleBugAutoPermission('analyze');
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions.analyze).toBe(false);
-      });
-
-      it('should toggle permission back to true', () => {
-        useWorkflowStore.getState().toggleBugAutoPermission('analyze');
-        useWorkflowStore.getState().toggleBugAutoPermission('analyze');
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions.analyze).toBe(true);
-      });
-
-      it('should only toggle the specified phase', () => {
-        useWorkflowStore.getState().toggleBugAutoPermission('deploy');
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions.deploy).toBe(true);
-        expect(state.bugAutoExecutionPermissions.analyze).toBe(true);
-        expect(state.bugAutoExecutionPermissions.fix).toBe(true);
-      });
-    });
-
-    describe('setBugAutoExecutionPermissions', () => {
-      it('should set all permissions at once', () => {
-        useWorkflowStore.getState().setBugAutoExecutionPermissions({
-          analyze: false,
-          fix: false,
-          verify: true,
-          deploy: true,
-        });
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions.analyze).toBe(false);
-        expect(state.bugAutoExecutionPermissions.fix).toBe(false);
-        expect(state.bugAutoExecutionPermissions.verify).toBe(true);
-        expect(state.bugAutoExecutionPermissions.deploy).toBe(true);
-      });
-    });
-
-    describe('getBugAutoExecutionPermissions', () => {
-      it('should return current permissions', () => {
-        const permissions = useWorkflowStore.getState().getBugAutoExecutionPermissions();
-        expect(permissions.analyze).toBe(true);
-        expect(permissions.fix).toBe(true);
-        expect(permissions.verify).toBe(true);
-        expect(permissions.deploy).toBe(false);
-      });
-    });
-
-    describe('persistence', () => {
-      it('should include bugAutoExecutionPermissions in partialize', () => {
-        // The persist middleware should include bugAutoExecutionPermissions
-        const state = useWorkflowStore.getState();
-        expect(state.bugAutoExecutionPermissions).toBeDefined();
-      });
+  describe('Bug Auto Execution Settings (deprecated)', () => {
+    it('should have bugAutoExecutionPermissions as empty object', () => {
+      const state = useWorkflowStore.getState();
+      expect(state.bugAutoExecutionPermissions).toBeDefined();
+      expect(Object.keys(state.bugAutoExecutionPermissions).length).toBe(0);
     });
   });
 

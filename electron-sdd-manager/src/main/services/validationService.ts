@@ -9,11 +9,9 @@ import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
 import { CC_SDD_AGENTS, CC_SDD_SETTINGS } from './ccSddWorkflowInstaller';
-import { BUG_TEMPLATES } from './bugWorkflowInstaller';
 import {
   CC_SDD_PROFILE_COMMANDS,
   CC_SDD_AGENT_PROFILE_COMMANDS,
-  BUG_PROFILE_COMMANDS,
   DOCUMENT_REVIEW_COMMANDS,
 } from './projectChecker';
 
@@ -140,8 +138,7 @@ function getRequiredFiles(commandsets: readonly CommandsetName[]): {
         }
         break;
       case 'bug':
-        commands.push(...BUG_PROFILE_COMMANDS.map(c => c.replace('kiro/', '')));
-        templates.push(...BUG_TEMPLATES.map(t => `templates/bugs/${t}`));
+        // Bug commandset deprecated (github-issue-integration)
         break;
       case 'document-review':
         commands.push(...DOCUMENT_REVIEW_COMMANDS.map(c => c.replace('kiro/', '')));

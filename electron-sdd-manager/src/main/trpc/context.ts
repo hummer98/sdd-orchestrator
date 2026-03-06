@@ -13,9 +13,10 @@
  */
 
 import type { FileService } from '../services/fileService';
-import type { BugService } from '../services/bugService';
 import type { SpecManagerService } from '../services/specManagerService';
 import type { EventBus } from './services/eventBus';
+import type { GitHubApiService } from '../services/gitHubApiService';
+import type { GitHubCredentialService } from '../services/gitHubCredentialService';
 
 /**
  * ConfigStore interface - subset used by routers.
@@ -34,9 +35,6 @@ export interface ConfigStoreInterface {
   resetLayout(): void;
   // Tool path methods (Task 3.1: config router)
   setToolPath(toolName: string, path: string | null): void;
-  // Bug worktree default methods (Task 5.2: bug router)
-  getBugsWorktreeDefault?(): boolean;
-  setBugsWorktreeDefault?(value: boolean): void;
   // MCP settings methods (Task 10.3: mcp router)
   getMcpSettings?(): { enabled: boolean; port: number };
   setMcpSettings?(settings: { enabled: boolean; port: number }): void;
@@ -106,10 +104,8 @@ export interface SelectProjectResultLike {
   projectPath: string;
   kiroValidation: { exists: boolean; hasSpecs: boolean; hasSteering: boolean };
   specs: Array<{ name: string }>;
-  bugs: Array<Record<string, unknown>>;
   specJsonMap: Record<string, Record<string, unknown>>;
   error?: Record<string, unknown>;
-  bugWarnings?: string[];
 }
 
 /**
@@ -125,20 +121,6 @@ export interface AutoExecutionCoordinatorInterface {
   retryFrom(specPath: string, phase: string): Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: Record<string, unknown> }>;
   resetAll(): void;
   resetImplRetryCount(specPath: string): void;
-}
-
-/**
- * BugAutoExecutionCoordinatorInterface - subset used by autoExecution router.
- * Task 7.1: Added for autoExecution router.
- * Avoids importing the full BugAutoExecutionCoordinator class (which has side effects).
- */
-export interface BugAutoExecutionCoordinatorInterface {
-  start(projectPath: string, bugPath: string, bugName: string, options: Record<string, unknown>, lastCompletedPhase: string | null): Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: Record<string, unknown> }>;
-  stop(bugPath: string): Promise<{ ok: true; value: void } | { ok: false; error: Record<string, unknown> }>;
-  getStatus(bugPath: string): Record<string, unknown> | null;
-  getAllStatuses(): Map<string, Record<string, unknown>>;
-  retryFrom(bugPath: string, phase: string): Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: Record<string, unknown> }>;
-  resetAll(): void;
 }
 
 /**
@@ -288,11 +270,18 @@ export interface ContextServices {
   /** Config store for app settings (electron-store) */
   configStore: ConfigStoreInterface | null;
 
-  /** Bug service for bug CRUD operations */
-  bugService: BugService | null;
-
   /** Get the SpecManagerService (throws if not initialized) */
   getSpecManagerService: () => SpecManagerService;
+
+  // ============================================================
+  // GitHub Integration Services (github-issue-integration: Task 4)
+  // ============================================================
+
+  /** GitHub API service for Issue/PR/Label operations */
+  gitHubApiService?: GitHubApiService;
+
+  /** GitHub credential service for PAT encryption/storage */
+  gitHubCredentialService?: GitHubCredentialService;
 
   // ============================================================
   // Config Domain Services (Task 3.1: config router)
@@ -349,31 +338,6 @@ export interface ContextServices {
   getIsE2ETest: () => boolean;
 
   // ============================================================
-  // Bug Domain Services (Task 5.2: bug router)
-  // ============================================================
-
-  /** Start bugs watcher for the current project */
-  bugsWatcherStart?: () => Promise<void>;
-
-  /** Stop bugs watcher */
-  bugsWatcherStop?: () => Promise<void>;
-
-  /** Create a bug worktree (bugName -> Result) */
-  bugWorktreeCreate?: (bugName: string) => Promise<{ ok: boolean; value?: unknown; error?: { type: string; message: string } }>;
-
-  /** Remove a bug worktree (bugName -> Result) */
-  bugWorktreeRemove?: (bugName: string) => Promise<{ ok: boolean; value?: unknown; error?: { type: string; message: string } }>;
-
-  /** Auto execution with worktree for bug (bugName -> Result) */
-  bugWorktreeAutoExecution?: (bugName: string) => Promise<{ ok: boolean; value?: unknown; error?: { type: string; message: string } }>;
-
-  /** Convert bug to worktree mode (bugName -> Result) */
-  bugConvertToWorktree?: (bugName: string) => Promise<{ ok: boolean; value?: unknown; error?: { type: string; message: string } }>;
-
-  /** Validate that the project is on the main branch (for worktree mode) */
-  validateWorktreeMainBranch?: (projectPath: string) => Promise<{ ok: boolean; error?: { message: string } }>;
-
-  // ============================================================
   // Spec Domain Services (Task 5.1: spec router - confirm common commands)
   // ============================================================
 
@@ -418,9 +382,6 @@ export interface ContextServices {
 
   /** AutoExecutionCoordinator for spec auto-execution */
   autoExecutionCoordinator?: AutoExecutionCoordinatorInterface;
-
-  /** BugAutoExecutionCoordinator for bug auto-execution */
-  bugAutoExecutionCoordinator?: BugAutoExecutionCoordinatorInterface;
 
   // ============================================================
   // Git Domain Services (Task 8.1: git router)
@@ -719,7 +680,6 @@ function createDefaultServices(): ContextServices {
     getNodeEnv: () => process.env.NODE_ENV || 'production',
     fileService: null,
     configStore: null,
-    bugService: null,
     getSpecManagerService: () => {
       throw new Error('SpecManagerService not initialized. Call setProjectPath first.');
     },
@@ -736,7 +696,6 @@ function createDefaultServices(): ContextServices {
       projectPath: '',
       kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
       specs: [],
-      bugs: [],
       specJsonMap: {},
       error: { type: 'INTERNAL_ERROR', message: 'selectProject not initialized' },
     }),

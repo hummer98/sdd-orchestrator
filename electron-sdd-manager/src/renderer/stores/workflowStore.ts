@@ -13,9 +13,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WorkflowPhase } from '../types/workflow';
 import { ALL_WORKFLOW_PHASES } from '../types/workflow';
-import type { BugWorkflowPhase } from '../types/bug';
-import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
-import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
+// Bug types removed (github-issue-integration)
 // inspection-permission-unification Task 4: InspectionAutoExecutionFlag import removed
 // InspectionAutoExecutionFlag is deprecated - use permissions.inspection instead
 // SSOT: AutoExecutionPermissions and DEFAULT_AUTO_EXECUTION_PERMISSIONS are defined in types/index.ts
@@ -135,12 +133,7 @@ interface WorkflowState {
   /** レビューラウンド完了後の確認待ち状態 */
   pendingReviewConfirmation: boolean;
 
-  // ============================================================
-  // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings
-  // Requirements: 2.1, 7.4
-  // ============================================================
-  /** Bug自動実行許可設定（フェーズごと） */
-  bugAutoExecutionPermissions: BugAutoExecutionPermissions;
+  // bugAutoExecutionPermissions removed (github-issue-integration)
 
   // ============================================================
   // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag REMOVED
@@ -200,16 +193,7 @@ interface WorkflowActions {
   // Requirements: 6.1
   // Document review is now controlled via permissions['document-review']
 
-  // ============================================================
-  // bugs-workflow-auto-execution Task 1.2: Bug Auto Execution Actions
-  // Requirements: 2.2
-  // ============================================================
-  /** Bug自動実行許可をトグル */
-  toggleBugAutoPermission: (phase: BugWorkflowPhase) => void;
-  /** Bug自動実行許可設定を一括設定 */
-  setBugAutoExecutionPermissions: (permissions: BugAutoExecutionPermissions) => void;
-  /** Bug自動実行許可設定を取得 */
-  getBugAutoExecutionPermissions: () => BugAutoExecutionPermissions;
+  // Bug Auto Execution Actions removed (github-issue-integration)
 
   // ============================================================
   // inspection-permission-unification Task 4.2: setInspectionAutoExecutionFlag REMOVED
@@ -252,8 +236,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // Task 7.3: Review Confirmation - initial state
       pendingReviewConfirmation: false,
 
-      // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings - initial state
-      bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
+      // bugAutoExecutionPermissions removed (github-issue-integration)
 
       // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag initial state REMOVED
       // Use permissions.inspection instead (default: true in DEFAULT_AUTO_EXECUTION_PERMISSIONS)
@@ -350,29 +333,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
         return ALL_WORKFLOW_PHASES[currentIndex + 1];
       },
 
-      // ============================================================
-      // bugs-workflow-auto-execution Task 1.2: Bug Auto Execution Actions
-      // Requirements: 2.2
-      // ============================================================
-      toggleBugAutoPermission: (phase: BugWorkflowPhase) => {
-        // Skip report phase as it's not auto-executable
-        if (phase === 'report') return;
-
-        set((state) => ({
-          bugAutoExecutionPermissions: {
-            ...state.bugAutoExecutionPermissions,
-            [phase]: !state.bugAutoExecutionPermissions[phase as keyof BugAutoExecutionPermissions],
-          },
-        }));
-      },
-
-      setBugAutoExecutionPermissions: (permissions: BugAutoExecutionPermissions) => {
-        set({ bugAutoExecutionPermissions: { ...permissions } });
-      },
-
-      getBugAutoExecutionPermissions: () => {
-        return get().bugAutoExecutionPermissions;
-      },
+      // Bug Auto Execution Actions removed (github-issue-integration)
 
       // ============================================================
       // inspection-permission-unification Task 4.2: setInspectionAutoExecutionFlag REMOVED
@@ -394,9 +355,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
       partialize: (state) => ({
         autoExecutionPermissions: state.autoExecutionPermissions,
         commandPrefix: state.commandPrefix,
-        bugAutoExecutionPermissions: state.bugAutoExecutionPermissions,
-        // documentReviewOptions removed - use permissions['document-review'] instead
-        // inspectionAutoExecutionFlag removed - use permissions.inspection instead
+        // bugAutoExecutionPermissions removed (github-issue-integration)
       }),
     }
   )

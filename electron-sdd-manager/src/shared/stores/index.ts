@@ -9,9 +9,7 @@
 export { useSharedSpecStore, resetSharedSpecStore, getSharedSpecStore } from './specStore';
 export type { SharedSpecState, SharedSpecActions, SharedSpecStore } from './specStore';
 
-// Bug store
-export { useSharedBugStore, resetSharedBugStore, getSharedBugStore } from './bugStore';
-export type { SharedBugState, SharedBugActions, SharedBugStore } from './bugStore';
+// Bug store removed (github-issue-integration)
 
 // Agent store
 export { useSharedAgentStore, resetSharedAgentStore, getSharedAgentStore } from './agentStore';
@@ -26,17 +24,7 @@ export type {
   ExecutionStateEntry,
 } from './executionStore';
 
-// Bug Auto Execution store (bug-auto-execution-per-bug-state)
-export {
-  useBugAutoExecutionStore,
-  initBugAutoExecutionIpcListeners,
-  cleanupBugAutoExecutionIpcListeners,
-  DEFAULT_BUG_AUTO_EXECUTION_RUNTIME,
-} from './bugAutoExecutionStore';
-export type {
-  BugAutoExecutionRuntimeState,
-  BugAutoExecutionRuntimeMap,
-} from './bugAutoExecutionStore';
+// Bug Auto Execution store removed (github-issue-integration)
 
 // MCP store (mcp-server-integration)
 export { useMcpStore, resetMcpStore, getMcpStore } from './mcpStore';
@@ -86,6 +74,12 @@ export type {
   ProjectEditorActions,
   ProjectEditorStore,
 } from './projectEditorStore';
+
+// Issue store (github-issue-integration feature)
+// Task 6.1: Issue/PR state management
+// Requirements: 2.2, 2.3, 2.5, 2.6, 9.1
+export { issueStore, resetIssueStore, getIssueStore } from './issueStore';
+export type { IssueStoreState, IssueStoreActions, IssueStore } from './issueStore';
 
 // Docs Tree Expanded store (project-docs-viewer feature)
 // Task 2.1: docs/ ツリー展開状態管理ストア

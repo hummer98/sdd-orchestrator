@@ -11,8 +11,7 @@ export * from './ui';
 // Spec components
 export * from './spec';
 
-// Bug components
-export * from './bug';
+// Bug components removed (github-issue-integration)
 
 // Workflow components
 export * from './workflow';

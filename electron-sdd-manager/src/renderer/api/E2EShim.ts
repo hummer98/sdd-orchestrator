@@ -164,13 +164,7 @@ export function initializeE2EShim(): void {
       return () => sub.unsubscribe();
     },
 
-    // --- Bug Auto Execution operations ---
-    bugAutoExecutionStatus: async (params: { bugPath: string }) => {
-      return await client.autoExecution.bugGetStatus.query({ bugPath: params.bugPath });
-    },
-    bugAutoExecutionReset: async () => {
-      return await client.autoExecution.bugReset.mutate();
-    },
+    // Bug Auto Execution operations removed (github-issue-integration)
   };
 
   console.info('[E2EShim] window.electronAPI has been re-exposed for E2E tests');

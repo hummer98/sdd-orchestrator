@@ -507,10 +507,10 @@ describe('Events Router - 全Subscriptionプロシージャの存在確認', () 
     'onAgentExitError',
     'onAgentRecordChanged',
 
-    // Spec/Bug系 (2)
+    // Spec系 (2)
     // startup-project-selection-race-condition: onProjectSelected removed (Pull model)
     'onSpecsChanged',
-    'onBugsChanged',
+    'onBugsChanged', // Retained for backward compatibility
 
     // Auto Execution系 (5)
     'onAutoExecutionStatusChanged',
@@ -519,13 +519,7 @@ describe('Events Router - 全Subscriptionプロシージャの存在確認', () 
     'onAutoExecutionError',
     'onAutoExecutionCompleted',
 
-    // Bug Auto Execution系 (6)
-    'onBugAutoExecutionStatusChanged',
-    'onBugAutoExecutionPhaseStarted',
-    'onBugAutoExecutionPhaseCompleted',
-    'onBugAutoExecutionError',
-    'onBugAutoExecutionCompleted',
-    'onBugAutoExecutionExecutePhase',
+    // Bug Auto Execution系 removed (github-issue-integration)
 
     // Server/Tunnel系 (3)
     'onRemoteServerStatusChanged',
@@ -1000,149 +994,149 @@ describe('統合テスト - AutoExecution状態変更イベント', () => {
   });
 });
 
-// ============================================================
-// 13. 統合テスト: BugAutoExecution状態変更イベント (Task 9.3)
-// ============================================================
+// BugAutoExecution integration tests removed (github-issue-integration)
 
-describe('統合テスト - BugAutoExecution状態変更イベント', () => {
-  it('BugAutoExecution開始時のステータス変更が配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
 
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
 
-    const payload = {
-      bugPath: '/project/.kiro/bugs/fix-login',
-      bugName: 'fix-login',
-      status: 'running',
-      currentPhase: 'analyze',
-    };
 
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onBugAutoExecutionStatusChanged(),
-      () => bus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED, payload),
-    );
 
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).status).toBe('running');
-    expect((received[0] as any).bugName).toBe('fix-login');
-    unsubscribe();
-  });
 
-  it('BugAutoExecutionフェーズ開始イベントが配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
 
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
 
-    const payload = {
-      bugPath: '/project/.kiro/bugs/fix-crash',
-      phase: 'fix',
-      startedAt: '2026-02-06T09:00:00Z',
-    };
 
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onBugAutoExecutionPhaseStarted(),
-      () => bus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED, payload),
-    );
 
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).phase).toBe('fix');
-    unsubscribe();
-  });
 
-  it('BugAutoExecutionエラーイベントが配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
 
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
 
-    const payload = {
-      bugPath: '/project/.kiro/bugs/fix-crash',
-      error: 'Fix verification failed',
-      phase: 'verify',
-    };
 
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onBugAutoExecutionError(),
-      () => bus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR, payload),
-    );
 
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).error).toBe('Fix verification failed');
-    unsubscribe();
-  });
 
-  it('BugAutoExecution完了イベントが配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
 
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
 
-    const payload = {
-      bugPath: '/project/.kiro/bugs/fix-crash',
-      bugName: 'fix-crash',
-      success: true,
-      executedPhases: ['analyze', 'fix', 'verify'],
-    };
 
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onBugAutoExecutionCompleted(),
-      () => bus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED, payload),
-    );
 
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).success).toBe(true);
-    unsubscribe();
-  });
 
-  it('BugAutoExecutionExecutePhaseイベントが配信されること', async () => {
-    const { eventsRouter } = await import('../routers/events');
-    const { createContext } = await import('../context');
-    const { router } = await import('../trpc');
-    const { createEventBus, EVENT_NAMES } = await import('../services/eventBus');
 
-    const bus = createEventBus();
-    const testRouter = router({ events: eventsRouter });
-    const callerFactory = createCallerFactory()(testRouter);
-    const ctx = createContext({ eventBus: bus });
 
-    const payload = {
-      bugPath: '/project/.kiro/bugs/fix-crash',
-      phase: 'fix',
-      action: 'execute',
-    };
 
-    const { received, unsubscribe } = await subscribeAndCollect(
-      () => callerFactory(ctx).events.onBugAutoExecutionExecutePhase(),
-      () => bus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_EXECUTE_PHASE, payload),
-    );
 
-    expect(received).toHaveLength(1);
-    expect((received[0] as any).phase).toBe('fix');
-    unsubscribe();
-  });
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ============================================================
 // 14. 統合テスト: ファイルイベント配信 (Task 9.3)
@@ -1571,11 +1565,7 @@ describe('統合テスト - Zodスキーマエクスポートの検証', () => {
     expect(events.autoExecutionErrorSchema).toBeDefined();
     expect(events.autoExecutionCompletedSchema).toBeDefined();
 
-    // BugAutoExecution系スキーマ
-    expect(events.bugAutoExecutionStatusChangedSchema).toBeDefined();
-    expect(events.bugAutoExecutionPhaseEventSchema).toBeDefined();
-    expect(events.bugAutoExecutionErrorSchema).toBeDefined();
-    expect(events.bugAutoExecutionCompletedSchema).toBeDefined();
+    // BugAutoExecution系スキーマ removed (github-issue-integration)
 
     // Server/Tunnel系スキーマ
     expect(events.serverStatusSchema).toBeDefined();

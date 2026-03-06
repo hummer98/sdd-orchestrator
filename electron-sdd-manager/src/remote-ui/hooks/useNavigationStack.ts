@@ -34,7 +34,7 @@ import type {
  * specs/bugs/agents/project are the main tabs
  * project-config-editor Task 7.2: Added 'project' tab
  */
-export type MobileTab = 'specs' | 'bugs' | 'agents' | 'project';
+export type MobileTab = 'specs' | 'issues' | 'bugs' | 'agents' | 'project';
 
 /**
  * Detail context for Spec detail page

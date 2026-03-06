@@ -20,11 +20,7 @@ export type { SpecActionsViewProps } from './SpecActionsView';
 export { AgentView } from './AgentView';
 export type { AgentViewProps } from './AgentView';
 
-export { BugsView } from './BugsView';
-export type { BugsViewProps } from './BugsView';
-
-export { BugDetailView } from './BugDetailView';
-export type { BugDetailViewProps } from './BugDetailView';
+// github-issue-integration Task 12.2: Bug views removed - replaced by IssuePane
 
 export { ProjectAgentView } from './ProjectAgentView';
 export type { ProjectAgentViewProps } from './ProjectAgentView';
@@ -43,7 +39,6 @@ export type { ProjectViewProps } from './ProjectView';
 // Requirements: 3.1, 4.1, 5.1, 6.1
 export {
   SpecDetailPage,
-  BugDetailPage,
   AgentsTabView,
   AgentDetailDrawer,
   SubTabBar,
@@ -54,8 +49,6 @@ export {
 export type {
   SpecDetailPageProps,
   SpecSubTab,
-  BugDetailPageProps,
-  BugSubTab,
   AgentsTabViewProps,
   AgentDetailDrawerProps,
   SubTabBarProps,

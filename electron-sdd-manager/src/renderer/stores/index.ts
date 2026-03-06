@@ -12,14 +12,11 @@ import { useWorkflowStore } from './workflowStore';
 import { useRemoteAccessStore } from './remoteAccessStore';
 import { useConnectionStore } from './connectionStore';
 import { useVersionStatusStore } from './versionStatusStore';
-// bugs-view-unification Task 6.1: Import shared bugStore instead of renderer-specific
-import { useSharedBugStore } from '../../shared/stores/bugStore';
 // schedule-task-execution Task 8.2: Import shared scheduleTaskStore
 import { useScheduleTaskStore } from '../../shared/stores/scheduleTaskStore';
 // git-diff-viewer Task 4.1: Import gitViewStore
 import { useGitViewStore } from './gitViewStore';
-// bug-auto-execution E2E: Import bugAutoExecutionStore for testing
-import { useBugAutoExecutionStore } from '../../shared/stores/bugAutoExecutionStore';
+// bugAutoExecutionStore removed (github-issue-integration)
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
@@ -38,10 +35,7 @@ export { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS, DEFAULT_COMMAND_P
 export type { AutoExecutionPermissions, ExecutionSummary, CommandPrefix } from './workflowStore';
 // Task 4.2: Remote Access Store (mobile-remote-access)
 export { useRemoteAccessStore, STORAGE_KEY as REMOTE_ACCESS_STORAGE_KEY } from './remoteAccessStore';
-// bugs-view-unification Task 6.1: Export shared bugStore (SSOT)
-// Re-export useSharedBugStore for backward compatibility
-export { useSharedBugStore } from '../../shared/stores/bugStore';
-export type { SharedBugState, SharedBugActions, SharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 // SSH Remote Project Store (Requirements: 6.1, 7.1, 7.2)
 export { useConnectionStore } from './connectionStore';
 export type { ConnectionStatus, ProjectType, ConnectionInfo, RecentRemoteProject, ConnectionState } from './connectionStore';
@@ -114,12 +108,7 @@ export { useGitViewStore } from './gitViewStore';
     setState: (state: Parameters<typeof useRemoteAccessStore.setState>[0]) => useRemoteAccessStore.setState(state),
     subscribe: useRemoteAccessStore.subscribe,
   },
-  // bugs-view-unification Task 6.1: Use shared bugStore (SSOT)
-  bug: {
-    getState: () => useSharedBugStore.getState(),
-    setState: (state: Parameters<typeof useSharedBugStore.setState>[0]) => useSharedBugStore.setState(state),
-    subscribe: useSharedBugStore.subscribe,
-  },
+  // bugStore removed (github-issue-integration)
   connection: {
     getState: () => useConnectionStore.getState(),
     setState: (state: Parameters<typeof useConnectionStore.setState>[0]) => useConnectionStore.setState(state),
@@ -142,10 +131,5 @@ export { useGitViewStore } from './gitViewStore';
     setState: (state: Parameters<typeof useGitViewStore.setState>[0]) => useGitViewStore.setState(state),
     subscribe: useGitViewStore.subscribe,
   },
-  // bug-auto-execution E2E: Add bugAutoExecution store for testing
-  bugAutoExecution: {
-    getState: () => useBugAutoExecutionStore.getState(),
-    setState: (state: Parameters<typeof useBugAutoExecutionStore.setState>[0]) => useBugAutoExecutionStore.setState(state),
-    subscribe: useBugAutoExecutionStore.subscribe,
-  },
+  // bugAutoExecutionStore removed (github-issue-integration)
 };

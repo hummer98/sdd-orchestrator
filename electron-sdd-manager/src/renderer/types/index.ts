@@ -206,15 +206,7 @@ export interface WindowBounds {
   readonly height: number;
 }
 
-// Bug Workflow Types
-export * from './bug';
-import type { BugMetadata } from './bug';
-
-// ============================================================
-// bugs-workflow-auto-execution Task 6: Bug Auto Execution Types
-// Requirements: 7.4
-// ============================================================
-export * from './bugAutoExecution';
+// Bug types removed (github-issue-integration)
 
 // ============================================================
 // auto-execution-parallel-spec Task 1: ExecutionContext Types
@@ -248,7 +240,7 @@ export interface SelectProjectResult {
   readonly projectPath: string;
   readonly kiroValidation: KiroValidation;
   readonly specs: SpecMetadata[];
-  readonly bugs: BugMetadata[];
+  readonly bugs: unknown[];
   readonly error?: SelectProjectError;
   /**
    * spec-metadata-ssot-refactor: Map of spec name to SpecJson for phase/updatedAt display
@@ -422,11 +414,7 @@ export interface VersionCheckResult {
 // ============================================================
 export * from './worktree';
 
-// ============================================================
-// Bug Worktree Support Types (bugs-worktree-support feature)
-// Requirements: 1.1, 1.2, 1.3, 1.4
-// ============================================================
-export * from './bugJson';
+// bugJson removed (github-issue-integration)
 
 // ============================================================
 // Document Review Types (gemini-document-review feature)

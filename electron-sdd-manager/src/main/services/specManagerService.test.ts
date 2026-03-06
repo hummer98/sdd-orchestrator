@@ -2513,55 +2513,10 @@ describe('executeDocumentReview - multi-engine support', () => {
 
   // ============================================================
   // bug-auto-execution-worktree-cwd: worktree cwd resolution for bug: prefix
+  // github-issue-integration: bug: prefix now always returns projectPath (no worktree resolution)
   // ============================================================
-  describe('startAgent - bug: prefix worktree cwd resolution', () => {
-    // bug-auto-execution-worktree-cwd: Test for bug: prefix worktree resolution
-    it('should auto-resolve worktreeCwd for bug: prefix specId', async () => {
-      const bugName = 'test-worktree-bug';
-
-      // Setup: Create worktree bug directory with bug.json
-      const worktreeBugPath = path.join(
-        testDir,
-        '.kiro',
-        'worktrees',
-        'bugs',
-        bugName,
-        '.kiro',
-        'bugs',
-        bugName
-      );
-      await fs.mkdir(worktreeBugPath, { recursive: true });
-      await fs.writeFile(path.join(worktreeBugPath, 'report.md'), '# Bug Report');
-      await fs.writeFile(
-        path.join(worktreeBugPath, 'bug.json'),
-        JSON.stringify({
-          bug_name: bugName,
-          created_at: '2026-01-22T00:00:00Z',
-          updated_at: '2026-01-22T00:00:00Z',
-          worktree: {
-            path: `.kiro/worktrees/bugs/${bugName}`,
-            branch: `bugfix/${bugName}`,
-            created_at: '2026-01-22T00:00:00Z',
-          },
-        })
-      );
-
-      const result = await service.startAgent({
-        specId: `bug:${bugName}`,
-        phase: 'analyze',
-        commandOverride: 'echo',
-        args: ['test'],
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // The cwd should be the worktree path, not the main project path
-        expect(result.value.cwd).toContain('.kiro/worktrees/bugs');
-        expect(result.value.cwd).toContain(bugName);
-      }
-    });
-
-    it('should use projectPath for bug: prefix when bug has no worktree', async () => {
+  describe('startAgent - bug: prefix cwd resolution (github-issue-integration)', () => {
+    it('should use projectPath for bug: prefix specId (worktree resolution removed)', async () => {
       const bugName = 'test-no-worktree-bug';
 
       // Setup: Create main bug directory with bug.json (no worktree field)
@@ -2574,7 +2529,6 @@ describe('executeDocumentReview - multi-engine support', () => {
           bug_name: bugName,
           created_at: '2026-01-22T00:00:00Z',
           updated_at: '2026-01-22T00:00:00Z',
-          // No worktree field
         })
       );
 
@@ -2587,7 +2541,7 @@ describe('executeDocumentReview - multi-engine support', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        // The cwd should be the main project path
+        // The cwd should always be the main project path now
         expect(result.value.cwd).toBe(testDir);
       }
     });

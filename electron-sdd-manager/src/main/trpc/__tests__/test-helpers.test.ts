@@ -83,12 +83,7 @@ describe('Test Helpers - createTestContext', () => {
     expect(typeof ctx.services.configStore!.setHangThreshold).toBe('function');
   });
 
-  it('should provide mock bugService', async () => {
-    const { createTestContext } = await import('../helpers/test-helpers');
-    const ctx = createTestContext();
-    expect(ctx.services.bugService).toBeDefined();
-    expect(ctx.services.bugService).not.toBeNull();
-  });
+  // bugService removed (github-issue-integration)
 
   it('should provide mock getSpecManagerService that returns a mock', async () => {
     const { createTestContext } = await import('../helpers/test-helpers');
@@ -173,7 +168,7 @@ describe('Test Helpers - createMockServices', () => {
     expect(services).toHaveProperty('setInitialProjectPath');
     expect(services).toHaveProperty('fileService');
     expect(services).toHaveProperty('configStore');
-    expect(services).toHaveProperty('bugService');
+    // bugService removed (github-issue-integration)
     expect(services).toHaveProperty('getSpecManagerService');
   });
 

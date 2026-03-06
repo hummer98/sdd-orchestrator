@@ -37,25 +37,20 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
   - `/kiro:validate-impl {feature}` (optional: after implementation)
 - Progress check: `/kiro:spec-status {feature}` (use anytime)
 
-### Bug Fix (Lightweight Workflow)
+### Issue Workflow (GitHub Integration)
 
-For small bug fixes, the full SDD process is not required. Use the lightweight workflow:
-
-```
-Report -> Analyze -> Fix -> Verify
-```
+GitHub Issue-driven development workflow:
 
 | Command | Description |
 |---------|------|
-| `/kiro:bug-create <name> "description"` | Create bug report |
-| `/kiro:bug-analyze [name]` | Investigate root cause |
-| `/kiro:bug-fix [name]` | Implement fix |
-| `/kiro:bug-verify [name]` | Verify fix |
-| `/kiro:bug-status [name]` | Check progress |
+| `/kiro:issue-analyze <number>` | Analyze issue and post findings |
+| `/kiro:issue-fix <number>` | Implement fix for issue |
+| `/kiro:issue-verify <number>` | Verify fix for issue |
+| `/kiro:issue-ask <number> "prompt"` | Ask question with issue context |
 
 **Usage guidelines**:
-- **Small bugs**: Bug Fix workflow (lightweight, fast)
-- **Complex bugs requiring design changes**: Full SDD workflow
+- Issues are tracked via GitHub Issues with `status:*` labels
+- Agent execution results are automatically posted as Issue comments
 
 ## Design Principles
 

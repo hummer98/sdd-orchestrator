@@ -345,13 +345,14 @@ describe('productionServices', () => {
       expect(typeof services).toBe('object');
     });
 
-    it('should return 72 service properties (all except 3 handler.ts injected)', () => {
+    it('should return service properties (all except handler.ts injected)', () => {
       const services = createProductionServices();
       const keys = Object.keys(services);
       // productionServices should wire all ContextServices properties except:
       // - eventBus, getInitialSelectResult, clearInitialSelectResult (injected by handler.ts)
+      // - gitHubApiService, gitHubCredentialService now wired (github-issue-integration: Task 16.1)
       // multi-window-integration Task 7.3: createNewWindow now wired here via WindowManager
-      expect(keys.length).toBeGreaterThanOrEqual(72);
+      expect(keys.length).toBeGreaterThanOrEqual(71);
     });
 
     it('should NOT include handler.ts injected properties (eventBus, getInitialSelectResult, clearInitialSelectResult)', () => {
@@ -366,15 +367,22 @@ describe('productionServices', () => {
   describe('wiring completeness - productionServices keys vs mockServices keys', () => {
     // These properties are NOT in productionServices — they are injected externally:
     // - eventBus, getInitialSelectResult, clearInitialSelectResult: injected by handler.ts
+    // - gitHubApiService, gitHubCredentialService: now wired (github-issue-integration: Task 16.1)
     // multi-window-integration Task 7.3: createNewWindow is now wired in productionServices via WindowManager
     const HANDLER_INJECTED_KEYS = ['eventBus', 'getInitialSelectResult', 'clearInitialSelectResult'];
+    // All services now wired - no NOT_YET_WIRED_KEYS remain
+    const NOT_YET_WIRED_KEYS: string[] = [];
 
-    it('should cover all ContextServices properties that mockServices covers (minus handler.ts injected)', () => {
+    it('should cover all ContextServices properties that mockServices covers (minus handler.ts injected and not-yet-wired)', () => {
       const productionKeys = new Set(Object.keys(createProductionServices()));
       const mockKeys = new Set(Object.keys(createMockServices()));
 
       // Remove handler.ts injected keys from mock keys for comparison
       for (const key of HANDLER_INJECTED_KEYS) {
+        mockKeys.delete(key);
+      }
+      // Remove not-yet-wired keys
+      for (const key of NOT_YET_WIRED_KEYS) {
         mockKeys.delete(key);
       }
 
@@ -417,10 +425,10 @@ describe('productionServices', () => {
       }
     });
 
-    it('should have exactly mockServices keys minus handler.ts injected keys', () => {
+    it('should have exactly mockServices keys minus handler.ts injected and not-yet-wired keys', () => {
       const productionKeys = Object.keys(createProductionServices()).sort();
       const mockKeys = Object.keys(createMockServices())
-        .filter(k => !HANDLER_INJECTED_KEYS.includes(k))
+        .filter(k => !HANDLER_INJECTED_KEYS.includes(k) && !NOT_YET_WIRED_KEYS.includes(k))
         .sort();
 
       expect(productionKeys).toEqual(mockKeys);
@@ -462,18 +470,7 @@ describe('productionServices', () => {
       expect(typeof services.createNewWindow).toBe('function');
     });
 
-    // Bug Domain (Task 1.3)
-    it('should wire bugsWatcherStart', () => {
-      expect(services.bugsWatcherStart).toBeDefined();
-    });
-
-    it('should wire bugWorktreeCreate', () => {
-      expect(services.bugWorktreeCreate).toBeDefined();
-    });
-
-    it('should wire validateWorktreeMainBranch', () => {
-      expect(services.validateWorktreeMainBranch).toBeDefined();
-    });
+    // Bug Domain removed (github-issue-integration)
 
     // Spec Domain (Task 2.1)
     it('should wire confirmCommonCommands', () => {

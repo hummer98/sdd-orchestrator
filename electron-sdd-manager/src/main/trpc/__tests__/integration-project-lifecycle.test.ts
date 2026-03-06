@@ -239,7 +239,7 @@ describe('Task 9.3: プロジェクト選択→サービスライフサイクル
       expect(services).toHaveProperty('specManagerService');
       expect(services).toHaveProperty('specsWatcherService');
       expect(services).toHaveProperty('agentRecordWatcherService');
-      expect(services).toHaveProperty('bugsWatcherService');
+      // bugsWatcherService removed (github-issue-integration)
       expect(services).toHaveProperty('metricsService');
       expect(services).toHaveProperty('autoExecutionCoordinator');
     });
@@ -314,7 +314,7 @@ describe('Task 9.3: プロジェクト選択→サービスライフサイクル
       const services = wm.getWindowServices(win.id)!;
       const specsStop = services.specsWatcherService.stop;
       const agentRecordStop = services.agentRecordWatcherService.stop;
-      const bugsStop = services.bugsWatcherService.stop;
+      // bugsWatcherService removed (github-issue-integration)
       const autoExecReset = services.autoExecutionCoordinator.resetAll;
 
       // Close window
@@ -323,7 +323,6 @@ describe('Task 9.3: プロジェクト選択→サービスライフサイクル
       // Verify watchers were stopped
       expect(specsStop).toHaveBeenCalled();
       expect(agentRecordStop).toHaveBeenCalled();
-      expect(bugsStop).toHaveBeenCalled();
       expect(autoExecReset).toHaveBeenCalled();
     });
 

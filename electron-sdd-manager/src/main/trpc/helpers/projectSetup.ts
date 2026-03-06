@@ -14,10 +14,10 @@ import { LogStreamingService } from '../../services/logStreamingService';
 import { getDefaultAgentRecordService, initDefaultAgentRecordService } from '../../services/agentRecordService';
 import { getGlobalEventBus } from '../services/globalEventBus';
 import { EVENT_NAMES } from '../services/eventBus';
-import { BugService } from '../../services/bugService';
+// BugService removed (github-issue-integration)
 import { layoutConfigService } from '../../services/layoutConfigService';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../../services/autoExecutionCoordinator';
-import { getBugAutoExecutionCoordinator } from '../../services/bugAutoExecutionCoordinator';
+// BugAutoExecutionCoordinator removed (github-issue-integration)
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, setupFileService, getRemoteAccessServer } from '../../services/remoteAccessSetup';
 import { initScheduleTaskCoordinator } from '../../services/scheduleTaskSetup';
 import { MetricsService } from '../../services/metricsService';
@@ -34,6 +34,15 @@ import {
 
 // multi-window-integration Task 6.1: WindowManager for per-window project registration
 import { getWindowManager } from '../../services/windowManager';
+
+// github-issue-integration: Task 16.12 - Agent-Issue lifecycle hooks
+import {
+  isIssueAgent,
+  extractIssueNumberFromSpecId,
+  handleAgentStartForIssue,
+  handleAgentCompletionForIssue,
+} from '../../services/agentIssueIntegration';
+import { getGitHubApiService } from '../productionServices';
 
 // State Management
 import {
@@ -60,7 +69,7 @@ export {
 } from './projectState';
 
 import type { SelectProjectResult } from '../../../renderer/types';
-import type { BugWorkflowPhase } from '../../../renderer/types/bug';
+// BugWorkflowPhase removed (github-issue-integration)
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../../services/webSocketHandler';
 
 // Re-export utility functions that were in projectUtils.ts
@@ -78,7 +87,6 @@ export { startSpecsWatcher, stopSpecsWatcher, startBugsWatcher, stopBugsWatcher,
 // Service Instances (DI)
 // ============================================================
 const fileService = new FileService();
-const bugService = new BugService();
 
 // ============================================================
 // Public Functions
@@ -100,7 +108,7 @@ export function getAutoExecutionCoordinatorInternal(): AutoExecutionCoordinator 
   }
 }
 
-export function getBugAgentEffectiveCwd(phase: BugWorkflowPhase, worktreeCwd: string, projectPath: string): string {
+export function getBugAgentEffectiveCwd(phase: string, worktreeCwd: string, projectPath: string): string {
   const isWorktreeMode = worktreeCwd !== projectPath;
   if (phase === 'deploy' && isWorktreeMode) {
     return projectPath;
@@ -201,22 +209,17 @@ export async function selectProject(projectPath: string, windowId?: number): Pro
       }
     }
 
-    const bugsResult = await bugService.readBugs(projectPath);
-    const bugs = bugsResult.ok ? bugsResult.value.bugs : [];
-    const bugWarnings = bugsResult.ok ? bugsResult.value.warnings : [];
-    if (bugWarnings.length > 0) {
-      for (const warning of bugWarnings) logger.warn('[projectSetup] ' + warning);
-    }
+    // Bugs removed (github-issue-integration)
 
     const configStore = getConfigStore();
     configStore.addRecentProject(projectPath);
 
     logger.info('[projectSetup] selectProject completed successfully', {
       projectPath, specsCount: specs.length, specJsonMapCount: Object.keys(specJsonMap).length,
-      bugsCount: bugs.length, bugWarningsCount: bugWarnings.length, kiroExists: kiroValidation.exists,
+      kiroExists: kiroValidation.exists,
     });
 
-    return { success: true, projectPath, kiroValidation, specs, bugs, specJsonMap, bugWarnings };
+    return { success: true, projectPath, kiroValidation, specs, bugs: [], specJsonMap };
   } catch (error) {
     logger.error('[projectSetup] selectProject failed', { projectPath, error });
     return {
@@ -358,18 +361,8 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
   };
 
   const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
-    const result = await bugService.readBugs(projectPath);
-    if (!result.ok) return null;
-    const bugInfos: BugInfo[] = [];
-    for (const bug of result.value.bugs) {
-      const bugPathResult = await fileService.resolveBugPath(projectPath, bug.name);
-      const bugPath = bugPathResult.ok ? bugPathResult.value : '';
-      bugInfos.push({
-        name: bug.name, path: bugPath, phase: bug.phase, updatedAt: bug.updatedAt, reportedAt: bug.reportedAt,
-        worktree: bug.worktree, worktreeBasePath: bug.worktreeBasePath,
-      });
-    }
-    return bugInfos;
+    // Bugs removed (github-issue-integration)
+    return [];
   };
 
   const getAgentsForRemote = async (): Promise<AgentStateInfo[] | null> => {
@@ -418,8 +411,7 @@ export function initializeEventWiring(): void {
 
   // AutoExecution event handlers
   const coordinator = getAutoExecutionCoordinatorInternal();
-  const bugCoordinator = getBugAutoExecutionCoordinator();
-  registerBugAutoExecutionEvents(bugCoordinator);
+  // Bug auto-execution removed (github-issue-integration)
   registerAutoExecutionEvents(coordinator);
 
   // Project file watcher initialization
@@ -428,89 +420,7 @@ export function initializeEventWiring(): void {
   logger.info('[projectSetup] Event wiring initialized');
 }
 
-// ============================================================
-// Bug Auto-Execution Events
-// ============================================================
-
-const BUG_PHASE_COMMANDS: Record<BugWorkflowPhase, string | null> = {
-  report: null, analyze: '/kiro:bug-analyze', fix: '/kiro:bug-fix', verify: '/kiro:bug-verify', deploy: '/commit',
-};
-
-function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBugAutoExecutionCoordinator>): void {
-  // ============================================================
-  // EventBus Bridge: Bug Coordinator → EventBus → tRPC Subscription → Renderer
-  // Without this bridge, Renderer never receives bug auto-execution state updates.
-  // ============================================================
-  const eventBus = getGlobalEventBus();
-  // multi-window-integration Task 6.3: Capture projectPath for event metadata
-  const projectPath = getCurrentProjectPath();
-
-  bugCoordinator.on('state-changed', (bugPath: string, state: Record<string, unknown>) => {
-    const { timeoutId, ...serializableState } = state;
-    logger.info('[projectSetup] Bug EventBus bridge: state-changed', { bugPath, status: serializableState.status, currentPhase: serializableState.currentPhase });
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED, { bugPath, state: serializableState, projectPath });
-  });
-
-  bugCoordinator.on('phase-completed', (bugPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_COMPLETED, { bugPath, phase, projectPath });
-  });
-
-  bugCoordinator.on('phase-started', (bugPath: string, phase: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED, { bugPath, phase, projectPath });
-  });
-
-  bugCoordinator.on('execution-error', (bugPath: string, error: Record<string, unknown>) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR, { bugPath, error, projectPath });
-  });
-
-  bugCoordinator.on('execution-completed', (bugPath: string) => {
-    eventBus.emit(EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED, { bugPath, projectPath });
-  });
-
-  bugCoordinator.on('execute-next-phase', async (bugPath: string, phase: BugWorkflowPhase, context: { bugName: string }) => {
-    logger.info('[projectSetup] Bug execute-next-phase event received', { bugPath, phase, bugName: context.bugName });
-    try {
-      const service = getSpecManagerService();
-      // multi-window-integration Task 6.4: Use WindowManager to find window by project instead of getAllWindows()[0]
-      let hasWindow = false;
-      try {
-        const wm = getWindowManager();
-        const focusedId = wm.getFocusedWindowId();
-        hasWindow = focusedId !== null || BrowserWindow.getAllWindows().length > 0;
-      } catch {
-        hasWindow = BrowserWindow.getAllWindows().length > 0;
-      }
-      if (!hasWindow) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
-
-      let command = BUG_PHASE_COMMANDS[phase];
-      if (!command) { bugCoordinator.handleAgentCompleted('', bugPath, 'failed'); return; }
-
-      const bugDir = await bugService.resolveBugPath(getCurrentProjectPath()!, context.bugName);
-      const worktreeCwd = await bugService.getAgentCwd(bugDir, getCurrentProjectPath()!);
-      const isWorktreeMode = worktreeCwd !== getCurrentProjectPath();
-      if (phase === 'deploy' && isWorktreeMode) command = '/kiro:bug-merge';
-      const effectiveCwd = getBugAgentEffectiveCwd(phase, worktreeCwd, getCurrentProjectPath()!);
-
-      const result = await service.startAgent({ specId: `bug:${context.bugName}`, phase, args: [`${command} ${context.bugName}`], worktreeCwd: effectiveCwd, engineId: 'claude' });
-      if (result.ok) {
-        const agentId = result.value.agentId;
-        bugCoordinator.setCurrentPhase(bugPath, phase, agentId);
-        const handleStatusChange = async (changedAgentId: string, status: string) => {
-          if (changedAgentId === agentId && ['completed', 'failed', 'stopped'].includes(status)) {
-            const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
-            bugCoordinator.handleAgentCompleted(agentId, bugPath, finalStatus as 'completed' | 'failed' | 'interrupted');
-            service.offStatusChange(handleStatusChange);
-          }
-        };
-        service.onStatusChange(handleStatusChange);
-      } else {
-        bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
-      }
-    } catch {
-      bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
-    }
-  });
-}
+// Bug Auto-Execution removed (github-issue-integration)
 
 // ============================================================
 // Spec Auto-Execution Events
@@ -837,6 +747,27 @@ export function registerEventCallbacks(service: SpecManagerService, _window: Bro
       wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
         specId: agentInfo.specId, phase: agentInfo.phase, startedAt: agentInfo.startedAt, lastActivityAt: agentInfo.lastActivityAt,
       } : undefined);
+    }
+
+    // github-issue-integration: Task 16.12 - Issue lifecycle hooks
+    if (agentInfo && projectPath && isIssueAgent(agentInfo.specId)) {
+      const issueNumber = extractIssueNumberFromSpecId(agentInfo.specId);
+      if (issueNumber !== null) {
+        const ghApi = getGitHubApiService();
+        if (status === 'running') {
+          handleAgentStartForIssue(ghApi, projectPath, issueNumber).catch((err) => {
+            logger.warn('[projectSetup] handleAgentStartForIssue failed', { issueNumber, error: err instanceof Error ? err.message : String(err) });
+          });
+        } else if (status === 'completed' || status === 'failed') {
+          handleAgentCompletionForIssue(ghApi, projectPath, issueNumber, {
+            agentId,
+            phase: agentInfo.phase,
+            exitCode: status === 'completed' ? 0 : 1,
+          }).catch((err) => {
+            logger.warn('[projectSetup] handleAgentCompletionForIssue failed', { issueNumber, error: err instanceof Error ? err.message : String(err) });
+          });
+        }
+      }
     }
   });
 

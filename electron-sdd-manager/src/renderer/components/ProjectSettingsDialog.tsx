@@ -18,6 +18,8 @@ import { VcsSchemeSelector } from './VcsSchemeSelector';
 import type { VcsScheme } from '../../shared/types/worktree';
 // trpc-full-migration Task 3.2: Use tRPC vanilla client for config operations
 import { getVanillaClient } from '../../shared/trpc/vanillaClient';
+// github-issue-integration: Task 16.11 - GitHub Settings
+import { GitHubSettingsSection } from '../../shared/components/issue';
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean;
@@ -182,6 +184,14 @@ export function ProjectSettingsDialog({
                 新規worktree作成時に使用するVCSを選択します
               </p>
             </div>
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-gray-200 dark:border-gray-700" />
+
+          {/* GitHub Settings Section (github-issue-integration: Task 16.11) */}
+          {currentProject && (
+            <GitHubSettingsSection projectPath={currentProject} />
           )}
 
           {/* Divider */}

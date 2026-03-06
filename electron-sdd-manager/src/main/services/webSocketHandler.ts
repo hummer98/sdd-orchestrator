@@ -62,39 +62,7 @@ export interface SpecInfo {
   readonly [key: string]: unknown;
 }
 
-/**
- * Bug phase type for bug workflow
- * Requirements: 1.2 (Task 1.2 - BugInfo interface)
- * bug-deploy-phase: Requirements 1.1 - added deployed phase
- */
-export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified' | 'deployed';
-
-/**
- * Bug worktree configuration for state distribution
- * remote-ui-bug-list-optimization: Include worktree info in GET_BUGS response
- */
-export interface BugWorktreeInfo {
-  readonly path: string;
-  readonly branch: string;
-  readonly created_at: string;
-}
-
-/**
- * Bug information for state distribution
- * Requirements: 1.2 (Task 1.2 - BugInfo interface)
- * remote-ui-bug-list-optimization: Added worktree and worktreeBasePath fields
- */
-export interface BugInfo {
-  readonly name: string;
-  readonly path: string;
-  readonly phase: BugPhase;
-  readonly updatedAt: string;
-  readonly reportedAt: string;
-  /** Worktree configuration (optional) - for UI display */
-  readonly worktree?: BugWorktreeInfo;
-  /** Worktree base path (directory mode) */
-  readonly worktreeBasePath?: string;
-}
+// BugPhase, BugWorktreeInfo, BugInfo removed (github-issue-integration)
 
 /**
  * Log entry from log file (matching LogFileService format)
@@ -133,8 +101,7 @@ export interface StateProvider {
   getProjectPath(): string;
   /** Get all specs in the project */
   getSpecs(): Promise<SpecInfo[]>;
-  /** Get all bugs in the project (optional for backward compatibility) */
-  getBugs?(): Promise<BugInfo[]>;
+  // getBugs removed (github-issue-integration)
   /** Get all agents (optional for backward compatibility) */
   getAgents?(): Promise<AgentStateInfo[]>;
   /** Get the application version (optional for backward compatibility) */
@@ -176,11 +143,7 @@ export type WorkflowResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: { type: string; message?: string } };
 
-/**
- * Bug action type for bug workflow
- * Requirements: 6.2 (internal-webserver-sync Task 2.1)
- */
-export type BugAction = 'analyze' | 'fix' | 'verify';
+// BugAction type removed (github-issue-integration)
 
 /**
  * Auto Execution Options for Remote UI
@@ -209,42 +172,7 @@ export interface AutoExecutionStateWS {
   readonly errors: string[];
 }
 
-/**
- * Bug Auto Execution State for Remote UI
- * Requirements: 6.2, 6.3 (bug-auto-execution-per-bug-state Task 6.1, 6.2)
- */
-export interface BugAutoExecutionStateWS {
-  readonly bugPath: string;
-  readonly bugName: string;
-  readonly status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
-  readonly currentPhase: string | null;
-  readonly executedPhases: string[];
-  readonly errors: string[];
-  readonly startTime: number;
-  readonly lastActivityTime: number;
-  readonly retryCount: number;
-  readonly lastFailedPhase: string | null;
-}
-
-/**
- * Bug Auto Execution Error for Remote UI
- * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
- */
-export interface BugAutoExecutionErrorWS {
-  readonly type: string;
-  readonly message?: string;
-  readonly phase?: string;
-}
-
-/**
- * Bug Auto Execution Permissions for Remote UI
- * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.1)
- */
-export interface BugAutoExecutionPermissionsWS {
-  readonly analyze: boolean;
-  readonly fix: boolean;
-  readonly verify: boolean;
-}
+// BugAutoExecutionStateWS, BugAutoExecutionErrorWS, BugAutoExecutionPermissionsWS removed (github-issue-integration)
 
 /**
  * Workflow controller interface for executing workflow operations
@@ -265,9 +193,7 @@ export interface WorkflowController {
   /** Send input to a running agent */
   sendAgentInput?(agentId: string, text: string): Promise<WorkflowResult<void>>;
 
-  // New methods for internal-webserver-sync feature
-  /** Execute a bug workflow phase (analyze/fix/verify) */
-  executeBugPhase?(bugName: string, phase: BugAction): Promise<WorkflowResult<AgentInfo>>;
+  // executeBugPhase removed (github-issue-integration)
   /** Execute document review */
   executeDocumentReview?(specId: string): Promise<WorkflowResult<AgentInfo>>;
 
@@ -282,16 +208,7 @@ export interface WorkflowController {
   /** Get all auto execution statuses */
   autoExecuteAllStatus?(): Promise<Record<string, AutoExecutionStateWS>>;
 
-  // Bug auto execution methods (bug-auto-execution-per-bug-state feature)
-  // Requirements: 6.2, 6.3 (Task 6.1, 6.2)
-  /** Get bug auto execution status */
-  bugAutoExecuteStatus?(bugPath: string): Promise<BugAutoExecutionStateWS | null>;
-  // Bug auto execution start/stop methods (remote-ui-bug-advanced-features feature)
-  // Requirements: 4.1, 4.2 (Task 1.1)
-  /** Start bug auto execution */
-  startBugAutoExecution?(bugPath: string, permissions: BugAutoExecutionPermissionsWS): Promise<WorkflowResult<BugAutoExecutionStateWS>>;
-  /** Stop bug auto execution */
-  stopBugAutoExecution?(bugPath: string): Promise<WorkflowResult<void>>;
+  // Bug auto execution methods removed (github-issue-integration)
 
   // Inspection workflow methods (inspection-workflow-ui feature)
   // Requirements: 6.1, 6.4 (Task 6.2)
@@ -310,8 +227,7 @@ export interface WorkflowController {
   // Create methods (remote-ui-missing-create-buttons bug fix)
   /** Create a new spec with spec-init */
   createSpec?(description: string): Promise<WorkflowResult<AgentInfo>>;
-  /** Create a new bug with bug-create */
-  createBug?(name: string, description: string): Promise<WorkflowResult<AgentInfo>>;
+  // createBug removed (github-issue-integration)
 
   // Release methods (generate-release-integration feature)
   // Requirements: 3.4, 3.5
@@ -406,52 +322,24 @@ export interface SpecDetailProvider {
   ): Promise<{ ok: true; value: SpecDetailResult } | { ok: false; error: { type: string; message?: string } }>;
 }
 
-/**
- * Bug artifact info for detail result
- * Requirements: Bug management E2E test support
- */
-export interface BugArtifactInfo {
-  readonly exists: boolean;
-  readonly path: string;
-  readonly updatedAt: string | null;
-  readonly content?: string;
-}
+// BugArtifactInfo, BugDetailResult, BugDetailProvider removed (github-issue-integration)
 
 /**
- * Bug detail result type - matches BugDetail in @renderer/types/bug
- * Requirements: Bug management E2E test support
+ * Issue provider interface for GitHub Issue/PR operations via WebSocket
+ * github-issue-integration: Task 12.1
+ * Requirements: 11.5
  */
-export interface BugDetailResult {
-  readonly metadata: {
-    readonly name: string;
-    readonly path: string;
-    readonly phase: BugPhase;
-    readonly reportedAt: string;
-    readonly updatedAt: string;
-  };
-  readonly artifacts: {
-    readonly report: BugArtifactInfo | null;
-    readonly analysis: BugArtifactInfo | null;
-    readonly fix: BugArtifactInfo | null;
-    readonly verification: BugArtifactInfo | null;
-  };
-  /**
-   * Additional *.md files in bug directory (excluding fixed tabs)
-   * artifact-all-markdown-files: Task 11.4
-   * Requirements: 6.3
-   */
-  readonly markdownFiles?: string[];
-}
-
-/**
- * Bug detail provider interface for retrieving bug details
- * Requirements: Bug management E2E test support
- */
-export interface BugDetailProvider {
-  /** Get detailed information for a bug */
-  getBugDetail(
-    bugPath: string
-  ): Promise<{ ok: true; value: BugDetailResult } | { ok: false; error: { type: string; message?: string } }>;
+export interface IssueProvider {
+  /** Get issues list */
+  getIssues(filters?: Record<string, unknown>): Promise<{ ok: true; value: unknown[] } | { ok: false; error: { type: string; message?: string } }>;
+  /** Get issue detail with comments */
+  getIssueDetail(issueNumber: number): Promise<{ ok: true; value: unknown } | { ok: false; error: { type: string; message?: string } }>;
+  /** Get pull requests list */
+  getPullRequests(filters?: Record<string, unknown>): Promise<{ ok: true; value: unknown[] } | { ok: false; error: { type: string; message?: string } }>;
+  /** Create a new issue */
+  createIssue(input: { title: string; body: string; labels?: string[]; assignees?: string[] }): Promise<{ ok: true; value: unknown } | { ok: false; error: { type: string; message?: string } }>;
+  /** Get GitHub connection status */
+  getConnectionStatus(): Promise<{ ok: true; value: unknown } | { ok: false; error: { type: string; message?: string } }>;
 }
 
 /**
@@ -505,7 +393,9 @@ export class WebSocketHandler {
   private agentLogsProvider: AgentLogsProvider | null = null;
   private fileService: FileServiceInterface | null = null;
   private specDetailProvider: SpecDetailProvider | null = null;
-  private bugDetailProvider: BugDetailProvider | null = null;
+  // bugDetailProvider removed (github-issue-integration)
+  // github-issue-integration: Task 12.1 - Issue/PR provider for Remote UI
+  private issueProvider: IssueProvider | null = null;
   // git-diff-viewer: Singleton instances for Git services (Task 15.9 fix)
   private gitService: GitService | null = null;
   private gitFileWatcherService: GitFileWatcherService | null = null;
@@ -592,14 +482,17 @@ export class WebSocketHandler {
     this.specDetailProvider = provider;
   }
 
+  // setBugDetailProvider removed (github-issue-integration)
+
   /**
-   * Set the bug detail provider for retrieving bug details
-   * Requirements: Bug management E2E test support
+   * Set the issue provider for GitHub Issue/PR operations
+   * github-issue-integration: Task 12.1
+   * Requirements: 11.5
    *
-   * @param provider Bug detail provider implementation
+   * @param provider Issue provider implementation
    */
-  setBugDetailProvider(provider: BugDetailProvider): void {
-    this.bugDetailProvider = provider;
+  setIssueProvider(provider: IssueProvider): void {
+    this.issueProvider = provider;
   }
 
   /**
@@ -702,7 +595,7 @@ export class WebSocketHandler {
 
     const project = this.stateProvider?.getProjectPath() || '';
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
-    const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
+    // bugs removed (github-issue-integration)
     const agents = this.stateProvider?.getAgents ? await this.stateProvider.getAgents() : [];
     const version = this.stateProvider?.getVersion ? this.stateProvider.getVersion() : '';
     const logs = this.config.logBuffer.getAll();
@@ -711,7 +604,6 @@ export class WebSocketHandler {
       clientId: client.id,
       project,
       specCount: specs.length,
-      bugCount: bugs.length,
       agentCount: agents.length,
       logCount: logs.length,
     });
@@ -721,7 +613,6 @@ export class WebSocketHandler {
       payload: {
         project,
         specs,
-        bugs,
         agents,
         version,
         logs,
@@ -829,9 +720,7 @@ export class WebSocketHandler {
       case 'GET_SPECS':
         await this.handleGetSpecs(client, message);
         break;
-      case 'GET_BUGS':
-        await this.handleGetBugs(client, message);
-        break;
+      // GET_BUGS removed (github-issue-integration)
       case 'GET_AGENTS':
         await this.handleGetAgents(client, message);
         break;
@@ -864,9 +753,7 @@ export class WebSocketHandler {
       case 'AGENT_INPUT':
         await this.handleAgentInput(client, message);
         break;
-      case 'EXECUTE_BUG_PHASE':
-        await this.handleExecuteBugPhase(client, message);
-        break;
+      // EXECUTE_BUG_PHASE removed (github-issue-integration)
       case 'EXECUTE_DOCUMENT_REVIEW':
         await this.handleExecuteDocumentReview(client, message);
         break;
@@ -904,9 +791,7 @@ export class WebSocketHandler {
       case 'CREATE_SPEC':
         await this.handleCreateSpec(client, message);
         break;
-      case 'CREATE_BUG':
-        await this.handleCreateBug(client, message);
-        break;
+      // CREATE_BUG removed (github-issue-integration)
       // Spec Plan handler (remote-ui-create-buttons feature)
       // Requirements: 3.3, 3.4
       case 'EXECUTE_SPEC_PLAN':
@@ -930,26 +815,29 @@ export class WebSocketHandler {
       case 'GET_SPEC_DETAIL':
         await this.handleGetSpecDetail(client, message);
         break;
-      // Bug detail handlers (Bug management E2E test support)
-      case 'GET_BUG_DETAIL':
-        await this.handleGetBugDetail(client, message);
+      // GET_BUG_DETAIL removed (github-issue-integration)
+      // github-issue-integration: Task 12.1 - Issue/PR handlers for Remote UI
+      // Requirements: 11.5
+      case 'GET_ISSUES':
+        await this.handleGetIssues(client, message);
+        break;
+      case 'GET_ISSUE_DETAIL':
+        await this.handleGetIssueDetail(client, message);
+        break;
+      case 'GET_PULL_REQUESTS':
+        await this.handleGetPullRequests(client, message);
+        break;
+      case 'CREATE_ISSUE':
+        await this.handleCreateIssue(client, message);
+        break;
+      case 'GET_GITHUB_CONNECTION_STATUS':
+        await this.handleGetGitHubConnectionStatus(client, message);
         break;
       // Profile handlers (header-profile-badge feature)
       case 'GET_PROFILE':
         await this.handleGetProfile(client, message);
         break;
-      // Bug auto execution handlers (bug-auto-execution-per-bug-state Task 6.2)
-      case 'GET_BUG_AUTO_EXECUTION_STATUS':
-        await this.handleGetBugAutoExecutionStatus(client, message);
-        break;
-      // Bug auto execution start/stop handlers (remote-ui-bug-advanced-features Task 1.1)
-      // Requirements: 4.1, 4.2
-      case 'START_BUG_AUTO_EXECUTION':
-        await this.handleStartBugAutoExecution(client, message);
-        break;
-      case 'STOP_BUG_AUTO_EXECUTION':
-        await this.handleStopBugAutoExecution(client, message);
-        break;
+      // Bug auto execution handlers removed (github-issue-integration)
       // Release handlers (generate-release-integration feature)
       case 'CHECK_RELEASE_MD':
         await this.handleCheckReleaseMd(client, message);
@@ -1265,19 +1153,7 @@ export class WebSocketHandler {
     });
   }
 
-  /**
-   * Broadcast bugs updated to all connected clients
-   * Requirements: 2.3 (Task 2.3 - BUGS_UPDATED broadcast)
-   *
-   * @param bugs Updated list of bugs
-   */
-  broadcastBugsUpdated(bugs: BugInfo[]): void {
-    this.broadcast({
-      type: 'BUGS_UPDATED',
-      payload: { bugs },
-      timestamp: Date.now(),
-    });
-  }
+  // broadcastBugsUpdated removed (github-issue-integration)
 
   // ============================================================
   // Message Handlers (stubs for now, will be implemented in 3.3-3.5)
@@ -1311,35 +1187,7 @@ export class WebSocketHandler {
     });
   }
 
-  /**
-   * Handle GET_BUGS message
-   * Requirements: 2.2 (Task 2.2 - GET_BUGS message handler)
-   * Response payload is the bugs array directly for compatibility with wrapRequest
-   */
-  private async handleGetBugs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    this.debugLog('GET_BUGS', 'fetching bugs', {
-      clientId: client.id,
-      requestId: message.requestId,
-      hasStateProvider: !!this.stateProvider,
-      hasBugsMethod: !!this.stateProvider?.getBugs,
-    });
-
-    const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
-
-    this.debugLog('GET_BUGS', 'sending response', {
-      clientId: client.id,
-      requestId: message.requestId,
-      bugCount: bugs.length,
-    });
-
-    this.send(client.id, {
-      type: 'BUGS_UPDATED',
-      // Type assertion: payload is normally Record but arrays work with JSON.stringify
-      payload: bugs as unknown as Record<string, unknown>,
-      requestId: message.requestId,
-      timestamp: Date.now(),
-    });
-  }
+  // handleGetBugs removed (github-issue-integration)
 
   /**
    * Handle GET_AGENTS message
@@ -1760,74 +1608,8 @@ export class WebSocketHandler {
   }
 
   // ============================================================
-  // Bug/Validation/Review Handlers (internal-webserver-sync Tasks 3.1.2, 3.2, 3.3)
+  // Validation/Review Handlers
   // ============================================================
-
-  /**
-   * Handle EXECUTE_BUG_PHASE message
-   * Requirements: 6.2 (internal-webserver-sync Task 3.1.2)
-   */
-  private async handleExecuteBugPhase(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.executeBugPhase) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Bug phase execution not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const bugName = payload.bugName as string;
-    const phase = payload.phase as BugAction;
-
-    if (!bugName || !phase) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugName or phase' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.workflowController.executeBugPhase(bugName, phase);
-
-    if (result.ok) {
-      this.send(client.id, {
-        type: 'BUG_PHASE_STARTED',
-        payload: {
-          bugName,
-          phase,
-          agentId: result.value.agentId,
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Bug phase execution failed',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
-
   /**
    * Handle EXECUTE_DOCUMENT_REVIEW message
    * Requirements: 6.4 (internal-webserver-sync Task 3.3)
@@ -2522,70 +2304,7 @@ export class WebSocketHandler {
     }
   }
 
-  /**
-   * Handle CREATE_BUG message
-   * Bug fix: remote-ui-missing-create-buttons
-   * Creates a new bug using bug-create command
-   */
-  private async handleCreateBug(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.createBug) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Bug creation not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const name = payload.name as string;
-    const description = payload.description as string;
-
-    if (!name || !description) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing name or description' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.workflowController.createBug(name, description);
-
-    if (result.ok) {
-      this.send(client.id, {
-        type: 'BUG_CREATED',
-        payload: {
-          name,
-          agentId: result.value.agentId,
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Bug creation failed',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
+  // handleCreateBug removed (github-issue-integration)
 
   // ============================================================
   // Spec Plan Handlers (remote-ui-create-buttons feature)
@@ -3144,57 +2863,7 @@ export class WebSocketHandler {
   // Bug Detail Handlers (Bug management E2E test support)
   // ============================================================
 
-  /**
-   * Handle GET_BUG_DETAIL message
-   * Requirements: Bug management E2E test support
-   * Retrieves detailed bug information
-   */
-  private async handleGetBugDetail(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.bugDetailProvider) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_CONFIGURED', message: 'Bug detail provider not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const bugPath = payload.bugPath as string;
-
-    if (!bugPath) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.bugDetailProvider.getBugDetail(bugPath);
-
-    if (result.ok) {
-      // Client expects BugDetail directly as payload
-      this.send(client.id, {
-        type: 'BUG_DETAIL',
-        payload: result.value as unknown as Record<string, unknown>,
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Failed to get bug detail',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
+  // handleGetBugDetail removed (github-issue-integration)
 
   // ============================================================
   // Profile Handlers (header-profile-badge feature)
@@ -3217,246 +2886,7 @@ export class WebSocketHandler {
     });
   }
 
-  // ============================================================
-  // Bug Auto Execution Handlers (bug-auto-execution-per-bug-state Task 6.2)
-  // Requirements: 6.2, 6.3
-  // ============================================================
-
-  /**
-   * Handle GET_BUG_AUTO_EXECUTION_STATUS message
-   * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
-   * Retrieves bug auto execution status for Remote UI
-   */
-  private async handleGetBugAutoExecutionStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.bugAutoExecuteStatus) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution status not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const bugPath = payload.bugPath as string;
-
-    if (!bugPath) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const state = await this.workflowController.bugAutoExecuteStatus(bugPath);
-
-    this.send(client.id, {
-      type: 'BUG_AUTO_EXECUTION_STATUS',
-      payload: { bugPath, state },
-      requestId: message.requestId,
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Handle START_BUG_AUTO_EXECUTION message
-   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.1)
-   * Starts bug auto execution with specified permissions
-   */
-  private async handleStartBugAutoExecution(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.startBugAutoExecution) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution start not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const bugPath = payload.bugPath as string;
-    const permissions = payload.permissions as BugAutoExecutionPermissionsWS | undefined;
-
-    if (!bugPath || !permissions) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath or permissions' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.workflowController.startBugAutoExecution(bugPath, permissions);
-
-    if (result.ok) {
-      this.send(client.id, {
-        type: 'BUG_AUTO_EXECUTION_STARTED',
-        payload: { bugPath, state: result.value },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Bug auto execution start failed',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
-
-  /**
-   * Handle STOP_BUG_AUTO_EXECUTION message
-   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.1)
-   * Stops bug auto execution for a specified bug
-   */
-  private async handleStopBugAutoExecution(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.stopBugAutoExecution) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution stop not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const bugPath = payload.bugPath as string;
-
-    if (!bugPath) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.workflowController.stopBugAutoExecution(bugPath);
-
-    if (result.ok) {
-      this.send(client.id, {
-        type: 'BUG_AUTO_EXECUTION_STOPPED',
-        payload: { bugPath },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Bug auto execution stop failed',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
-
-  // ============================================================
-  // Bug Auto Execution Broadcast Methods (bug-auto-execution-per-bug-state Task 6.1)
-  // Requirements: 6.2
-  // ============================================================
-
-  /**
-   * Broadcast bug auto execution status change to all connected clients
-   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
-   *
-   * @param bugPath Bug path
-   * @param state Current bug auto execution state
-   */
-  broadcastBugAutoExecutionStatus(bugPath: string, state: BugAutoExecutionStateWS): void {
-    this.broadcast({
-      type: 'BUG_AUTO_EXECUTION_STATUS',
-      payload: { bugPath, state },
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Broadcast bug auto execution phase completed to all connected clients
-   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
-   *
-   * @param bugPath Bug path
-   * @param phase Completed phase
-   */
-  broadcastBugAutoExecutionPhaseCompleted(bugPath: string, phase: string): void {
-    this.broadcast({
-      type: 'BUG_AUTO_EXECUTION_PHASE_COMPLETED',
-      payload: { bugPath, phase },
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Broadcast bug auto execution completed to all connected clients
-   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
-   *
-   * @param bugPath Bug path
-   */
-  broadcastBugAutoExecutionCompleted(bugPath: string): void {
-    this.broadcast({
-      type: 'BUG_AUTO_EXECUTION_COMPLETED',
-      payload: { bugPath },
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Broadcast bug auto execution error to all connected clients
-   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
-   *
-   * @param bugPath Bug path
-   * @param error Error details
-   */
-  broadcastBugAutoExecutionError(bugPath: string, error: BugAutoExecutionErrorWS): void {
-    this.broadcast({
-      type: 'BUG_AUTO_EXECUTION_ERROR',
-      payload: { bugPath, error },
-      timestamp: Date.now(),
-    });
-  }
+  // Bug Auto Execution Handlers and Broadcast Methods removed (github-issue-integration)
 
   // ============================================================
   // Release Handlers (generate-release-integration feature)
@@ -4132,5 +3562,215 @@ export class WebSocketHandler {
       payload: { filePath },
       timestamp: Date.now(),
     });
+  }
+
+  // ============================================================
+  // GitHub Issue/PR Handlers (github-issue-integration Task 12.1)
+  // Requirements: 11.5
+  // ============================================================
+
+  /**
+   * Handle GET_ISSUES message
+   * Returns list of GitHub Issues for the current project
+   */
+  private async handleGetIssues(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.issueProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Issue provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const filters = payload.filters as Record<string, unknown> | undefined;
+
+    const result = await this.issueProvider.getIssues(filters);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'ISSUES_LIST',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: result.error.type, message: result.error.message || 'Failed to get issues' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GET_ISSUE_DETAIL message
+   * Returns issue detail with comments
+   */
+  private async handleGetIssueDetail(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.issueProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Issue provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const issueNumber = payload.issueNumber as number | undefined;
+
+    if (!issueNumber) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing issueNumber' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.issueProvider.getIssueDetail(issueNumber);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'ISSUE_DETAIL',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: result.error.type, message: result.error.message || 'Failed to get issue detail' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GET_PULL_REQUESTS message
+   * Returns list of Pull Requests for the current project
+   */
+  private async handleGetPullRequests(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.issueProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Issue provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const filters = payload.filters as Record<string, unknown> | undefined;
+
+    const result = await this.issueProvider.getPullRequests(filters);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'PULL_REQUESTS_LIST',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: result.error.type, message: result.error.message || 'Failed to get pull requests' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle CREATE_ISSUE message
+   * Creates a new GitHub Issue
+   */
+  private async handleCreateIssue(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.issueProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Issue provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const title = payload.title as string | undefined;
+    const body = (payload.body as string) || '';
+    const labels = (payload.labels as string[]) || [];
+    const assignees = (payload.assignees as string[]) || [];
+
+    if (!title) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing title' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.issueProvider.createIssue({ title, body, labels, assignees });
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'ISSUE_CREATED',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: result.error.type, message: result.error.message || 'Failed to create issue' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GET_GITHUB_CONNECTION_STATUS message
+   * Returns GitHub connection status for the current project
+   */
+  private async handleGetGitHubConnectionStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.issueProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Issue provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.issueProvider.getConnectionStatus();
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'GITHUB_CONNECTION_STATUS',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: result.error.type, message: result.error.message || 'Failed to get connection status' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
   }
 }

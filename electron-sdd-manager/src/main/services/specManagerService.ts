@@ -26,7 +26,7 @@ import { projectLogger as logger } from './projectLogger';
 import type { ProviderType } from './ssh/providerFactory';
 // trpc-full-migration Task 8.3: worktreeImplHandlers.ts削除に伴いworktreeUtils.tsに移動
 import { getWorktreeCwd } from '../trpc/helpers/worktreeUtils';
-import { BugService } from './bugService';
+// BugService removed (github-issue-integration)
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
 // debatex-document-review Task 2.1: BuildArgsContext support
 // Bug fix: gemini-document-review-engineid-missing - Added getEngineIdFromScheme
@@ -673,27 +673,10 @@ export class SpecManagerService {
    */
   private async getSpecWorktreeCwd(specId: string): Promise<string> {
     try {
-      // bug-auto-execution-worktree-cwd: Handle bug: prefix
-      if (specId.startsWith('bug:')) {
-        const bugName = specId.slice(4); // Remove 'bug:' prefix
-        const bugService = new BugService();
-
-        // Use resolveBugPath to find the actual bug directory (worktree or main)
-        const bugPath = await bugService.resolveBugPath(this.projectPath, bugName);
-
-        // Use getAgentCwd to resolve worktree path from bug.json
-        const worktreeCwd = await bugService.getAgentCwd(bugPath, this.projectPath);
-
-        if (worktreeCwd !== this.projectPath) {
-          logger.info('[SpecManagerService] getSpecWorktreeCwd: bug worktree resolved', {
-            specId,
-            bugName,
-            bugPath,
-            worktreeCwd,
-          });
-        }
-
-        return worktreeCwd;
+      // bug: prefix handling removed (github-issue-integration)
+      // Issue agents use issue:{issueNumber} prefix - resolved via project path
+      if (specId.startsWith('bug:') || specId.startsWith('issue:')) {
+        return this.projectPath;
       }
 
       // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT

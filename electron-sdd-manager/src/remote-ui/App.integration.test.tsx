@@ -19,13 +19,15 @@ describe('Integration Tests - Create Buttons Feature', () => {
       // Verify conditional button display based on activeTab
       expect(appContent).toContain("activeTab === 'specs'");
       expect(appContent).toContain("'create-spec-button'");
-      expect(appContent).toContain("'create-bug-button'");
+      // create-bug-button replaced with create-issue-button (github-issue-integration)
+      expect(appContent).toContain("'create-issue-button'");
     });
 
     it('should set createDialogType based on activeTab when clicking create button', () => {
       const appContent = readFileSync(resolve(__dirname, 'App.tsx'), 'utf-8');
       // handleCreateClick should set dialog type based on activeTab
-      expect(appContent).toContain("setCreateDialogType(activeTab === 'specs' ? 'spec' : 'bug')");
+      // github-issue-integration: bug -> issue
+      expect(appContent).toContain("setCreateDialogType(activeTab === 'specs' ? 'spec' : 'issue')");
     });
   });
 

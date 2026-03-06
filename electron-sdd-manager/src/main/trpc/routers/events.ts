@@ -65,11 +65,7 @@ export const autoExecutionPhaseEventSchema = z.record(z.unknown());
 export const autoExecutionErrorSchema = z.record(z.unknown());
 export const autoExecutionCompletedSchema = z.record(z.unknown());
 
-// --- Bug Auto Execution Events ---
-export const bugAutoExecutionStatusChangedSchema = z.record(z.unknown());
-export const bugAutoExecutionPhaseEventSchema = z.record(z.unknown());
-export const bugAutoExecutionErrorSchema = z.record(z.unknown());
-export const bugAutoExecutionCompletedSchema = z.record(z.unknown());
+// Bug Auto Execution Events removed (github-issue-integration)
 
 // --- Server/Tunnel Events ---
 export const serverStatusSchema = z.record(z.unknown());
@@ -246,39 +242,7 @@ export const eventsRouter = router({
     EVENT_NAMES.AUTO_EXECUTION_COMPLETED,
   ),
 
-  // ============================================================
-  // Bug Auto Execution Events (6)
-  // ============================================================
-
-  /** Bug auto execution status changed */
-  onBugAutoExecutionStatusChanged: createEventSubscription<z.infer<typeof bugAutoExecutionStatusChangedSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_STATUS_CHANGED,
-  ),
-
-  /** Bug auto execution phase started */
-  onBugAutoExecutionPhaseStarted: createEventSubscription<z.infer<typeof bugAutoExecutionPhaseEventSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_STARTED,
-  ),
-
-  /** Bug auto execution phase completed */
-  onBugAutoExecutionPhaseCompleted: createEventSubscription<z.infer<typeof bugAutoExecutionPhaseEventSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_PHASE_COMPLETED,
-  ),
-
-  /** Bug auto execution error */
-  onBugAutoExecutionError: createEventSubscription<z.infer<typeof bugAutoExecutionErrorSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_ERROR,
-  ),
-
-  /** Bug auto execution completed */
-  onBugAutoExecutionCompleted: createEventSubscription<z.infer<typeof bugAutoExecutionCompletedSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_COMPLETED,
-  ),
-
-  /** Bug auto execution execute phase */
-  onBugAutoExecutionExecutePhase: createEventSubscription<z.infer<typeof bugAutoExecutionPhaseEventSchema>>(
-    EVENT_NAMES.BUG_AUTO_EXECUTION_EXECUTE_PHASE,
-  ),
+  // Bug Auto Execution Events removed (github-issue-integration)
 
   // ============================================================
   // Server/Tunnel Events (3)

@@ -1,0 +1,384 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-03-06T12:00:00Z",
+  "round": 2,
+  "checks": [
+    {
+      "id": "design-component-GitHubApiService",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubApiService found at expected path with all design-specified methods implemented",
+      "evidence": ["electron-sdd-manager/src/main/services/gitHubApiService.ts"]
+    },
+    {
+      "id": "design-interface-GitHubApiService",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubApiService interface matches design: detectRepoInfo, listIssues, getIssue, createIssue, getIssueComments, addIssueComment, setIssueLabels, updateStatusLabel, ensureStatusLabels, listPullRequests, getPullRequest, createPullRequest, mergePullRequest, getPRCIStatus, getPRFiles, testConnection",
+      "evidence": ["electron-sdd-manager/src/main/services/gitHubApiService.ts"]
+    },
+    {
+      "id": "design-interface-GitHubApiService-Result",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Minor",
+      "details": "GitHubApiService Result type uses { ok: true; data: T } instead of design-specified { ok: true; value: T }. The issueRouter translates between these at the tRPC boundary, so functional impact is nil, but implementation deviates from the design interface definition.",
+      "evidence": ["Design: Result<T, E> = { ok: true; value: T } | { ok: false; error: E }", "Actual: Result<T, E> = { ok: true; data: T } | { ok: false; error: E }"]
+    },
+    {
+      "id": "design-component-GitHubCredentialService",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/services/gitHubCredentialService.ts"]
+    },
+    {
+      "id": "design-interface-GitHubCredentialService",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "GitHubCredentialService interface matches design: storeToken, getToken, removeToken, storeEnterpriseUrl, getEnterpriseUrl, removeEnterpriseUrl, hasCredentials. Uses safeStorage and electron-store as specified.",
+      "evidence": ["electron-sdd-manager/src/main/services/gitHubCredentialService.ts"]
+    },
+    {
+      "id": "design-component-issueRouter",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueRouter found at expected path, imported and wired into appRouter as 'issue' key",
+      "evidence": ["electron-sdd-manager/src/main/trpc/routers/issue.ts", "router.ts line 25: import { issueRouter }", "router.ts line 43: issue: issueRouter"]
+    },
+    {
+      "id": "design-component-issueStore",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueStore found at expected path in shared/stores/, exported from shared/stores/index.ts",
+      "evidence": ["electron-sdd-manager/src/shared/stores/issueStore.ts", "shared/stores/index.ts line 81"]
+    },
+    {
+      "id": "design-interface-issueStore",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueStoreState interface matches design: issues, pullRequests, selectedIssueNumber, selectedPRNumber, issueDetail, issueComments, prDetail, connectionStatus, filters, hasMore, currentPage, isLoading, error. Actions: loadIssues, loadMoreIssues, loadPullRequests, selectIssue, selectPR, setFilters, refresh, checkConnection, startPolling, stopPolling, reset.",
+      "evidence": ["electron-sdd-manager/src/shared/stores/issueStore.ts"]
+    },
+    {
+      "id": "design-component-IssuePane",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssuePane found at expected path in shared/components/issue/",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/IssuePane.tsx"]
+    },
+    {
+      "id": "design-component-IssueListPanel",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueListPanel found at expected path",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/IssueListPanel.tsx"]
+    },
+    {
+      "id": "design-component-IssueDetailView",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueDetailView found at expected path",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/IssueDetailView.tsx"]
+    },
+    {
+      "id": "design-component-PRListView",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRListView found at expected path",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/PRListView.tsx"]
+    },
+    {
+      "id": "design-component-PRDetailView",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PRDetailView found at expected path",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/PRDetailView.tsx"]
+    },
+    {
+      "id": "design-component-IssueListItem",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "IssueListItem exists as internal React.memo component within IssueListPanel.tsx (not a separate file, but functionally present)",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/IssueListPanel.tsx line 58"]
+    },
+    {
+      "id": "design-component-StatusLabelBadge",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "StatusLabelBadge found at expected path",
+      "evidence": ["electron-sdd-manager/src/shared/components/issue/StatusLabelBadge.tsx"]
+    },
+    {
+      "id": "design-component-CreateIssueDialog",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialog found at expected path",
+      "evidence": ["electron-sdd-manager/src/renderer/components/CreateIssueDialog.tsx"]
+    },
+    {
+      "id": "design-component-CreateIssueDialogRemote",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "CreateIssueDialogRemote found at expected path",
+      "evidence": ["electron-sdd-manager/src/remote-ui/components/CreateIssueDialogRemote.tsx"]
+    },
+    {
+      "id": "design-component-GitHubSettingsSection",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Minor",
+      "details": "GitHubSettingsSection exists in shared/components/issue/ instead of design-specified shared/components/project/. The component is co-located with other issue components which is acceptable but deviates from design location.",
+      "evidence": ["Expected: electron-sdd-manager/src/shared/components/project/GitHubSettingsSection.tsx", "Actual: electron-sdd-manager/src/shared/components/issue/GitHubSettingsSection.tsx"]
+    },
+    {
+      "id": "design-component-gh-issue-sh",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "gh-issue.sh found at expected path",
+      "evidence": ["scripts/gh-issue.sh"]
+    },
+    {
+      "id": "design-component-issue-commands",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All 4 slash command templates found: issue-analyze.md, issue-fix.md, issue-verify.md, issue-ask.md",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/commands/issue/issue-analyze.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-fix.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-verify.md",
+        "electron-sdd-manager/resources/templates/commands/issue/issue-ask.md"
+      ]
+    },
+    {
+      "id": "design-component-agentIssueIntegration",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentIssueIntegration found at expected path",
+      "evidence": ["electron-sdd-manager/src/main/services/agentIssueIntegration.ts"]
+    },
+    {
+      "id": "design-types-github",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All GitHub shared types match design: GitHubUser, GitHubLabel, GitHubMilestone, GitHubIssue, GitHubComment, GitHubPullRequest, PRFile, CIStatus, StatusLabel, GitHubRepoInfo, GitHubApiError, ConnectionStatus, IssueFilters, PRFilters, MergeMethod, CreateIssueInput, CreatePRInput",
+      "evidence": ["electron-sdd-manager/src/shared/types/github.ts"]
+    },
+    {
+      "id": "design-wiring-router",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "router.ts correctly imports and registers issueRouter, bugRouter reference fully removed",
+      "evidence": ["src/main/trpc/router.ts: import { issueRouter } from './routers/issue'; issue: issueRouter"]
+    },
+    {
+      "id": "design-wiring-context",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "context.ts correctly imports GitHubApiService and GitHubCredentialService types and adds them to ContextServices interface",
+      "evidence": ["src/main/trpc/context.ts lines 18-19, 280-284"]
+    },
+    {
+      "id": "design-wiring-productionServices-FIXED",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[Round 1 Fix VERIFIED] productionServices.ts now correctly: imports GitHubCredentialService and GitHubApiService (lines 93-94), instantiates both (lines 123-124: gitHubCredentialService, gitHubApiService), wires them into createProductionServices return object (lines 172-173), and exports getGitHubApiService getter (lines 131-133).",
+      "evidence": [
+        "Line 93: import { GitHubCredentialService } from '../services/gitHubCredentialService'",
+        "Line 94: import { GitHubApiService } from '../services/gitHubApiService'",
+        "Line 123: const gitHubCredentialService = new GitHubCredentialService()",
+        "Line 124: const gitHubApiService = new GitHubApiService(gitHubCredentialService)",
+        "Line 172: gitHubApiService,",
+        "Line 173: gitHubCredentialService,"
+      ]
+    },
+    {
+      "id": "design-wiring-renderer-App-FIXED",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[Round 1 Fix VERIFIED] renderer/App.tsx now correctly: imports IssuePane from shared/components/issue (line 52), renders IssuePane when activeTab==='issues' (line 821), imports and renders CreateIssueDialog (lines 36, 954-967). BugPane/BugStore references fully removed.",
+      "evidence": [
+        "Line 52: import { IssuePane } from '../shared/components/issue'",
+        "Line 821: <IssuePane projectPath={currentProject} />",
+        "Line 954: <CreateIssueDialog isOpen={isCreateIssueDialogOpen} ...>",
+        "Line 114: // bugStore removed (github-issue-integration)"
+      ]
+    },
+    {
+      "id": "design-wiring-webSocketHandler-FIXED",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[Round 1 Fix VERIFIED] webSocketHandler.ts: Bug handlers removed (GET_BUGS, EXECUTE_BUG_PHASE, GET_BUG_DETAIL marked as removed with comments). Issue handlers added: GET_ISSUES (line 821), GET_ISSUE_DETAIL (line 824), GET_PULL_REQUESTS (line 827), CREATE_ISSUE (line 830), GET_GITHUB_CONNECTION_STATUS (line 833). Handler implementations present at lines 3573-3775.",
+      "evidence": [
+        "Line 723: // GET_BUGS removed (github-issue-integration)",
+        "Line 756: // EXECUTE_BUG_PHASE removed (github-issue-integration)",
+        "Line 818: // GET_BUG_DETAIL removed (github-issue-integration)",
+        "Line 821: case 'GET_ISSUES':",
+        "Line 824: case 'GET_ISSUE_DETAIL':",
+        "Line 827: case 'GET_PULL_REQUESTS':",
+        "Line 830: case 'CREATE_ISSUE':",
+        "Line 833: case 'GET_GITHUB_CONNECTION_STATUS':"
+      ]
+    },
+    {
+      "id": "design-wiring-shared-api-types-FIXED",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "[Round 1 Fix VERIFIED] shared/api/types.ts: All Bug-related types and methods removed. Confirmed removal comments: BugMetadata/BugDetail/BugAction (line 33), BugMetadataWithPath/BugDetailWithPath (line 61), BugAutoExecutionState/BugAutoExecutionPermissions (line 209), BugsChangeEvent (line 215), Bug operations in ApiClient (line 287), Bug monitoring (line 519), BugMetadata exports (line 694).",
+      "evidence": [
+        "Line 33: // BugMetadata, BugDetail, BugAction removed (github-issue-integration)",
+        "Line 61: // BugMetadataWithPath, BugDetailWithPath removed (github-issue-integration)",
+        "Line 209: // BugAutoExecutionState, BugAutoExecutionPermissions removed (github-issue-integration)",
+        "Line 287: // Bug Operations removed (github-issue-integration)",
+        "No Bug types or methods remain in the ApiClient interface"
+      ]
+    },
+    {
+      "id": "design-wiring-DocsTabs",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTabs correctly replaced 'bugs' with 'issues' tab. DocsTab type = 'specs' | 'issues' | 'project'. Tab config uses CircleDot icon for Issues.",
+      "evidence": ["src/renderer/components/DocsTabs.tsx lines 17, 39"]
+    },
+    {
+      "id": "design-wiring-agentStore",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "agentStore updated: 'bug:' entityId pattern replaced with 'issue:' pattern (line 412). bugStore import removed (line 48).",
+      "evidence": ["src/renderer/stores/agentStore.ts lines 412, 48"]
+    },
+    {
+      "id": "design-wiring-shared-stores-index",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/stores/index.ts: bugStore/bugAutoExecutionStore exports removed, issueStore exports added",
+      "evidence": ["Lines 12, 27 (removal comments), lines 78-82 (issueStore exports)"]
+    },
+    {
+      "id": "design-wiring-shared-components-index",
+      "category": "wiring-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "shared/components/index.ts: Bug component exports removed",
+      "evidence": ["Line 14: // Bug components removed (github-issue-integration)"]
+    },
+    {
+      "id": "design-deletion-bugRouter",
+      "category": "deletion-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bugRouter (src/main/trpc/routers/bug.ts) deleted, no longer exists on disk",
+      "evidence": ["Glob search returns no results"]
+    },
+    {
+      "id": "design-deletion-bugStore",
+      "category": "deletion-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bugStore.ts deleted from shared/stores/",
+      "evidence": ["Glob search returns no results for shared/stores/bugStore.ts"]
+    },
+    {
+      "id": "design-deletion-bug-commands-templates",
+      "category": "deletion-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Bug CLI commands (commands/bug/) and templates (settings/templates/bugs/) deleted per git status",
+      "evidence": ["Git status shows D for all bug command and template files"]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product.md Core Capabilities: Bug workflow replacement with GitHub Issue integration is a valid evolution of capability #4.",
+      "evidence": ["product.md: 'Bug fix workflow' capability"]
+    },
+    {
+      "id": "steering-tech-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Technology stack matches tech.md: React 19, Zustand, TypeScript, Electron 35.x, tRPC with Zod, Vitest tests co-located. vanillaClient pattern used in stores.",
+      "evidence": ["tech.md requirements met"]
+    },
+    {
+      "id": "steering-tech-tRPC-pattern",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueRouter follows tech.md tRPC design pattern: domain-specific router in routers/, Context DI via ctx.services, Zod validation, EventBus integration.",
+      "evidence": ["tech.md: tRPC IPC design pattern"]
+    },
+    {
+      "id": "steering-structure-domain-state",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "issueStore correctly placed in shared/stores/ (Domain State SSOT). No domain data in renderer/stores/. Follows structure.md State Management Rules.",
+      "evidence": ["structure.md: Domain State Location = src/shared/stores/"]
+    },
+    {
+      "id": "steering-structure-shared-components",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Issue UI components correctly placed in shared/components/issue/ for Electron/Remote UI sharing. Platform-specific components in their respective directories. Barrel export via index.ts.",
+      "evidence": ["structure.md: Component Organization Rules"]
+    },
+    {
+      "id": "steering-structure-naming",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Naming conventions follow structure.md: Components PascalCase, Services camelCase, Stores camelCase, Tests co-located as *.test.ts(x).",
+      "evidence": ["structure.md: Naming Conventions"]
+    },
+    {
+      "id": "steering-structure-process-boundary",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PAT/credentials managed exclusively in Main Process (GitHubCredentialService uses Electron safeStorage). Renderer never accesses PAT directly. All GitHub API calls go through Main Process via tRPC. Follows structure.md Electron Process Boundary Rules.",
+      "evidence": ["structure.md: credential management must be in Main Process"]
+    }
+  ],
+  "stats": {
+    "total": 43,
+    "passed": 41,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 2,
+    "info": 41
+  }
+}

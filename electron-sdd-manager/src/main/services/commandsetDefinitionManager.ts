@@ -7,7 +7,6 @@
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
 import { CC_SDD_COMMANDS, CC_SDD_AGENTS, CC_SDD_SETTINGS } from './ccSddWorkflowInstaller';
-import { BUG_COMMANDS, BUG_TEMPLATES } from './bugWorkflowInstaller';
 
 /**
  * Commandset definition
@@ -87,18 +86,13 @@ export class CommandsetDefinitionManager {
       dependencies: [],
     });
 
-    // Bug definition
-    const bugFiles = [
-      ...BUG_COMMANDS.map(cmd => `commands/bug/${cmd}.md`),
-      ...BUG_TEMPLATES.map(tmpl => `settings/templates/bugs/${tmpl}`),
-    ];
-
+    // Bug definition (deprecated - github-issue-integration)
     definitions.set('bug', {
       name: 'bug',
-      description: 'Lightweight bug fix workflow with bug commands and templates',
+      description: 'Deprecated: Bug workflow replaced by GitHub Issue integration',
       category: 'workflow',
       version: '1.0.0',
-      files: bugFiles,
+      files: [],
       dependencies: [],
     });
 

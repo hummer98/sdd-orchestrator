@@ -49,13 +49,14 @@ describe('CommandsetDefinitionManager', () => {
       expect(definition.files.length).toBeGreaterThan(0);
     });
 
-    it('should return bug definition', () => {
+    it('should return bug definition (deprecated, empty files)', () => {
       const definition = manager.getDefinition('bug');
 
       expect(definition.name).toBe('bug');
       expect(definition.category).toBe('workflow');
       expect(definition.version).toBeDefined();
-      expect(definition.files.length).toBeGreaterThan(0);
+      // github-issue-integration: bug files removed, definition kept for backward compatibility
+      expect(definition.files.length).toBe(0);
     });
 
     it('should return spec-manager definition', () => {
@@ -197,12 +198,7 @@ describe('CommandsetDefinitionManager', () => {
       expect(agentFiles.length).toBeGreaterThan(5);
     });
 
-    it('should include all bug command files', () => {
-      const definition = manager.getDefinition('bug');
-      const commandFiles = definition.files.filter(f => f.includes('commands/'));
-
-      expect(commandFiles.length).toBe(6);
-    });
+    // bug command files removed (github-issue-integration)
   });
 
   describe('version information', () => {

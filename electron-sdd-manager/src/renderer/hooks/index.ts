@@ -18,4 +18,4 @@ export { useTextSearch } from './useTextSearch';
 export { useSearchKeyboard } from './useSearchKeyboard';
 export { useAutoExecution } from './useAutoExecution';
 export { useConvertToWorktree } from './useConvertToWorktree';
-export { useConvertBugToWorktree } from './useConvertBugToWorktree';
+// useConvertBugToWorktree removed (github-issue-integration)

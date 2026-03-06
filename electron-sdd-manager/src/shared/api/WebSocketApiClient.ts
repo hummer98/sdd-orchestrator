@@ -20,13 +20,7 @@ import type {
   SpecMetadata,
   SpecDetail,
   Phase,
-  // main-process-log-parser Task 10.3: LogEntry import removed - now using ParsedLogEntry
-  BugMetadata,
-  BugDetail,
-  BugAction,
-  BugAutoExecutionState,
-  BugAutoExecutionPermissions,
-  BugsChangeEvent,
+  // Bug types removed (github-issue-integration)
   // main-process-log-parser Task 10.2: Import ParsedLogEntry for onAgentLog
   ParsedLogEntry,
   // project-config-editor Task 5.1: Project file types
@@ -127,42 +121,7 @@ function debugLog(category: string, message: string, data?: unknown): void {
 // Requirements: 4.7
 // =============================================================================
 
-/**
- * Detect changes between previous and current bug lists
- * Converts WebSocket full-update format to BugsChangeEvent[] for differential updates
- * @param previousBugs - Previous bug list
- * @param currentBugs - Current bug list
- * @returns Array of BugsChangeEvent
- */
-export function detectBugsChanges(
-  previousBugs: BugMetadata[],
-  currentBugs: BugMetadata[]
-): BugsChangeEvent[] {
-  const events: BugsChangeEvent[] = [];
-  const prevMap = new Map(previousBugs.map(b => [b.name, b]));
-  const currMap = new Map(currentBugs.map(b => [b.name, b]));
-
-  // Detect additions and changes
-  for (const [name, bug] of currMap) {
-    const prev = prevMap.get(name);
-    if (!prev) {
-      // New bug added
-      events.push({ type: 'add', path: '', bugName: name });
-    } else if (prev.updatedAt !== bug.updatedAt || prev.phase !== bug.phase) {
-      // Bug changed (updatedAt or phase changed)
-      events.push({ type: 'change', path: '', bugName: name });
-    }
-  }
-
-  // Detect deletions
-  for (const [name] of prevMap) {
-    if (!currMap.has(name)) {
-      events.push({ type: 'unlinkDir', path: '', bugName: name });
-    }
-  }
-
-  return events;
-}
+// detectBugsChanges removed (github-issue-integration)
 
 // =============================================================================
 // WebSocketApiClient Implementation
@@ -187,8 +146,7 @@ export class WebSocketApiClient implements ApiClient {
   // remote-ui-vanilla-removal: Store project path from INIT message
   private projectPath: string = '';
   private appVersion: string = '';
-  // bugs-view-unification: Track previous bugs for differential update detection
-  private previousBugs: BugMetadata[] = [];
+  // previousBugs removed (github-issue-integration)
 
   // ===========================================================================
   // safari-websocket-stability: Heartbeat State
@@ -404,7 +362,6 @@ export class WebSocketApiClient implements ApiClient {
           project?: string;
           version?: string;
           specs?: SpecMetadata[];
-          bugs?: BugMetadata[];
         } | undefined;
         if (initPayload?.project) {
           this.projectPath = initPayload.project;
@@ -416,27 +373,14 @@ export class WebSocketApiClient implements ApiClient {
         if (initPayload?.specs) {
           this.emit('specsUpdated', initPayload.specs);
         }
-        if (initPayload?.bugs) {
-          // bugs-view-unification: Initialize previousBugs for differential update detection
-          this.previousBugs = [...initPayload.bugs];
-          this.emit('bugsUpdated', initPayload.bugs);
-        }
+        // bugs removed (github-issue-integration)
         this.emit('initialized', initPayload);
         break;
       }
       case 'SPECS_UPDATED':
         this.emit('specsUpdated', message.payload);
         break;
-      case 'BUGS_UPDATED':
-        this.emit('bugsUpdated', message.payload);
-        // bugs-view-unification: Also emit bugsChanged for differential update subscribers
-        // Handle both array format and object format with bugs field
-        if (Array.isArray(message.payload)) {
-          this.emit('bugsChanged', message.payload);
-        } else if (message.payload && typeof message.payload === 'object' && 'bugs' in message.payload) {
-          this.emit('bugsChanged', (message.payload as { bugs: BugMetadata[] }).bugs);
-        }
-        break;
+      // BUGS_UPDATED removed (github-issue-integration)
       case 'AGENT_OUTPUT':
         this.emit('agentOutput', message.payload);
         break;
@@ -453,26 +397,7 @@ export class WebSocketApiClient implements ApiClient {
       case 'AUTO_EXECUTION_STATUS_CHANGED':
         this.emit('autoExecutionStatusChanged', message.payload);
         break;
-      // bug-auto-execution-per-bug-state Task 6.1, 6.2: Bug auto execution events
-      // remote-ui-bug-advanced-features Task 2.2: Added STARTED, STOPPED events
-      case 'BUG_AUTO_EXECUTION_STARTED':
-        this.emit('bugAutoExecutionStarted', message.payload);
-        break;
-      case 'BUG_AUTO_EXECUTION_STATUS':
-        this.emit('bugAutoExecutionStatus', message.payload);
-        break;
-      case 'BUG_AUTO_EXECUTION_PHASE_COMPLETED':
-        this.emit('bugAutoExecutionPhaseCompleted', message.payload);
-        break;
-      case 'BUG_AUTO_EXECUTION_COMPLETED':
-        this.emit('bugAutoExecutionCompleted', message.payload);
-        break;
-      case 'BUG_AUTO_EXECUTION_ERROR':
-        this.emit('bugAutoExecutionError', message.payload);
-        break;
-      case 'BUG_AUTO_EXECUTION_STOPPED':
-        this.emit('bugAutoExecutionStopped', message.payload);
-        break;
+      // Bug auto execution events removed (github-issue-integration)
       // header-profile-badge feature: profile updates from server
       case 'PROFILE_UPDATED':
         this.emit('profileUpdated', message.payload);
@@ -857,38 +782,59 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<void>('UPDATE_APPROVAL', { specPath, phase, approved });
   }
 
+  // Bug Operations removed (github-issue-integration)
+
   // ===========================================================================
-  // Bug Operations
+  // GitHub Issue/PR Operations
+  // github-issue-integration: Task 12.1
+  // Requirements: 11.5
   // ===========================================================================
 
-  async getBugs(): Promise<Result<BugMetadata[], ApiError>> {
-    return this.wrapRequest<BugMetadata[]>('GET_BUGS');
-  }
-
-  async getBugDetail(bugPath: string): Promise<Result<BugDetail, ApiError>> {
-    return this.wrapRequest<BugDetail>('GET_BUG_DETAIL', { bugPath });
-  }
-
-  async executeBugPhase(
-    bugName: string,
-    action: BugAction,
-    options?: { useWorktree?: boolean }
-  ): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('EXECUTE_BUG_PHASE', {
-      bugName,
-      action,
-      useWorktree: options?.useWorktree,
-    });
+  /**
+   * Get GitHub Issues for the current project
+   * @param filters - Optional filters (state, labels, assignee, etc.)
+   */
+  async getIssues(filters?: Record<string, unknown>): Promise<Result<unknown[], ApiError>> {
+    return this.wrapRequest<unknown[]>('GET_ISSUES', filters ? { filters } : undefined);
   }
 
   /**
-   * Create a new bug
-   * Requirements: 5.1 (remote-ui-bug-advanced-features Task 2.1)
-   * @param name - Bug name (directory name)
-   * @param description - Bug description
+   * Get detailed information for a specific GitHub Issue
+   * @param issueNumber - Issue number
    */
-  async createBug(name: string, description: string): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('CREATE_BUG', { name, description });
+  async getIssueDetail(issueNumber: number): Promise<Result<unknown, ApiError>> {
+    return this.wrapRequest<unknown>('GET_ISSUE_DETAIL', { issueNumber });
+  }
+
+  /**
+   * Get Pull Requests for the current project
+   * @param filters - Optional filters (state, head, base, etc.)
+   */
+  async getPullRequests(filters?: Record<string, unknown>): Promise<Result<unknown[], ApiError>> {
+    return this.wrapRequest<unknown[]>('GET_PULL_REQUESTS', filters ? { filters } : undefined);
+  }
+
+  /**
+   * Create a new GitHub Issue
+   * @param title - Issue title
+   * @param body - Issue body (markdown)
+   * @param labels - Optional labels
+   * @param assignees - Optional assignees
+   */
+  async createIssue(
+    title: string,
+    body: string,
+    labels?: string[],
+    assignees?: string[]
+  ): Promise<Result<unknown, ApiError>> {
+    return this.wrapRequest<unknown>('CREATE_ISSUE', { title, body, labels, assignees });
+  }
+
+  /**
+   * Get GitHub connection status
+   */
+  async getGitHubConnectionStatus(): Promise<Result<unknown, ApiError>> {
+    return this.wrapRequest<unknown>('GET_GITHUB_CONNECTION_STATUS');
   }
 
   // ===========================================================================
@@ -1023,64 +969,7 @@ export class WebSocketApiClient implements ApiClient {
     return response;
   }
 
-  // ===========================================================================
-  // Bug Auto Execution Operations
-  // Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
-  // ===========================================================================
-
-  /**
-   * Get bug auto execution status
-   * @param bugPath - Full path to bug directory
-   */
-  async getBugAutoExecutionStatus(
-    bugPath: string
-  ): Promise<Result<BugAutoExecutionState | null, ApiError>> {
-    interface BugAutoExecutionStatusResponse {
-      bugPath: string;
-      state: BugAutoExecutionState | null;
-    }
-    const response = await this.wrapRequest<BugAutoExecutionStatusResponse>(
-      'GET_BUG_AUTO_EXECUTION_STATUS',
-      { bugPath }
-    );
-    if (response.ok) {
-      return { ok: true, value: response.value.state };
-    }
-    return response;
-  }
-
-  /**
-   * Start bug auto execution
-   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
-   * @param bugPath - Full path to bug directory
-   * @param permissions - Permissions for each phase
-   */
-  async startBugAutoExecution(
-    bugPath: string,
-    permissions: BugAutoExecutionPermissions
-  ): Promise<Result<BugAutoExecutionState, ApiError>> {
-    interface BugAutoExecutionStartedResponse {
-      bugPath: string;
-      state: BugAutoExecutionState;
-    }
-    const response = await this.wrapRequest<BugAutoExecutionStartedResponse>(
-      'START_BUG_AUTO_EXECUTION',
-      { bugPath, permissions }
-    );
-    if (response.ok) {
-      return { ok: true, value: response.value.state };
-    }
-    return response;
-  }
-
-  /**
-   * Stop bug auto execution
-   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.2)
-   * @param bugPath - Full path to bug directory
-   */
-  async stopBugAutoExecution(bugPath: string): Promise<Result<void, ApiError>> {
-    return this.wrapRequest<void>('STOP_BUG_AUTO_EXECUTION', { bugPath });
-  }
+  // Bug Auto Execution Operations removed (github-issue-integration)
 
   // ===========================================================================
   // File Operations
@@ -1136,16 +1025,7 @@ export class WebSocketApiClient implements ApiClient {
     return this.on('specsUpdated', (data) => callback(data as SpecMetadata[]));
   }
 
-  onBugsUpdated(callback: (bugs: BugMetadata[]) => void): () => void {
-    return this.on('bugsUpdated', (data) => {
-      // Handle both array format (INIT) and object format (BUGS_UPDATED broadcast)
-      if (Array.isArray(data)) {
-        callback(data as BugMetadata[]);
-      } else if (data && typeof data === 'object' && 'bugs' in data) {
-        callback((data as { bugs: BugMetadata[] }).bugs);
-      }
-    });
-  }
+  // onBugsUpdated removed (github-issue-integration)
 
   onAgentOutput(
     callback: (agentId: string, stream: 'stdout' | 'stderr' | 'stdin', data: string) => void
@@ -1273,36 +1153,7 @@ export class WebSocketApiClient implements ApiClient {
     return { ok: true, value: worktreeInfo };
   }
 
-  // ===========================================================================
-  // Bug Monitoring Operations (bugs-view-unification)
-  // Task 1.3: WebSocketApiClient implementation
-  // Requirements: 4.6, 4.7
-  // ===========================================================================
-
-  async startBugsWatcher(): Promise<Result<void, ApiError>> {
-    return this.wrapRequest<void>('START_BUGS_WATCHER');
-  }
-
-  async stopBugsWatcher(): Promise<Result<void, ApiError>> {
-    return this.wrapRequest<void>('STOP_BUGS_WATCHER');
-  }
-
-  onBugsChanged(listener: (event: BugsChangeEvent) => void): () => void {
-    // Subscribe to bugsChanged event
-    // WebSocket sends full BugMetadata[] array, we convert to BugsChangeEvent[]
-    return this.on('bugsChanged', (data) => {
-      const currentBugs = data as BugMetadata[];
-      const events = detectBugsChanges(this.previousBugs, currentBugs);
-
-      // Update previous bugs for next comparison
-      this.previousBugs = [...currentBugs];
-
-      // Emit each event to listener
-      for (const event of events) {
-        listener(event);
-      }
-    });
-  }
+  // Bug Monitoring Operations removed (github-issue-integration)
 
   // ===========================================================================
   // Git Diff Viewer Operations (Task 15.8)

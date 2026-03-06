@@ -53,14 +53,14 @@ describe('MobileTabBar 3-tab configuration (Task 2.2)', () => {
     content = readFileSync(mobilePath, 'utf-8');
   });
 
-  it('should have TAB_CONFIG with 3 tabs: specs, bugs, agents (Req 1.1)', () => {
-    // TAB_CONFIG should contain all 3 tabs
+  it('should have TAB_CONFIG with tabs: specs, issues, agents (Req 1.1)', () => {
+    // TAB_CONFIG should contain tabs (github-issue-integration: bugs -> issues)
     expect(content).toContain("id: 'specs'");
-    expect(content).toContain("id: 'bugs'");
+    expect(content).toContain("id: 'issues'");
     expect(content).toContain("id: 'agents'");
     // Verify labels
     expect(content).toContain("label: 'Specs'");
-    expect(content).toContain("label: 'Bugs'");
+    expect(content).toContain("label: 'Issues'");
     expect(content).toContain("label: 'Agents'");
   });
 

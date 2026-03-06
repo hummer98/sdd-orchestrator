@@ -43,7 +43,7 @@ export interface UseSubmitShortcutReturn {
   /**
    * Event handler to be attached to textarea's onKeyDown
    */
-  readonly handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  readonly handleKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
 }
 
 // =============================================================================
@@ -80,7 +80,7 @@ export function useSubmitShortcut(
   const { onSubmit, disabled = false } = options;
 
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    (event: React.KeyboardEvent<HTMLElement>) => {
       // Requirement 3.1: IME変換中はショートカット無視
       if (event.nativeEvent.isComposing) {
         return;

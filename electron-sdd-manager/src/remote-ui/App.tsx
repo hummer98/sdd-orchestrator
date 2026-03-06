@@ -6,7 +6,7 @@
  *
  * Layout Structure (matching Electron App.tsx):
  * - Header: タイトル、プロジェクト名、ProfileBadge、接続状態 (DesktopLayout内蔵)
- * - Left Sidebar: Specs/Bugsタブ切り替え、一覧表示
+ * - Left Sidebar: Specs/Issuesタブ切り替え、一覧表示
  * - Main Panel: Artifact表示、ドキュメントタブ
  * - Right Sidebar: ワークフローパネル、Agent一覧
  * - Footer: Agentログエリア
@@ -17,7 +17,7 @@ import { ApiClientProvider, useApi } from '../shared/api';
 import { PlatformProvider } from '../shared/providers';
 import { useDeviceType } from '../shared/hooks/useDeviceType';
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
-import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView, ProjectView } from './views';
+import { SpecsView, RemoteWorkflowView, ProjectView } from './views';
 import { ProjectDetailPage } from './components/ProjectDetailPage';
 import { RemoteProjectEditor } from './components/RemoteProjectEditor';
 import { AgentsTabView } from './components/AgentsTabView';
@@ -25,23 +25,24 @@ import { ToastContainer } from './components/ToastContainer';
 import { RefreshButton } from './components/RefreshButton';
 import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecDetailPage } from './components/SpecDetailPage';
-import { BugDetailPage } from './components/BugDetailPage';
 import { AgentLogPage } from './components/AgentLogPage';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus, AgentLogPanel, type AgentLogInfo } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
+// github-issue-integration: Task 12.2 - Import IssuePane from shared components
+import { IssuePane } from '../shared/components/issue';
 import { useSharedAgentStore } from '../shared/stores/agentStore';
 import { useProjectAgents } from '../shared/hooks';
 import { ResizeHandle } from '../shared/components/ui';
 import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
-import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo as SharedAgentInfo, AgentStatus, ProjectFileInfo } from '../shared/api/types';
+// github-issue-integration: Task 12.3 - Issue creation dialog for Remote UI
+import { CreateIssueDialogRemote } from './components/CreateIssueDialogRemote';
+import type { SpecMetadataWithPath, SpecDetail, AutoExecutionOptions, AgentInfo as SharedAgentInfo, AgentStatus, ProjectFileInfo } from '../shared/api/types';
 
 // mobile-agent-log-fullscreen: Re-export for local use
 type AgentInfo = SharedAgentInfo;
-import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 // trpc-infrastructure: TRPCProvider for tRPC React hooks structure (Requirements 4.6)
 import { TRPCProvider } from '../shared/trpc/provider';
 import { useNavigationStack } from './hooks/useNavigationStack';
@@ -54,7 +55,8 @@ import { useAgentLogSubscription } from '../shared/hooks/useAgentLogSubscription
 // =============================================================================
 
 // project-config-editor Task 8.1: Extended DocsTab to include 'project'
-type DocsTab = 'specs' | 'bugs' | 'project';
+// github-issue-integration Task 12.2: Replaced 'bugs' with 'issues'
+type DocsTab = 'specs' | 'issues' | 'project';
 
 // =============================================================================
 // Helper Functions for Project Agent
@@ -96,11 +98,12 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
 }
 
 // =============================================================================
-// Left Sidebar Component - Spec/Bugsタブ + 一覧
+// Left Sidebar Component - Spec/Issuesタブ + 一覧
 // =============================================================================
 
 // Dialog type for create dialogs
-type CreateDialogType = 'spec' | 'bug' | null;
+// github-issue-integration Task 12.2: Replaced 'bug' with 'issue'
+type CreateDialogType = 'spec' | 'issue' | null;
 
 // Project Agent Panel height constraints (Electron parity)
 const PROJECT_AGENT_PANEL_MIN = 80;
@@ -111,11 +114,9 @@ interface LeftSidebarProps {
   activeTab: DocsTab;
   onTabChange: (tab: DocsTab) => void;
   selectedSpecId?: string;
-  selectedBugId?: string;
   /** project-config-editor Task 8.1: Selected project file path */
   selectedProjectFilePath?: string;
   onSelectSpec: (spec: SpecMetadataWithPath) => void;
-  onSelectBug: (bug: BugMetadataWithPath) => void;
   /** project-config-editor Task 8.1: Handler for project file selection */
   onSelectProjectFile?: (file: ProjectFileInfo) => void;
   deviceType: 'desktop' | 'smartphone';
@@ -123,20 +124,21 @@ interface LeftSidebarProps {
   onRefreshAgents?: () => Promise<void>;
   /** Task 7.3: Whether refresh is in progress (Req 6.5) */
   isRefreshingAgents?: boolean;
+  /** github-issue-integration Task 12.2: Project path for IssuePane */
+  projectPath?: string;
 }
 
 function LeftSidebar({
   activeTab,
   onTabChange,
   selectedSpecId,
-  selectedBugId,
   selectedProjectFilePath,
   onSelectSpec,
-  onSelectBug,
   onSelectProjectFile,
   deviceType,
   onRefreshAgents,
   isRefreshingAgents = false,
+  projectPath,
 }: LeftSidebarProps) {
   const apiClient = useApi();
 
@@ -205,8 +207,9 @@ function LeftSidebar({
   }, [apiClient]);
 
   // Handle create button click
+  // github-issue-integration Task 12.2: Replaced 'bug' with 'issue'
   const handleCreateClick = useCallback(() => {
-    setCreateDialogType(activeTab === 'specs' ? 'spec' : 'bug');
+    setCreateDialogType(activeTab === 'specs' ? 'spec' : 'issue');
   }, [activeTab]);
 
   // Handle dialog close
@@ -232,14 +235,14 @@ function LeftSidebar({
           Specs
         </button>
         <button
-          onClick={() => onTabChange('bugs')}
+          onClick={() => onTabChange('issues')}
           className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'bugs'
+            activeTab === 'issues'
               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
-          Bugs
+          Issues
         </button>
         {/* project-config-editor Task 8.1: Project tab for DesktopLayout (Req 6.1) */}
         <button
@@ -255,7 +258,7 @@ function LeftSidebar({
         {/* Create button - Desktop only (Task 3.2), hide for Project tab */}
         {!isSmartphone && activeTab !== 'project' && (
           <button
-            data-testid={activeTab === 'specs' ? 'create-spec-button' : 'create-bug-button'}
+            data-testid={activeTab === 'specs' ? 'create-spec-button' : 'create-issue-button'}
             onClick={handleCreateClick}
             className={clsx(
               'px-2 py-2 text-sm font-medium transition-colors',
@@ -263,7 +266,7 @@ function LeftSidebar({
               'hover:bg-gray-100 dark:hover:bg-gray-800',
               'rounded-md mx-1'
             )}
-            title={activeTab === 'specs' ? '新規Specを作成' : '新規バグを作成'}
+            title={activeTab === 'specs' ? '新規Specを作成' : '新規Issueを作成'}
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -280,11 +283,9 @@ function LeftSidebar({
             onSelectSpec={onSelectSpec}
           />
         )}
-        {activeTab === 'bugs' && (
-          <BugsView
-            apiClient={apiClient}
-            selectedBugId={selectedBugId}
-            onSelectBug={onSelectBug}
+        {activeTab === 'issues' && projectPath && (
+          <IssuePane
+            projectPath={projectPath}
           />
         )}
         {activeTab === 'project' && onSelectProjectFile && (
@@ -374,7 +375,7 @@ function LeftSidebar({
             'transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
           )}
-          aria-label={activeTab === 'specs' ? '新規Specを作成' : '新規バグを作成'}
+          aria-label={activeTab === 'specs' ? '新規Specを作成' : '新規Issueを作成'}
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -388,9 +389,9 @@ function LeftSidebar({
         deviceType={deviceType}
       />
 
-      {/* Create Bug Dialog (Task 3.4) */}
-      <CreateBugDialogRemote
-        isOpen={createDialogType === 'bug'}
+      {/* github-issue-integration Task 12.3: Create Issue Dialog */}
+      <CreateIssueDialogRemote
+        isOpen={createDialogType === 'issue'}
         onClose={handleDialogClose}
         apiClient={apiClient}
         deviceType={deviceType}
@@ -408,12 +409,11 @@ interface MainPanelProps {
   activeTab: DocsTab;
   selectedSpec: SpecMetadataWithPath | null;
   specDetail: SpecDetail | null;
-  selectedBug: BugMetadataWithPath | null;
   // project-config-editor Task 8.2: Selected project file for editor display
   selectedProjectFile?: ProjectFileInfo | null;
 }
 
-function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug, selectedProjectFile }: MainPanelProps) {
+function MainPanel({ activeTab, selectedSpec, specDetail, selectedProjectFile }: MainPanelProps) {
   const apiClient = useApi();
 
   // Spec選択時: RemoteArtifactEditorを表示
@@ -431,19 +431,7 @@ function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug, selectedP
     );
   }
 
-  // Bug選択時: BugDetailViewを表示（従来通り）
-  if (activeTab === 'bugs' && selectedBug) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto">
-          <BugDetailView
-            bug={selectedBug}
-            apiClient={apiClient}
-          />
-        </div>
-      </div>
-    );
-  }
+  // github-issue-integration Task 12.2: Issue detail is handled by IssuePane in LeftSidebar
 
   // project-config-editor Task 8.2: Project file selected - show RemoteProjectEditor
   // Requirements: 6.2 - DesktopLayout用ProjectViewの統合
@@ -465,7 +453,7 @@ function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug, selectedP
     <div className="h-full flex items-center justify-center">
       <div className="text-center text-gray-500 dark:text-gray-400">
         <p className="text-lg">
-          {activeTab === 'project' ? 'ファイルを選択' : 'SpecまたはBugを選択'}
+          {activeTab === 'project' ? 'ファイルを選択' : 'Specを選択'}
         </p>
         <p className="text-sm mt-2">
           {activeTab === 'project' ? 'してエディタを表示' : 'してドキュメントを表示'}
@@ -751,7 +739,6 @@ function DesktopAppContent() {
   const [activeTab, setActiveTab] = useState<DocsTab>('specs');
   const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
   const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
-  const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
   // project-config-editor Task 8.2: State for selected project file
   const [selectedProjectFile, setSelectedProjectFile] = useState<ProjectFileInfo | null>(null);
 
@@ -767,12 +754,6 @@ function DesktopAppContent() {
   // Requirements: 2.3 - アプリケーション初期化時にリアルタイムログ購読を開始
   useAgentLogSubscription(apiClient);
 
-  // Initialize WebSocket listeners
-  useEffect(() => {
-    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
-    return cleanup;
-  }, [apiClient]);
-
   // Handle spec selection
   const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
     setSelectedSpec(spec);
@@ -783,18 +764,12 @@ function DesktopAppContent() {
     }
   }, [apiClient]);
 
-  // Handle bug selection
-  const handleSelectBug = useCallback((bug: BugMetadataWithPath) => {
-    setSelectedBug(bug);
-  }, []);
-
   // Handle tab change
   // project-config-editor Task 8.2: Clear project file on tab change
   const handleTabChange = useCallback((tab: DocsTab) => {
     setActiveTab(tab);
     setSelectedSpec(null);
     setSelectedSpecDetail(null);
-    setSelectedBug(null);
     setSelectedProjectFile(null);
     setIsAutoExecuting(false);
   }, []);
@@ -845,14 +820,13 @@ function DesktopAppContent() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           selectedSpecId={selectedSpec?.name}
-          selectedBugId={selectedBug?.name}
           selectedProjectFilePath={selectedProjectFile?.relativePath}
           onSelectSpec={handleSelectSpec}
-          onSelectBug={handleSelectBug}
           onSelectProjectFile={handleSelectProjectFile}
           deviceType="desktop"
           onRefreshAgents={refreshAgents}
           isRefreshingAgents={isAgentRefreshing}
+          projectPath={apiClient.getProjectPath?.() ?? ''}
         />
       }
       rightSidebar={
@@ -873,7 +847,6 @@ function DesktopAppContent() {
         activeTab={activeTab}
         selectedSpec={selectedSpec}
         specDetail={selectedSpecDetail}
-        selectedBug={selectedBug}
         selectedProjectFile={selectedProjectFile}
       />
     </DesktopLayout>
@@ -902,7 +875,6 @@ function MobileAppContent() {
     state: navigationState,
     setActiveTab,
     pushSpecDetail,
-    pushBugDetail,
     pushAgentLog,
     pushProjectDetail,
     popPage,
@@ -920,11 +892,6 @@ function MobileAppContent() {
   // Requirements: 2.3 - アプリケーション初期化時にリアルタイムログ購読を開始
   useAgentLogSubscription(apiClient);
 
-  useEffect(() => {
-    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
-    return cleanup;
-  }, [apiClient]);
-
   // Task 8.1: Spec選択ハンドラ - pushSpecDetailを使用
   const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
     const result = await apiClient.getSpecDetail(spec.name);
@@ -932,14 +899,6 @@ function MobileAppContent() {
       pushSpecDetail(spec, result.value);
     }
   }, [apiClient, pushSpecDetail]);
-
-  // Task 8.1: Bug選択ハンドラ - pushBugDetailを使用
-  const handleSelectBug = useCallback(async (bug: BugMetadataWithPath) => {
-    const result = await apiClient.getBugDetail(bug.name);
-    if (result.ok) {
-      pushBugDetail(bug, result.value);
-    }
-  }, [apiClient, pushBugDetail]);
 
   // Task 8.1: 戻るボタンハンドラ - popPageを使用
   const handleBackToList = useCallback(() => {
@@ -952,10 +911,6 @@ function MobileAppContent() {
    */
   const handleSelectAgentFromSpec = useCallback((agent: AgentInfo, specName: string) => {
     pushAgentLog(agent, 'spec', specName);
-  }, [pushAgentLog]);
-
-  const handleSelectAgentFromBug = useCallback((agent: AgentInfo, bugName: string) => {
-    pushAgentLog(agent, 'bug', bugName);
   }, [pushAgentLog]);
 
   const handleSelectAgentFromAgentsTab = useCallback((agent: AgentInfo) => {
@@ -974,8 +929,8 @@ function MobileAppContent() {
   // setActiveTabは自動的にdetailContextをクリアする (Req 2.6)
   // project-config-editor Task 7.2: Added 'project' tab support
   const handleTabChange = useCallback((tab: LayoutMobileTab) => {
-    // Process all valid tabs (specs/bugs/agents/project)
-    if (tab === 'specs' || tab === 'bugs' || tab === 'agents' || tab === 'project') {
+    // Process all valid tabs (specs/issues/agents/project)
+    if (tab === 'specs' || tab === 'issues' || tab === 'agents' || tab === 'project') {
       setActiveTab(tab);
     }
   }, [setActiveTab]);
@@ -1001,22 +956,7 @@ function MobileAppContent() {
         );
       }
 
-      // Task 8.3: BugDetailPageの表示 (Req 2.2)
-      // - BugListのアイテムタップ時にpushBugDetailを呼び出し → handleSelectBugで実行済
-      // - 戻るボタンでpopPageを呼び出し (Req 2.4) → onBack={handleBackToList}で接続
-      if (detailContext.type === 'bug') {
-        const { bug, bugDetail } = detailContext;
-        return (
-          <BugDetailPage
-            bug={bug}
-            bugDetail={bugDetail}
-            apiClient={apiClient}
-            onBack={handleBackToList}
-            onSelectAgent={(agent) => handleSelectAgentFromBug(agent, bug.name)}
-            testId="bug-detail-page"
-          />
-        );
-      }
+      // github-issue-integration Task 12.2: Bug detail page removed - Issues handled by IssuePane
 
       // mobile-agent-log-fullscreen Task 4.1: AgentLogPageの表示 (Req 1.1)
       // - AgentListのアイテムタップ時にpushAgentLogを呼び出し
@@ -1062,12 +1002,11 @@ function MobileAppContent() {
           />
         );
 
-      case 'bugs':
+      // github-issue-integration Task 12.2: Issue tab using IssuePane
+      case 'issues':
         return (
-          <BugsView
-            apiClient={apiClient}
-            selectedBugId={undefined}
-            onSelectBug={handleSelectBug}
+          <IssuePane
+            projectPath={apiClient.getProjectPath?.() ?? ''}
           />
         );
 

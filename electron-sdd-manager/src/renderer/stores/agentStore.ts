@@ -45,8 +45,7 @@ import type { Unsubscribable } from '@trpc/server/observable';
 // Bug fix: agent-log-dynamic-import-issue
 // Import specStore synchronously to avoid Promise delays in callbacks
 import { useSpecStore } from './specStore';
-// bugs-view-unification Task 6.1: Use shared bugStore
-import { useSharedBugStore } from '../../shared/stores/bugStore';
+// bugStore removed (github-issue-integration)
 
 // =============================================================================
 // Type Re-exports for Backward Compatibility
@@ -410,13 +409,10 @@ export const useAgentStore = create<AgentActions>()(
                 } else {
                   // Spec/Bug Agent - auto-select if matches current selection
                   const { selectedSpec } = useSpecStore.getState();
-                  if (specId.startsWith('bug:')) {
-                    // bugs-view-unification Task 6.1: Use selectedBugId from shared store
-                    const { selectedBugId } = useSharedBugStore.getState();
-                    const expectedSpecId = selectedBugId ? `bug:${selectedBugId}` : '';
-                    if (specId === expectedSpecId) {
-                      get().selectAgent(agentId);
-                    }
+                  if (specId.startsWith('issue:')) {
+                    // github-issue-integration: Issue agent auto-select
+                    // TODO: Match against selected issue number if needed
+                    get().selectAgent(agentId);
                   } else if (selectedSpec && specId === selectedSpec.name) {
                     get().selectAgent(agentId);
                   }

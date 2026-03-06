@@ -66,6 +66,12 @@ export const EVENT_NAMES = {
   // SSH Events (1)
   SSH_STATUS_CHANGED: 'events:ssh-status-changed',
 
+  // GitHub Issue Integration Events (4)
+  ISSUE_LIST_UPDATED: 'events:issue-list-updated',
+  ISSUE_DETAIL_UPDATED: 'events:issue-detail-updated',
+  PR_LIST_UPDATED: 'events:pr-list-updated',
+  GITHUB_CONNECTION_CHANGED: 'events:github-connection-changed',
+
   // Menu Events (8)
   MENU_OPEN_PROJECT: 'events:menu-open-project',
   MENU_RESET_LAYOUT: 'events:menu-reset-layout',

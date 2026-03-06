@@ -30,7 +30,7 @@ import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 
 import type { WorktreeConfig } from '@shared/types/worktree';
 
-import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
+// BugMetadata, BugDetail, BugAction removed (github-issue-integration)
 import type { LLMEngineId } from '@shared/registry';
 
 // agent-error-notification Task 7.1: Import AgentStartError for API layer
@@ -58,13 +58,7 @@ export interface SpecMetadataWithPath extends SpecMetadata {
   readonly approvals?: ApprovalStatus;
 }
 
-/**
- * BugMetadata with path for Remote UI use
- * WebSocket API still returns path, so Remote UI needs this extended type
- */
-export interface BugMetadataWithPath extends BugMetadata {
-  readonly path: string;
-}
+// BugMetadataWithPath, BugDetailWithPath removed (github-issue-integration)
 
 /**
  * SpecDetail with path for Remote UI use
@@ -72,14 +66,6 @@ export interface BugMetadataWithPath extends BugMetadata {
  */
 export interface SpecDetailWithPath extends Omit<SpecDetail, 'metadata'> {
   metadata: SpecMetadataWithPath;
-}
-
-/**
- * BugDetail with path for Remote UI use
- * Extends BugDetail but uses BugMetadataWithPath
- */
-export interface BugDetailWithPath extends Omit<BugDetail, 'metadata'> {
-  metadata: BugMetadataWithPath;
 }
 
 // =============================================================================
@@ -220,44 +206,13 @@ export interface AutoExecutionState {
   error?: ApiError;
 }
 
-/**
- * Bug auto execution state returned by bug auto execution APIs
- * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
- */
-export interface BugAutoExecutionState {
-  bugPath: string;
-  bugName: string;
-  status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
-  currentPhase: string | null;
-  executedPhases: string[];
-  errors: string[];
-  startTime: number;
-  lastActivityTime: number;
-  retryCount: number;
-  lastFailedPhase: string | null;
-}
-
-/**
- * Bug auto execution permissions for startBugAutoExecution
- * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
- */
-export interface BugAutoExecutionPermissions {
-  analyze: boolean;
-  fix: boolean;
-  verify: boolean;
-}
+// BugAutoExecutionState, BugAutoExecutionPermissions removed (github-issue-integration)
 
 // =============================================================================
 // Event Types
 // =============================================================================
 
-/**
- * Bug change event type
- * bugs-view-unification: Task 1.1 - Re-export from renderer/types/bug
- * Requirements: 4.4
- * Note: Type is defined in renderer/types/bug.ts for backward compatibility
- */
-import type { BugsChangeEvent } from '@renderer/types/bug';
+// BugsChangeEvent removed (github-issue-integration)
 
 /**
  * Auto execution status change event data
@@ -329,40 +284,7 @@ export interface ApiClient {
    */
   updateApproval(specPath: string, phase: Phase, approved: boolean): Promise<Result<void, ApiError>>;
 
-  // ===========================================================================
-  // Bug Operations
-  // ===========================================================================
-
-  /**
-   * Get all bugs for the current project
-   */
-  getBugs(): Promise<Result<BugMetadata[], ApiError>>;
-
-  /**
-   * Get detailed information for a specific bug
-   * @param bugPath - Full path to bug directory
-   */
-  getBugDetail(bugPath: string): Promise<Result<BugDetail, ApiError>>;
-
-  /**
-   * Execute a bug workflow phase
-   * @param bugName - Bug name (directory name)
-   * @param action - Bug action to execute
-   * @param options - Optional execution options (useWorktree, etc.)
-   */
-  executeBugPhase(
-    bugName: string,
-    action: BugAction,
-    options?: { useWorktree?: boolean }
-  ): Promise<Result<AgentInfo, ApiError>>;
-
-  /**
-   * Create a new bug
-   * Requirements: 5.1 (remote-ui-bug-advanced-features Task 2.1)
-   * @param name - Bug name (directory name)
-   * @param description - Bug description
-   */
-  createBug?(name: string, description: string): Promise<Result<AgentInfo, ApiError>>;
+  // Bug Operations removed (github-issue-integration)
 
   // ===========================================================================
   // Agent Operations
@@ -484,30 +406,7 @@ export interface ApiClient {
    */
   getAutoExecutionStatus(specPath: string): Promise<Result<AutoExecutionState | null, ApiError>>;
 
-  /**
-   * Get bug auto execution status
-   * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
-   * @param bugPath - Full path to bug directory
-   */
-  getBugAutoExecutionStatus?(bugPath: string): Promise<Result<BugAutoExecutionState | null, ApiError>>;
-
-  /**
-   * Start bug auto execution
-   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
-   * @param bugPath - Full path to bug directory
-   * @param permissions - Permissions for each phase
-   */
-  startBugAutoExecution?(
-    bugPath: string,
-    permissions: BugAutoExecutionPermissions
-  ): Promise<Result<BugAutoExecutionState, ApiError>>;
-
-  /**
-   * Stop bug auto execution
-   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.2)
-   * @param bugPath - Full path to bug directory
-   */
-  stopBugAutoExecution?(bugPath: string): Promise<Result<void, ApiError>>;
+  // Bug auto execution methods removed (github-issue-integration)
 
   // ===========================================================================
   // File Operations
@@ -583,12 +482,7 @@ export interface ApiClient {
    */
   onSpecsUpdated(callback: (specs: SpecMetadata[]) => void): () => void;
 
-  /**
-   * Subscribe to bugs list updates
-   * @param callback - Callback function receiving updated bugs
-   * @returns Unsubscribe function
-   */
-  onBugsUpdated(callback: (bugs: BugMetadata[]) => void): () => void;
+  // onBugsUpdated removed (github-issue-integration)
 
   /**
    * Subscribe to agent output
@@ -622,30 +516,7 @@ export interface ApiClient {
    */
   onAutoExecutionStatusChanged(callback: (data: AutoExecutionStatusEvent) => void): () => void;
 
-  // ===========================================================================
-  // Bug Monitoring Operations (bugs-view-unification)
-  // Requirements: 4.1, 4.2, 4.3, 4.4
-  // ===========================================================================
-
-  /**
-   * Start bugs watcher
-   * bugs-view-unification: Task 1.1
-   */
-  startBugsWatcher(): Promise<Result<void, ApiError>>;
-
-  /**
-   * Stop bugs watcher
-   * bugs-view-unification: Task 1.1
-   */
-  stopBugsWatcher(): Promise<Result<void, ApiError>>;
-
-  /**
-   * Subscribe to bug change events
-   * bugs-view-unification: Task 1.1
-   * @param listener - Event listener callback
-   * @returns Unsubscribe function
-   */
-  onBugsChanged(listener: (event: BugsChangeEvent) => void): () => void;
+  // Bug Monitoring Operations removed (github-issue-integration)
 
   // ===========================================================================
   // Connection Management (Remote UI only)
@@ -813,19 +684,14 @@ export type {
   Phase,
   LogEntry,
   AutoExecutionPermissions,
-  // DocumentReviewFlag removed - document-review-phase Task 8.1
   SpecAutoExecutionState,
-  BugMetadata,
-  BugDetail,
-  BugAction,
   // main-process-log-parser Task 10.2: Export ParsedLogEntry
   ParsedLogEntry,
   // agent-error-notification Task 7.1: Export AgentStartError
   AgentStartError,
 };
 
-// bugs-view-unification: Re-export BugsChangeEvent
-export type { BugsChangeEvent };
+// BugMetadata, BugDetail, BugAction, BugsChangeEvent removed (github-issue-integration)
 
 // Workflow types for shared components
 export type { RendererWorkflowPhase as WorkflowPhaseType, RendererPhaseStatus as PhaseStatusType };

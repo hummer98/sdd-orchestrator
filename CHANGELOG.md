@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## [0.73.0] - 2026-03-06
+
+### Added
+- test-runner skill とユニットテスト結果パーサー追加
+- merge from worktree branch feature/github-issue-integration
+- マルチウィンドウ対応の実装
+- クラッシュレポーター追加（dialog.showErrorBox のログ記録と非インタラクティブモード対応）
+
+### Fixed
+- key_componentsの抽出範囲をtasks.mdの新規ファイルにも拡大
+- AgentListPanel の selectAgent(null) レースコンディションを修正
+- project-ask/spec-ask の同時実行制限を解除
+- AgentLogActionArea sendAgentInput の未キャッチ Promise rejection を修正
+
+### Changed
+- docs: E2Eテストレポートとskills/plugins調査メモ追加
+- chore: rebase-worktree修正、リモートE2EホストIPアドレス更新
+- test(e2e): wdio auto-build追加とphase名・fixtures更新
+- test: E2Eテスト13件の失敗修正（57→70 passed）
+- refactor: agentStore に clearAllAgents アクションを追加し E2E ヘルパーを更新
+
+
+## [0.73.0] - 2026-03-06
+
+### Added
+- test-runner skill とユニットテスト結果パーサー追加
+- GitHub Issue連携機能 (github-issue-integration)
+- マルチウィンドウ対応の実装 (multi-window-integration)
+- クラッシュレポーター追加（dialog.showErrorBox のログ記録と非インタラクティブモード対応）
+
+### Fixed
+- spec-inspection: key_componentsの抽出範囲をtasks.mdの新規ファイルにも拡大
+- AgentListPanel の selectAgent(null) レースコンディションを修正
+- project-ask/spec-ask の同時実行制限を解除
+- AgentLogActionArea sendAgentInput の未キャッチ Promise rejection を修正
+
+### Changed
+- agentStore に clearAllAgents アクションを追加し E2E ヘルパーを更新
+- E2Eテスト13件の失敗修正（57→70 passed）
+- wdio auto-build追加とphase名・fixtures更新
+- rebase-worktree修正、KDG-069 IPアドレス更新
+- E2Eテストレポートとskills/plugins調査メモ追加
+
 ## [0.72.0] - 2026-02-16
 
 ### Added

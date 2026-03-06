@@ -20,7 +20,7 @@ import { projectLogger as logger } from './projectLogger';
 import { setMenuRemoteServerStatus } from '../menu';
 import { getGlobalEventBus } from '../trpc/services/globalEventBus';
 import { EVENT_NAMES } from '../trpc/services/eventBus';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider } from './webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, AgentLogsProvider, ProfileConfig, SpecDetailProvider } from './webSocketHandler';
 import { FileService } from './fileService';
 import { projectConfigService } from './layoutConfigService';
 import type { SpecManagerService } from './specManagerService';
@@ -60,7 +60,7 @@ export function resetRemoteAccessServer(): void {
 export function createStateProvider(
   projectPath: string,
   getSpecs: () => Promise<SpecInfo[] | null>,
-  getBugs?: () => Promise<BugInfo[] | null>,
+  _getBugs?: unknown,
   getAgents?: () => Promise<AgentStateInfo[] | null>
 ): StateProvider {
   return {
@@ -68,11 +68,6 @@ export function createStateProvider(
     getSpecs: async () => {
       const specs = await getSpecs();
       return specs || [];
-    },
-    getBugs: async () => {
-      if (!getBugs) return [];
-      const bugs = await getBugs();
-      return bugs || [];
     },
     getAgents: async () => {
       if (!getAgents) return [];
@@ -98,7 +93,7 @@ export function createStateProvider(
 export function setupStateProvider(
   projectPath: string,
   getSpecs: () => Promise<SpecInfo[] | null>,
-  getBugs?: () => Promise<BugInfo[] | null>,
+  getBugs?: () => Promise<unknown[] | null>,
   getAgents?: () => Promise<AgentStateInfo[] | null>
 ): void {
   const server = getRemoteAccessServer();
@@ -196,17 +191,6 @@ export function createWorkflowController(
       };
     },
 
-    executeBugPhase: async (_bugName: string, _phase: BugAction): Promise<WorkflowResult<AgentInfo>> => {
-      // Bug workflow removed (github-issue-integration)
-      return {
-        ok: false,
-        error: {
-          type: 'NOT_SUPPORTED',
-          message: 'Bug workflow has been replaced by GitHub Issue integration',
-        },
-      };
-    },
-
     executeDocumentReview: async (specId: string): Promise<WorkflowResult<AgentInfo>> => {
       const result = await specManagerService.execute({
         type: 'document-review',
@@ -235,30 +219,6 @@ export function createWorkflowController(
         specId: '',
         phase: 'spec-init',
         args: buildClaudeArgs({ command: `/kiro:spec-init "${description}"` }),
-        engineId: 'claude',
-      });
-
-      if (result.ok) {
-        return {
-          ok: true,
-          value: { agentId: result.value.agentId },
-        };
-      }
-
-      return {
-        ok: false,
-        error: {
-          type: result.error.type,
-          message: 'message' in result.error ? result.error.message : undefined,
-        },
-      };
-    },
-
-    createBug: async (name: string, description: string): Promise<WorkflowResult<AgentInfo>> => {
-      const result = await specManagerService.startAgent({
-        specId: '',
-        phase: 'bug-create',
-        args: buildClaudeArgs({ command: `/kiro:bug-create ${name} "${description}"` }),
         engineId: 'claude',
       });
 
@@ -514,32 +474,7 @@ export function setupSpecDetailProvider(projectPath: string): void {
   }
 }
 
-/**
- * Create a BugDetailProvider for WebSocketHandler (deprecated - github-issue-integration)
- */
-export function createBugDetailProvider(_projectPath: string): BugDetailProvider {
-  return {
-    getBugDetail: async (_bugPath: string) => {
-      return {
-        ok: false as const,
-        error: { type: 'NOT_SUPPORTED', message: 'Bug workflow has been replaced by GitHub Issue integration' },
-      };
-    },
-  };
-}
-
-/**
- * Set up BugDetailProvider on the WebSocketHandler (deprecated)
- */
-export function setupBugDetailProvider(projectPath: string): void {
-  const server = getRemoteAccessServer();
-  const wsHandler = server.getWebSocketHandler();
-
-  if (wsHandler) {
-    const bugDetailProvider = createBugDetailProvider(projectPath);
-    wsHandler.setBugDetailProvider(bugDetailProvider);
-  }
-}
+// createBugDetailProvider and setupBugDetailProvider removed (github-issue-integration)
 
 /**
  * Set up FileService on the WebSocketHandler

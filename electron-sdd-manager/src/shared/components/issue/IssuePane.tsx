@@ -8,7 +8,7 @@
  * Requirements: 2.1
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { useStore } from 'zustand';
 import { issueStore } from '@shared/stores/issueStore';
@@ -98,7 +98,7 @@ export function IssuePane({
   }, [loadPullRequests, projectPath]);
 
   // github-issue-integration: Task 16.10 - Implement TODO placeholders
-  const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
+  const [_isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
 
   const handleStartImplementation = useCallback(async (issueNumber: number, mode: 'worktree' | 'direct') => {
     try {

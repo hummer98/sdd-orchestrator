@@ -19,11 +19,13 @@ import { useState, useCallback, useMemo } from 'react';
 import type {
   SpecMetadataWithPath,
   SpecDetail,
-  BugMetadataWithPath,
-  BugDetail,
   AgentInfo,
   ProjectFileInfo,
 } from '@shared/api/types';
+
+// Bug types removed from shared API (github-issue-integration)
+interface BugMetadataWithPath { name: string; path: string; [key: string]: unknown; }
+interface BugDetail { name: string; [key: string]: unknown; }
 
 // =============================================================================
 // Types

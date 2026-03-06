@@ -18,7 +18,7 @@ import { EVENT_NAMES } from '../services/eventBus';
 import { layoutConfigService } from '../../services/layoutConfigService';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../../services/autoExecutionCoordinator';
 // BugAutoExecutionCoordinator removed (github-issue-integration)
-import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, setupFileService, getRemoteAccessServer } from '../../services/remoteAccessSetup';
+import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupFileService, getRemoteAccessServer } from '../../services/remoteAccessSetup';
 import { initScheduleTaskCoordinator } from '../../services/scheduleTaskSetup';
 import { MetricsService } from '../../services/metricsService';
 import { MetricsFileWriter } from '../../services/metricsFileWriter';
@@ -70,7 +70,7 @@ export {
 
 import type { SelectProjectResult } from '../../../renderer/types';
 // BugWorkflowPhase removed (github-issue-integration)
-import type { SpecInfo, BugInfo, AgentStateInfo } from '../../services/webSocketHandler';
+import type { SpecInfo, AgentStateInfo } from '../../services/webSocketHandler';
 
 // Re-export utility functions that were in projectUtils.ts
 export { validateProjectPath, isProjectSelectionInProgress, setProjectSelectionLock, resetProjectSelectionLock } from './projectUtils';
@@ -360,7 +360,7 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
     });
   };
 
-  const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
+  const getBugsForRemote = async (): Promise<unknown[] | null> => {
     // Bugs removed (github-issue-integration)
     return [];
   };
@@ -384,7 +384,6 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
   setupWorkflowController(getSpecManagerService());
   setupAgentLogsProvider();
   setupSpecDetailProvider(projectPath);
-  setupBugDetailProvider(projectPath);
   setupFileService(projectPath);
   logger.info('[projectSetup] Remote Access providers set up');
 }

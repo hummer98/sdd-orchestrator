@@ -426,9 +426,9 @@ app.on('activate', () => {
 
 // Quit when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {
-  logger.info('[main] window-all-closed event fired', { platform: process.platform });
-  if (process.platform !== 'darwin') {
-    logger.info('[main] Not macOS, quitting app');
+  logger.info('[main] window-all-closed event fired', { platform: process.platform, isE2ETest });
+  if (process.platform !== 'darwin' || isE2ETest) {
+    logger.info('[main] Quitting app (non-macOS or E2E test mode)');
     app.quit();
   } else {
     logger.info('[main] macOS, keeping app running');

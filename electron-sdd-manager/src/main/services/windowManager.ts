@@ -202,6 +202,7 @@ export class WindowManager {
         nodeIntegration: false,
         sandbox: !this.isE2ETest,
         preload: join(__dirname, '../preload/index.js'),
+        ...(this.isE2ETest ? { additionalArguments: ['--is-e2e'] } : {}),
       },
       show: false,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -238,6 +239,16 @@ export class WindowManager {
         window.maximize();
       }
     });
+
+    // E2E: Capture Renderer console output to Main process logger
+    if (this.isE2ETest) {
+      const levelNames = ['VERBOSE', 'INFO', 'WARNING', 'ERROR'];
+      window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+        const levelName = levelNames[level] ?? 'INFO';
+        const source = sourceId ? sourceId.split('/').pop() : 'unknown';
+        logger.info(`[Renderer Console] [${levelName}] ${message}`, { line, source });
+      });
+    }
 
     // Load the app
     if (isDev) {

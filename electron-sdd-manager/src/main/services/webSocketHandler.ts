@@ -227,7 +227,8 @@ export interface WorkflowController {
   // Create methods (remote-ui-missing-create-buttons bug fix)
   /** Create a new spec with spec-init */
   createSpec?(description: string): Promise<WorkflowResult<AgentInfo>>;
-  // createBug removed (github-issue-integration)
+  /** Create a new bug report */
+  createBug?(name: string, description: string): Promise<WorkflowResult<AgentInfo>>;
 
   // Release methods (generate-release-integration feature)
   // Requirements: 3.4, 3.5

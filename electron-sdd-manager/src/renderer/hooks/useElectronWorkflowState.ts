@@ -331,9 +331,24 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
           approvals: specDetail.specJson.approvals,
         }
       );
+      console.info(`[handleAutoExecution] tRPC start result ok=${result.ok} status=${result.ok ? result.value.status : 'N/A'} specId=${specDetail.metadata.name}`);
       if (result.ok) {
         // Optimistic update: immediately reflect running state in store
-        useAutoExecutionStore.getState().startAutoExecution(specDetail.metadata.name);
+        // Skip if coordinator already completed (e.g., all phases already done) to avoid
+        // overwriting the 'completed' state that arrives via subscription before this line
+        const storeStateBefore = useAutoExecutionStore.getState().autoExecutionRuntimeMap.get(specDetail.metadata.name);
+        console.info(`[handleAutoExecution] store BEFORE optimistic: isAutoExecuting=${storeStateBefore?.isAutoExecuting} status=${storeStateBefore?.autoExecutionStatus}`);
+        // Check if subscription already delivered a terminal state before this line runs.
+        // When coordinator completes immediately, the 'completed' event arrives via subscription
+        // before the tRPC mutation result returns, so the store is already at completed/idle.
+        const currentRuntime = useAutoExecutionStore.getState().autoExecutionRuntimeMap.get(specDetail.metadata.name);
+        const alreadyTerminal = currentRuntime?.autoExecutionStatus === 'completed' || currentRuntime?.autoExecutionStatus === 'error';
+        if (!alreadyTerminal) {
+          useAutoExecutionStore.getState().startAutoExecution(specDetail.metadata.name);
+          console.info(`[handleAutoExecution] optimistic update APPLIED`);
+        } else {
+          console.info(`[handleAutoExecution] optimistic update SKIPPED (store already ${currentRuntime?.autoExecutionStatus})`);
+        }
       } else {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }

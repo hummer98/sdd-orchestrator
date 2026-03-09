@@ -81,6 +81,8 @@ export function initAutoExecutionIpcListeners(): void {
       }
       const { specId, status, currentPhase } = typedData.state;
 
+      console.info(`[AutoExecutionStore] onData received specId=${specId} status=${status} currentPhase=${currentPhase}`);
+
       // Update store directly - this is the key fix for the state sync bug
       const store = useAutoExecutionStore.getState();
       const map = new Map(store.autoExecutionRuntimeMap);
@@ -196,6 +198,7 @@ export const useAutoExecutionStore = create<AutoExecutionStore>((set, get) => ({
    * Requirement 5.6: startAutoExecution action
    */
   startAutoExecution: (specId: string) => {
+    console.info(`[AutoExecutionStore] startAutoExecution called specId=${specId}`);
     const map = new Map(get().autoExecutionRuntimeMap);
     map.set(specId, {
       isAutoExecuting: true,

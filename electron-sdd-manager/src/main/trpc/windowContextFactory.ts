@@ -140,6 +140,24 @@ export function createWindowContextFactory(
       ...perWindowOverrides,
     };
 
-    return createContext(mergedServices);
+    const ctx = createContext(mergedServices);
+
+    // Step 4: Apply dynamic getters on the final context object
+    // These must be defined AFTER createContext because spread operators flatten getters to values.
+    if (windowId !== undefined) {
+      // Per-window autoExecutionCoordinator: dynamic lookup from WindowManager
+      // (sharedServices has a stale snapshot from startup; per-window coordinator is created by setWindowProject)
+      const wid = windowId;
+      Object.defineProperty(ctx.services, 'autoExecutionCoordinator', {
+        get: () => {
+          const svc = windowManager.getWindowServices(wid);
+          return (svc?.autoExecutionCoordinator as any) ?? sharedServices.autoExecutionCoordinator;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+    }
+
+    return ctx;
   };
 }

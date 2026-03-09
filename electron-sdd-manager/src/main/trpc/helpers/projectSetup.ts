@@ -186,6 +186,12 @@ export async function selectProject(projectPath: string, windowId?: number): Pro
             };
           }
         }
+        // Register auto-execution event handlers on the new per-window coordinator
+        const services = wm.getWindowServices(effectiveWindowId);
+        if (services?.autoExecutionCoordinator) {
+          registerAutoExecutionEvents(services.autoExecutionCoordinator);
+          logger.info('[projectSetup] Auto-execution events registered on per-window coordinator', { windowId: effectiveWindowId });
+        }
       }
     } catch {
       // WindowManager not available (e.g., test environment) - continue without per-window registration

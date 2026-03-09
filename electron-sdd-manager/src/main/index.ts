@@ -118,6 +118,11 @@ if (cliOptions.help) {
 // E2E test mode detection via CLI options
 const isE2ETest = cliOptions.e2eTest;
 
+// E2E: Hide Dock icon to prevent icon accumulation during test runs
+if (isE2ETest && process.platform === 'darwin' && app.dock) {
+  app.dock.hide();
+}
+
 // Single instance lock: prevent multiple app instances
 // When a second instance is launched, focus the existing window and handle its arguments
 const gotTheLock = app.requestSingleInstanceLock();
@@ -269,6 +274,7 @@ app.whenReady().then(async () => {
   // (Renderer side exposes __STORES__ and __TRPC__ on window for the same purpose)
   if (isE2ETest) {
     (global as any).__GLOBAL_EVENT_BUS__ = getGlobalEventBus();
+    (global as any).__WINDOW_MANAGER__ = getWindowManager();
   }
 
   // Remote Access & SSH: IPC handlers deleted (Task 10.7), setup notifications only
@@ -296,8 +302,28 @@ app.whenReady().then(async () => {
 
   await initializeMcpServer(() => configStore.getMcpSettings());
 
+  // multi-window-integration Task 8.2: Restore previous window states or create default window
+  // replaces direct createWindow() call from Task 7.1
+  // NOTE: Windows must be created BEFORE selectProject so that
+  // getFocusedWindowId() returns a valid windowId and setWindowProject()
+  // can register the project + create per-window services on the window.
+  const windowManager = getWindowManager();
+  const { restored, skipped } = windowManager.restoreWindows();
+  logger.info('[main] Window restoration complete', { restored, skipped: skipped.length });
+
+  // multi-window-integration Task 7.1: Initialize tRPC IPC handler with WindowManager
+  // IPCHandler is created once and attached to the first window (DD-001 Singleton pattern)
+  const allWindowIds = windowManager.getAllWindowIds();
+  const firstWindow = allWindowIds.length > 0 ? windowManager.getWindow(allWindowIds[0]) : null;
+  if (firstWindow) {
+    initializeTRPCHandler(windowManager, firstWindow);
+  } else {
+    logger.error('[main] No windows available after restoration - cannot initialize tRPC handler');
+  }
+
   // Initialize with project path from command line if provided
   // Main process owns project selection - Renderer should not call selectProject again
+  // Must be AFTER window creation so selectProject can register project on the window
   if (initialProjectPath) {
     logger.info('[main] Initial project path from command line', { initialProjectPath });
 
@@ -309,15 +335,18 @@ app.whenReady().then(async () => {
         setInitialProjectPath(initialProjectPath);
 
         // selectProject handles full initialization including:
+        // - setWindowProject (registers project + creates per-window services on WindowManager)
         // - setProjectPath (AgentRecordService, AgentLifecycleManager)
         // - Loading specs, bugs, validation
         // - Adding to recent projects
-        const result = await selectProject(initialProjectPath);
+        const targetWindowId = firstWindow?.id ?? windowManager.getFocusedWindowId() ?? undefined;
+        const result = await selectProject(initialProjectPath, targetWindowId);
         if (result.success) {
           logger.info('[main] Initial project selected successfully', {
             initialProjectPath,
             specsCount: result.specs.length,
             bugsCount: result.bugs.length,
+            windowId: targetWindowId,
           });
           // startup-project-selection-fix Task 4.1: Cache result for later broadcast
           // Requirements: 1.1, 1.2
@@ -334,22 +363,6 @@ app.whenReady().then(async () => {
     } else {
       logger.warn('[main] Project path does not exist', { initialProjectPath });
     }
-  }
-
-  // multi-window-integration Task 8.2: Restore previous window states or create default window
-  // replaces direct createWindow() call from Task 7.1
-  const windowManager = getWindowManager();
-  const { restored, skipped } = windowManager.restoreWindows();
-  logger.info('[main] Window restoration complete', { restored, skipped: skipped.length });
-
-  // multi-window-integration Task 7.1: Initialize tRPC IPC handler with WindowManager
-  // IPCHandler is created once and attached to the first window (DD-001 Singleton pattern)
-  const allWindowIds = windowManager.getAllWindowIds();
-  const firstWindow = allWindowIds.length > 0 ? windowManager.getWindow(allWindowIds[0]) : null;
-  if (firstWindow) {
-    initializeTRPCHandler(windowManager, firstWindow);
-  } else {
-    logger.error('[main] No windows available after restoration - cannot initialize tRPC handler');
   }
 
   // Task 10.2: Remote UI auto-start with CLI options

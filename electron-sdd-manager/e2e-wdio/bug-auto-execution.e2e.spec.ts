@@ -316,13 +316,13 @@ async function waitForBugDetail(): Promise<boolean> {
  * Helper: Switch to Bugs tab
  * This is required because BugPane is only rendered when activeTab === 'bugs'
  */
-async function switchToBugsTab(): Promise<boolean> {
+async function switchToIssuesTab(): Promise<boolean> {
   try {
     // First, wait for DocsTabs to be rendered
     const docsTabs = await $('[data-testid="docs-tabs"]');
     await docsTabs.waitForExist({ timeout: 10000 });
 
-    const bugsTab = await $('[data-testid="tab-bugs"]');
+    const bugsTab = await $('[data-testid="tab-issues"]');
     await bugsTab.waitForExist({ timeout: 5000 });
 
     // Use JavaScript click to avoid interactability issues
@@ -330,12 +330,15 @@ async function switchToBugsTab(): Promise<boolean> {
     await browser.pause(500);
     return true;
   } catch (e) {
-    console.log('[E2E] switchToBugsTab failed:', e);
+    console.log('[E2E] switchToIssuesTab failed:', e);
     return false;
   }
 }
 
-describe('Bug Auto Execution E2E Tests', () => {
+// SKIPPED: Bug auto-execution feature removed in github-issue-integration migration.
+// BugWorkflowView, bugAutoExecutionStore, bugAutoExecutionPermissions are all deleted.
+// These tests need to be rewritten for the new GitHub Issue system when auto-execution is added.
+describe.skip('Bug Auto Execution E2E Tests', () => {
   before(async () => {
     resetFixture();
   });
@@ -362,7 +365,7 @@ describe('Bug Auto Execution E2E Tests', () => {
     await browser.pause(500);
 
     // Switch to Bugs tab (required for BugPane/BugWorkflowView to render)
-    const tabSwitched = await switchToBugsTab();
+    const tabSwitched = await switchToIssuesTab();
     expect(tabSwitched).toBe(true);
 
     // Refresh bug store

@@ -105,54 +105,86 @@ async function clickDesignTab(): Promise<void> {
 }
 
 /**
- * Helper: Start remote server via IPC
+ * Helper: Get store state synchronously
+ */
+async function getStoreState(): Promise<{
+  isRunning: boolean;
+  isLoading: boolean;
+  port: number | null;
+  url: string | null;
+  accessToken: string | null;
+}> {
+  return browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (stores?.remoteAccess?.getState) {
+      const state = stores.remoteAccess.getState();
+      return {
+        isRunning: state.isRunning ?? false,
+        isLoading: state.isLoading ?? false,
+        port: state.port ?? null,
+        url: state.url ?? null,
+        accessToken: state.accessToken ?? null,
+      };
+    }
+    return { isRunning: false, isLoading: false, port: null, url: null, accessToken: null };
+  });
+}
+
+/**
+ * Helper: Start remote server via store action
  */
 async function startRemoteServer(): Promise<{ ok: boolean; value?: any; error?: any }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const result = await (window as any).electronAPI.startRemoteServer();
-      done(result);
-    } catch (e) {
-      const message = String(e);
-      if (message.includes('ALREADY_RUNNING')) {
-        done({ ok: false, error: { type: 'ALREADY_RUNNING' } });
-      } else {
-        done({ ok: false, error: { type: 'EXCEPTION', message } });
-      }
-    }
+  const status = await getStoreState();
+  if (status.isRunning) {
+    return { ok: false, error: { type: 'ALREADY_RUNNING' } };
+  }
+
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    stores?.remoteAccess?.getState()?.startServer();
   });
+
+  for (let i = 0; i < 30; i++) {
+    await browser.pause(500);
+    const state = await getStoreState();
+    if (!state.isLoading) {
+      if (state.isRunning) {
+        return {
+          ok: true,
+          value: { port: state.port, url: state.url, accessToken: state.accessToken },
+        };
+      }
+      return { ok: false, error: { type: 'FAILED' } };
+    }
+  }
+  return { ok: false, error: { type: 'TIMEOUT' } };
 }
 
 /**
- * Helper: Stop remote server via IPC
+ * Helper: Stop remote server via store action
  */
 async function stopRemoteServer(): Promise<void> {
-  await browser.executeAsync(async (done: () => void) => {
-    try {
-      await (window as any).electronAPI.stopRemoteServer();
-    } catch (e) {
-      console.error('[E2E] stopRemoteServer error:', e);
-    }
-    done();
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    stores?.remoteAccess?.getState()?.stopServer();
   });
+  for (let i = 0; i < 10; i++) {
+    await browser.pause(300);
+    const state = await getStoreState();
+    if (!state.isRunning && !state.isLoading) break;
+  }
 }
 
 /**
- * Helper: Get remote server status
+ * Helper: Get remote server status from store
  */
 async function getRemoteServerStatus(): Promise<{
   isRunning: boolean;
   port: number | null;
   url: string | null;
 }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const status = await (window as any).electronAPI.getRemoteServerStatus();
-      done(status);
-    } catch (e) {
-      done({ isRunning: false, port: null, url: null });
-    }
-  });
+  const state = await getStoreState();
+  return { isRunning: state.isRunning, port: state.port, url: state.url };
 }
 
 /**

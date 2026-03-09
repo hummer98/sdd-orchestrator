@@ -16,54 +16,48 @@ import { ensureProjectSelected } from './helpers/auto-execution.helpers';
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
 
 /**
- * Helper: Start remote server via IPC
+ * Helper: Start remote server via store action (fire-and-forget, then poll)
  */
 async function startRemoteServer(): Promise<{ ok: boolean; value?: any; error?: any }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const result = await (window as any).electronAPI.startRemoteServer();
-      done(result);
-    } catch (e) {
-      done({ ok: false, error: { type: 'EXCEPTION', message: String(e) } });
-    }
+  // Kick the store action (tRPC call completes asynchronously)
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    stores?.remoteAccess?.getState()?.startServer();
   });
+
+  // Poll until isLoading is false (action completed)
+  for (let i = 0; i < 30; i++) {
+    await browser.pause(500);
+    const state = await getRemoteAccessStoreState();
+    if (!state.isLoading) {
+      if (state.isRunning) {
+        return { ok: true, value: { port: state.port, url: state.url } };
+      } else {
+        return { ok: false, error: { type: 'FAILED', message: state.error } };
+      }
+    }
+  }
+  return { ok: false, error: { type: 'TIMEOUT' } };
 }
 
 /**
- * Helper: Stop remote server via IPC
+ * Helper: Stop remote server via store action
  */
 async function stopRemoteServer(): Promise<void> {
-  await browser.executeAsync(async (done: () => void) => {
-    try {
-      await (window as any).electronAPI.stopRemoteServer();
-    } catch (e) {
-      console.error('[E2E] stopRemoteServer error:', e);
-    }
-    done();
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    stores?.remoteAccess?.getState()?.stopServer();
   });
+  // Wait for stop to complete
+  for (let i = 0; i < 10; i++) {
+    await browser.pause(300);
+    const state = await getRemoteAccessStoreState();
+    if (!state.isRunning && !state.isLoading) break;
+  }
 }
 
 /**
- * Helper: Get remote server status via IPC
- */
-async function getRemoteServerStatus(): Promise<{
-  isRunning: boolean;
-  port: number | null;
-  url: string | null;
-  clientCount: number;
-}> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const status = await (window as any).electronAPI.getRemoteServerStatus();
-      done(status);
-    } catch (e) {
-      done({ isRunning: false, port: null, url: null, clientCount: 0 });
-    }
-  });
-}
-
-/**
- * Helper: Get Cloudflare settings via IPC
+ * Helper: Get Cloudflare settings from store state
  */
 async function getCloudflareSettings(): Promise<{
   hasTunnelToken: boolean;
@@ -71,23 +65,17 @@ async function getCloudflareSettings(): Promise<{
   publishToCloudflare: boolean;
   cloudflaredPath: string | null;
 }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const settings = await (window as any).electronAPI.getCloudflareSettings();
-      done(settings);
-    } catch (e) {
-      done({
-        hasTunnelToken: false,
-        accessToken: null,
-        publishToCloudflare: false,
-        cloudflaredPath: null,
-      });
-    }
-  });
+  const state = await getRemoteAccessStoreState();
+  return {
+    hasTunnelToken: state.hasTunnelToken,
+    accessToken: state.accessToken,
+    publishToCloudflare: state.publishToCloudflare,
+    cloudflaredPath: null,
+  };
 }
 
 /**
- * Helper: Check cloudflared binary via IPC
+ * Helper: Check cloudflared binary via main process
  */
 async function checkCloudflareBinary(): Promise<{
   exists: boolean;
@@ -98,36 +86,68 @@ async function checkCloudflareBinary(): Promise<{
     downloadUrl: string;
   };
 }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const result = await (window as any).electronAPI.checkCloudflareBinary();
-      done(result);
-    } catch (e) {
-      done({ exists: false });
+  // Check via main process (no tRPC needed for binary check)
+  try {
+    const result = await browser.electron.execute((electron) => {
+      try {
+        const { execSync } = require('child_process');
+        const binPath = execSync('which cloudflared', { encoding: 'utf-8' }).trim();
+        return { exists: true, path: binPath };
+      } catch {
+        return {
+          exists: false,
+          installInstructions: {
+            homebrew: 'brew install cloudflared',
+            macports: 'sudo port install cloudflared',
+            downloadUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+          },
+        };
+      }
+    });
+    // Guard: electron.execute may return undefined in some contexts
+    if (!result || typeof result !== 'object') {
+      return {
+        exists: false,
+        installInstructions: {
+          homebrew: 'brew install cloudflared',
+          macports: 'sudo port install cloudflared',
+          downloadUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+        },
+      };
     }
-  });
+    return result;
+  } catch {
+    return {
+      exists: false,
+      installInstructions: {
+        homebrew: 'brew install cloudflared',
+        macports: 'sudo port install cloudflared',
+        downloadUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+      },
+    };
+  }
 }
 
 /**
- * Helper: Set publish to Cloudflare setting
+ * Helper: Set publish to Cloudflare setting (synchronous store action)
  */
 async function setPublishToCloudflare(enabled: boolean): Promise<void> {
-  await browser.executeAsync(async (enabled: boolean, done: () => void) => {
-    try {
-      await (window as any).electronAPI.setCloudflarePublishToCloudflare(enabled);
-    } catch (e) {
-      console.error('[E2E] setPublishToCloudflare error:', e);
-    }
-    done();
+  await browser.execute((en) => {
+    const stores = (window as any).__STORES__;
+    stores?.remoteAccess?.getState()?.setPublishToCloudflare(en);
   }, enabled);
+  await browser.pause(300);
 }
 
 /**
- * Helper: Get remoteAccessStore state
+ * Helper: Get remoteAccess state (synchronous read)
  */
 async function getRemoteAccessStoreState(): Promise<{
   isRunning: boolean;
+  isLoading: boolean;
+  port: number | null;
   url: string | null;
+  error: string | null;
   qrCodeDataUrl: string | null;
   tunnelUrl: string | null;
   tunnelQrCodeDataUrl: string | null;
@@ -137,52 +157,41 @@ async function getRemoteAccessStoreState(): Promise<{
   hasTunnelToken: boolean;
   showInstallCloudflaredDialog: boolean;
 }> {
-  return browser.executeAsync(async (done: (result: any) => void) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (stores?.remoteAccessStore?.getState) {
-        const state = stores.remoteAccessStore.getState();
-        done({
-          isRunning: state.isRunning,
-          url: state.url,
-          qrCodeDataUrl: state.qrCodeDataUrl,
-          tunnelUrl: state.tunnelUrl,
-          tunnelQrCodeDataUrl: state.tunnelQrCodeDataUrl,
-          tunnelStatus: state.tunnelStatus,
-          accessToken: state.accessToken,
-          publishToCloudflare: state.publishToCloudflare,
-          hasTunnelToken: state.hasTunnelToken,
-          showInstallCloudflaredDialog: state.showInstallCloudflaredDialog,
-        });
-      } else {
-        done({
-          isRunning: false,
-          url: null,
-          qrCodeDataUrl: null,
-          tunnelUrl: null,
-          tunnelQrCodeDataUrl: null,
-          tunnelStatus: 'disconnected',
-          accessToken: null,
-          publishToCloudflare: false,
-          hasTunnelToken: false,
-          showInstallCloudflaredDialog: false,
-        });
-      }
-    } catch (e) {
-      console.error('[E2E] getRemoteAccessStoreState error:', e);
-      done({
-        isRunning: false,
-        url: null,
-        qrCodeDataUrl: null,
-        tunnelUrl: null,
-        tunnelQrCodeDataUrl: null,
-        tunnelStatus: 'disconnected',
-        accessToken: null,
-        publishToCloudflare: false,
-        hasTunnelToken: false,
-        showInstallCloudflaredDialog: false,
-      });
+  return browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (stores?.remoteAccess?.getState) {
+      const state = stores.remoteAccess.getState();
+      return {
+        isRunning: state.isRunning ?? false,
+        isLoading: state.isLoading ?? false,
+        port: state.port ?? null,
+        url: state.url ?? null,
+        error: state.error ?? null,
+        qrCodeDataUrl: state.qrCodeDataUrl ?? null,
+        tunnelUrl: state.tunnelUrl ?? null,
+        tunnelQrCodeDataUrl: state.tunnelQrCodeDataUrl ?? null,
+        tunnelStatus: state.tunnelStatus ?? 'disconnected',
+        accessToken: state.accessToken ?? null,
+        publishToCloudflare: state.publishToCloudflare ?? false,
+        hasTunnelToken: state.hasTunnelToken ?? false,
+        showInstallCloudflaredDialog: state.showInstallCloudflaredDialog ?? false,
+      };
     }
+    return {
+      isRunning: false,
+      isLoading: false,
+      port: null,
+      url: null,
+      error: null,
+      qrCodeDataUrl: null,
+      tunnelUrl: null,
+      tunnelQrCodeDataUrl: null,
+      tunnelStatus: 'disconnected',
+      accessToken: null,
+      publishToCloudflare: false,
+      hasTunnelToken: false,
+      showInstallCloudflaredDialog: false,
+    };
   });
 }
 
@@ -366,7 +375,7 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
       expect(typeof state.publishToCloudflare).toBe('boolean');
     });
 
-    it('remoteAccessStoreにCloudflare関連状態が含まれる', async () => {
+    it('remoteAccessにCloudflare関連状態が含まれる', async () => {
       const state = await getRemoteAccessStoreState();
 
       // These fields should exist in the state
@@ -508,8 +517,8 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
         await browser.executeAsync(async (done: () => void) => {
           try {
             const stores = (window as any).__STORES__;
-            if (stores?.remoteAccessStore?.getState) {
-              await stores.remoteAccessStore.getState().refreshAccessToken();
+            if (stores?.remoteAccess?.getState) {
+              await stores.remoteAccess.getState().refreshAccessToken();
             }
           } catch (e) {
             console.error('[E2E] refreshAccessToken error:', e);

@@ -24,7 +24,7 @@ const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/bugs-pane-test');
 async function selectBugViaUI(bugName: string): Promise<boolean> {
   try {
     // First switch to bugs tab
-    const tabSwitched = await switchToBugsTab();
+    const tabSwitched = await switchToIssuesTab();
     if (!tabSwitched) return false;
 
     // Click the specific bug item
@@ -112,13 +112,13 @@ async function safeClick(selector: string): Promise<boolean> {
  * Helper: Switch to Bugs tab
  * This is required because BugPane is only rendered when activeTab === 'bugs'
  */
-async function switchToBugsTab(): Promise<boolean> {
+async function switchToIssuesTab(): Promise<boolean> {
   try {
     // First, wait for DocsTabs to be rendered
     const docsTabs = await $('[data-testid="docs-tabs"]');
     await docsTabs.waitForExist({ timeout: 10000 });
 
-    const bugsTab = await $('[data-testid="tab-bugs"]');
+    const bugsTab = await $('[data-testid="tab-issues"]');
     await bugsTab.waitForExist({ timeout: 5000 });
 
     // Use JavaScript click to avoid interactability issues
@@ -126,12 +126,12 @@ async function switchToBugsTab(): Promise<boolean> {
     await browser.pause(500);
     return true;
   } catch (e) {
-    console.log('[E2E] switchToBugsTab failed:', e);
+    console.log('[E2E] switchToIssuesTab failed:', e);
     // Debug: check what elements exist
     const docsTabsExists = await $('[data-testid="docs-tabs"]').isExisting();
     console.log('[E2E] docs-tabs exists:', docsTabsExists);
-    const bugsTabExists = await $('[data-testid="tab-bugs"]').isExisting();
-    console.log('[E2E] tab-bugs exists:', bugsTabExists);
+    const bugsTabExists = await $('[data-testid="tab-issues"]').isExisting();
+    console.log('[E2E] tab-issues exists:', bugsTabExists);
     return false;
   }
 }
@@ -159,7 +159,9 @@ async function switchToSpecsTab(): Promise<boolean> {
   }
 }
 
-describe('Bugs Pane Integration E2E', () => {
+// SKIPPED: Bug UI (BugPane, BugWorkflowView, BugList) removed in github-issue-integration.
+// Replaced by IssuePane with GitHub Issues. These tests need rewriting for the new Issue system.
+describe.skip('Bugs Pane Integration E2E', () => {
   // ============================================================
   // Test Setup Verification
   // ============================================================
@@ -194,10 +196,10 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bugsタブに切り替えできる', async () => {
-      const clicked = await safeClick('[data-testid="tab-bugs"]');
+      const clicked = await safeClick('[data-testid="tab-issues"]');
       if (clicked) {
         await browser.pause(300);
-        const bugsTab = await $('[data-testid="tab-bugs"]');
+        const bugsTab = await $('[data-testid="tab-issues"]');
         const bugsSelected = await bugsTab.getAttribute('aria-selected');
         expect(bugsSelected).toBe('true');
       } else {
@@ -238,7 +240,7 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(1000);
 
       // Bugsタブに切り替え（BugPaneを表示するために必要）
-      const tabSwitched = await switchToBugsTab();
+      const tabSwitched = await switchToIssuesTab();
       expect(tabSwitched).toBe(true);
 
       // Specの選択を解除
@@ -317,7 +319,7 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(1000);
 
       // Bugsタブに切り替え（BugPaneを表示するために必要）
-      const tabSwitched = await switchToBugsTab();
+      const tabSwitched = await switchToIssuesTab();
       expect(tabSwitched).toBe(true);
 
       await clearSelectedSpecViaStore();
@@ -438,7 +440,7 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(1000);
 
       // Bugsタブに切り替え（BugPaneを表示するために必要）
-      const tabSwitched = await switchToBugsTab();
+      const tabSwitched = await switchToIssuesTab();
       expect(tabSwitched).toBe(true);
 
       await clearSelectedSpecViaStore();
@@ -586,7 +588,7 @@ describe('Bugs Pane Integration E2E', () => {
       const specHasWorkflow = await specWorkflowView.isExisting();
 
       // Bugsタブに切り替え
-      await switchToBugsTab();
+      await switchToIssuesTab();
 
       // Spec選択解除してBugを選択
       await clearSelectedSpecViaStore();
@@ -616,7 +618,7 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(1000);
 
       // Bugsタブに切り替え（BugPaneを表示するために必要）
-      const tabSwitched = await switchToBugsTab();
+      const tabSwitched = await switchToIssuesTab();
       expect(tabSwitched).toBe(true);
 
       await clearSelectedSpecViaStore();

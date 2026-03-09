@@ -167,16 +167,16 @@
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "updated_at": "2026-02-11T04:00:13.133Z",
+  "updated_at": "2026-03-09T02:26:42.787Z",
   "autoExecution": {
     "enabled": true,
     "permissions": {
-      "deploy": false,
+      "requirements": true,
       "design": true,
+      "tasks": true,
       "impl": true,
       "inspection": true,
-      "requirements": true,
-      "tasks": true,
+      "deploy": false,
       "document-review": true
     }
   }

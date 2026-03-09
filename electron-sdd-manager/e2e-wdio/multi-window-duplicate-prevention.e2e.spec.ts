@@ -20,23 +20,20 @@ describe('Task 10.2: Duplicate project open prevention', () => {
   let createdWindowIds: number[] = [];
 
   afterEach(async () => {
-    // Close extra windows
-    for (const windowId of createdWindowIds) {
-      try {
-        await browser.electron.execute((electron, winId) => {
-          const win = electron.BrowserWindow.getAllWindows().find(
-            (w) => w.id === winId
-          );
-          if (win && !win.isDestroyed()) {
-            win.close();
-          }
-        }, windowId);
-      } catch {
-        // Window may already be closed
-      }
+    try {
+      await browser.electron.execute((electron) => {
+        const windows = electron.BrowserWindow.getAllWindows();
+        if (windows.length > 1) {
+          const sorted = [...windows].sort((a, b) => a.id - b.id);
+          sorted.slice(1).forEach((w) => {
+            if (!w.isDestroyed()) w.destroy();
+          });
+        }
+      });
+    } catch {
+      // Session may be in a bad state
     }
     createdWindowIds = [];
-    await browser.pause(500);
   });
 
   // ============================================================
@@ -50,13 +47,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
       // Create a new window
       const result = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const newWin = wm.createWindow();
 
           // Try to set the same project on the new window
@@ -84,13 +75,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
 
       const duplicateWindowId = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           return wm.checkDuplicate(projA);
         },
         PROJECT_A_PATH
@@ -102,17 +87,12 @@ describe('Task 10.2: Duplicate project open prevention', () => {
 
     it('checkDuplicate returns null for a project that is not open', async () => {
       const result = await browser.electron.execute((electron) => {
-        const { getWindowManager } = require(
-          require('path').join(
-            __dirname,
-            '../src/main/services/windowManager'
-          )
-        );
-        const wm = getWindowManager();
+        const wm = (global as any).__WINDOW_MANAGER__;
         return wm.checkDuplicate('/non/existent/project/path');
       });
 
-      expect(result).toBeNull();
+      // checkDuplicate returns null, but IPC serialization may convert to undefined
+      expect(result == null).toBe(true);
     });
   });
 
@@ -126,13 +106,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
       // Get the initial window ID that has project A
       const initialWindowId = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.getWindowByProject(projA);
           return win ? win.id : null;
         },
@@ -144,13 +118,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
       // Call restoreAndFocus
       const focusResult = await browser.electron.execute(
         (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           wm.restoreAndFocus(winId);
           return true;
         },
@@ -165,13 +133,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
 
       const result = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const existingWin = wm.getWindowByProject(projA);
           if (!existingWin) return { success: false, reason: 'no-window' };
 
@@ -213,13 +175,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
       // Check duplicate with trailing slash
       const duplicateId = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           // Add trailing slashes to the path
           return wm.checkDuplicate(projA + '///');
         },
@@ -240,13 +196,7 @@ describe('Task 10.2: Duplicate project open prevention', () => {
 
       const result = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const newWin = wm.createWindow();
 
           // Try to set duplicate project (should fail)

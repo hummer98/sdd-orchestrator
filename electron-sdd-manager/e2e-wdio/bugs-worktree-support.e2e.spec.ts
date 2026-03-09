@@ -87,7 +87,9 @@ async function setUseWorktreeState(value: boolean): Promise<boolean> {
   });
 }
 
-describe('Bugs Worktree Support E2E Tests', () => {
+// SKIPPED: Bug UI and bugStore removed in github-issue-integration.
+// Bug worktree support needs rewriting for the new GitHub Issue system.
+describe.skip('Bugs Worktree Support E2E Tests', () => {
   beforeEach(async () => {
     // Select fixture project
     const selected = await ensureProjectSelected(FIXTURE_PROJECT_PATH);
@@ -106,7 +108,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
     it('should display worktree checkbox in CreateBugDialog', async () => {
       // Open CreateBugDialog by clicking the + button in bugs tab
       // First switch to Bugs tab
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(200);
@@ -132,7 +134,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
     });
 
     it('should toggle worktree checkbox state', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(200);
@@ -172,7 +174,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
   describe('Task 18.2: BugWorkflowView worktree checkbox', () => {
     it('should display worktree checkbox in BugWorkflowView', async () => {
       // Switch to Bugs tab
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(200);
@@ -191,7 +193,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
     });
 
     it('should toggle workflow worktree checkbox and update store', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(200);
@@ -239,7 +241,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
     // Note: This test requires a bug with worktree field in bug.json
     // May need fixture update to include worktree bug
     it.skip('should display worktree indicator for bugs with worktree field', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(200);
@@ -251,7 +253,7 @@ describe('Bugs Worktree Support E2E Tests', () => {
     });
 
     it('should not display worktree indicator for bugs without worktree field', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isDisplayed()) {
         await bugsTab.click();
         await browser.pause(300);

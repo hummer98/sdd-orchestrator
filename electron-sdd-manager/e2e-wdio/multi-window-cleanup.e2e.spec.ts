@@ -18,25 +18,23 @@ const PROJECT_A_PATH = path.join(FIXTURE_DIR, 'multi-window-test-a');
 const PROJECT_B_PATH = path.join(FIXTURE_DIR, 'multi-window-test-b');
 
 describe('Task 10.4: Window close resource cleanup', () => {
-  let createdWindowIds: number[] = [];
 
   afterEach(async () => {
-    for (const windowId of createdWindowIds) {
-      try {
-        await browser.electron.execute((electron, winId) => {
-          const win = electron.BrowserWindow.getAllWindows().find(
-            (w) => w.id === winId
-          );
-          if (win && !win.isDestroyed()) {
-            win.close();
-          }
-        }, windowId);
-      } catch {
-        // Window may already be closed
-      }
+    // Clean up extra windows (all tests use destroy() inline now, but just in case)
+    try {
+      await browser.electron.execute((electron) => {
+        const wm = (global as any).__WINDOW_MANAGER__;
+        const windows = electron.BrowserWindow.getAllWindows();
+        // Keep only the first window (main test window)
+        if (windows.length > 1) {
+          windows.slice(1).forEach((w) => {
+            if (!w.isDestroyed()) w.destroy();
+          });
+        }
+      });
+    } catch {
+      // Session may be in a bad state
     }
-    createdWindowIds = [];
-    await browser.pause(500);
   });
 
   // ============================================================
@@ -44,189 +42,79 @@ describe('Task 10.4: Window close resource cleanup', () => {
   // ============================================================
   describe('Service cleanup on window close', () => {
     it('PerWindowServices are removed after window close', async () => {
-      // Create a second window with project B
-      const windowBId = await browser.electron.execute(
+      // Create, verify, close, and verify cleanup all in one execute call
+      // to avoid WDIO session being hijacked by the new window
+      const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
           wm.setWindowProject(win.id, projB);
-          return win.id;
+
+          const servicesBefore = wm.getWindowServices(win.id) !== null;
+
+          // Use destroy() to avoid async close event issues
+          win.destroy();
+
+          // handleWindowClose is triggered synchronously by destroy
+          const servicesAfter = wm.getWindowServices(win.id);
+
+          return {
+            servicesBefore,
+            servicesAfterIsNull: servicesAfter === null,
+          };
         },
         PROJECT_B_PATH
       );
 
-      await browser.pause(1000);
-
-      // Verify services exist before close
-      const servicesBeforeClose = await browser.electron.execute(
-        (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          return wm.getWindowServices(winId) !== null;
-        },
-        windowBId
-      );
-      expect(servicesBeforeClose).toBe(true);
-
-      // Close the second window
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, windowBId);
-
-      // Wait for close event to propagate
-      await browser.pause(1000);
-
-      // Verify services are cleaned up
-      const servicesAfterClose = await browser.electron.execute(
-        (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          return wm.getWindowServices(winId);
-        },
-        windowBId
-      );
-      expect(servicesAfterClose).toBeNull();
+      expect(result.servicesBefore).toBe(true);
+      expect(result.servicesAfterIsNull).toBe(true);
     });
 
     it('WindowState is removed after window close', async () => {
-      const windowBId = await browser.electron.execute(
+      const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
           wm.setWindowProject(win.id, projB);
-          return win.id;
+
+          const contextBefore = wm.getWindowContext(win.id) !== null;
+          win.destroy();
+          const contextAfter = wm.getWindowContext(win.id);
+
+          return {
+            contextBefore,
+            contextAfterIsNull: contextAfter === null,
+          };
         },
         PROJECT_B_PATH
       );
 
-      await browser.pause(1000);
-
-      // Verify the window is in the state map
-      const contextBefore = await browser.electron.execute(
-        (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          return wm.getWindowContext(winId) !== null;
-        },
-        windowBId
-      );
-      expect(contextBefore).toBe(true);
-
-      // Close the window
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, windowBId);
-
-      await browser.pause(1000);
-
-      // Verify the window state is cleaned up
-      const contextAfter = await browser.electron.execute(
-        (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          return wm.getWindowContext(winId);
-        },
-        windowBId
-      );
-      expect(contextAfter).toBeNull();
+      expect(result.contextBefore).toBe(true);
+      expect(result.contextAfterIsNull).toBe(true);
     });
 
     it('Window ID is removed from getAllWindowIds after close', async () => {
-      const windowBId = await browser.electron.execute(
+      const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
           wm.setWindowProject(win.id, projB);
-          return win.id;
+
+          const idsBefore = wm.getAllWindowIds();
+          const containsBefore = idsBefore.includes(win.id);
+
+          win.destroy();
+
+          const idsAfter = wm.getAllWindowIds();
+          const containsAfter = idsAfter.includes(win.id);
+
+          return { containsBefore, containsAfter };
         },
         PROJECT_B_PATH
       );
 
-      await browser.pause(500);
-
-      // Verify the window ID is present
-      const idsBefore = await browser.electron.execute((electron) => {
-        const { getWindowManager } = require(
-          require('path').join(
-            __dirname,
-            '../src/main/services/windowManager'
-          )
-        );
-        return getWindowManager().getAllWindowIds();
-      });
-      expect(idsBefore).toContain(windowBId);
-
-      // Close the window
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, windowBId);
-
-      await browser.pause(1000);
-
-      // Verify the window ID is removed
-      const idsAfter = await browser.electron.execute((electron) => {
-        const { getWindowManager } = require(
-          require('path').join(
-            __dirname,
-            '../src/main/services/windowManager'
-          )
-        );
-        return getWindowManager().getAllWindowIds();
-      });
-      expect(idsAfter).not.toContain(windowBId);
+      expect(result.containsBefore).toBe(true);
+      expect(result.containsAfter).toBe(false);
     });
   });
 
@@ -235,155 +123,69 @@ describe('Task 10.4: Window close resource cleanup', () => {
   // ============================================================
   describe('Duplicate lock release after window close', () => {
     it('A closed window project can be opened in a new window', async () => {
-      // Create a window with project B
-      const windowBId = await browser.electron.execute(
-        (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          const win = wm.createWindow();
-          wm.setWindowProject(win.id, projB);
-          return win.id;
-        },
-        PROJECT_B_PATH
-      );
-
-      await browser.pause(500);
-
-      // Verify project B is now a duplicate (cannot be opened again)
-      const duplicateBefore = await browser.electron.execute(
-        (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          return getWindowManager().checkDuplicate(projB);
-        },
-        PROJECT_B_PATH
-      );
-      expect(duplicateBefore).not.toBeNull();
-
-      // Close the window with project B
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, windowBId);
-
-      await browser.pause(1000);
-
-      // Verify the duplicate lock is released
-      const duplicateAfter = await browser.electron.execute(
-        (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          return getWindowManager().checkDuplicate(projB);
-        },
-        PROJECT_B_PATH
-      );
-      expect(duplicateAfter).toBeNull();
-
-      // Now open project B in a new window (should succeed)
       const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
+
+          // Create window with project B
+          const win = wm.createWindow();
+          wm.setWindowProject(win.id, projB);
+
+          // Verify duplicate detection
+          const duplicateBefore = wm.checkDuplicate(projB);
+
+          // Close the window
+          win.destroy();
+
+          // Verify duplicate lock released
+          const duplicateAfter = wm.checkDuplicate(projB);
+
+          // Re-open project B in a new window
           const newWin = wm.createWindow();
           const setResult = wm.setWindowProject(newWin.id, projB);
+
+          // Clean up the new window
+          newWin.destroy();
+
           return {
-            windowId: newWin.id,
-            ok: setResult.ok,
+            duplicateBeforeNotNull: duplicateBefore !== null,
+            duplicateAfterIsNull: duplicateAfter === null,
+            reopenOk: setResult.ok,
           };
         },
         PROJECT_B_PATH
       );
-      createdWindowIds.push(result.windowId);
 
-      expect(result.ok).toBe(true);
+      expect(result.duplicateBeforeNotNull).toBe(true);
+      expect(result.duplicateAfterIsNull).toBe(true);
+      expect(result.reopenOk).toBe(true);
     });
 
     it('webContentsToWindowId mapping is cleaned up after window close', async () => {
-      // Create a window and note its webContents ID
-      const windowInfo = await browser.electron.execute(
+      const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
+          const wcId = win.webContents.id;
           wm.setWindowProject(win.id, projB);
+
+          const mappingBefore = wm.getWindowIdByWebContents(wcId);
+          const matchesBefore = mappingBefore === win.id;
+
+          win.destroy();
+
+          const mappingAfter = wm.getWindowIdByWebContents(wcId);
+
           return {
-            windowId: win.id,
-            webContentsId: win.webContents.id,
+            matchesBefore,
+            mappingAfterIsNull: mappingAfter === null,
           };
         },
         PROJECT_B_PATH
       );
 
-      await browser.pause(500);
-
-      // Verify mapping exists before close
-      const mappingBefore = await browser.electron.execute(
-        (electron, wcId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          return getWindowManager().getWindowIdByWebContents(wcId);
-        },
-        windowInfo.webContentsId
-      );
-      expect(mappingBefore).toBe(windowInfo.windowId);
-
-      // Close the window
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, windowInfo.windowId);
-
-      await browser.pause(1000);
-
-      // Verify mapping is cleaned up after close
-      const mappingAfter = await browser.electron.execute(
-        (electron, wcId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          return getWindowManager().getWindowIdByWebContents(wcId);
-        },
-        windowInfo.webContentsId
-      );
-      expect(mappingAfter).toBeNull();
+      expect(result.matchesBefore).toBe(true);
+      expect(result.mappingAfterIsNull).toBe(true);
     });
   });
 
@@ -394,57 +196,23 @@ describe('Task 10.4: Window close resource cleanup', () => {
     it('Primary window is not affected when secondary window is closed', async () => {
       await ensureProjectSelected(PROJECT_A_PATH, 15000);
 
-      // Get initial window info
-      const initialWindowId = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        return windows[0]?.id ?? null;
-      });
-      expect(initialWindowId).not.toBeNull();
-
-      // Create and close a second window
-      const secondWindowId = await browser.electron.execute(
+      // Create, close second window, and verify first window - all in one execute
+      const result = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          const win = wm.createWindow();
-          wm.setWindowProject(win.id, projB);
-          return win.id;
-        },
-        PROJECT_B_PATH
-      );
+          const wm = (global as any).__WINDOW_MANAGER__;
+          const initialWin = electron.BrowserWindow.getAllWindows()[0];
+          if (!initialWin) return { exists: false } as any;
+          const initialWinId = initialWin.id;
 
-      await browser.pause(500);
+          // Create and close second window
+          const secondWin = wm.createWindow();
+          wm.setWindowProject(secondWin.id, projB);
+          secondWin.destroy();
 
-      // Close the second window
-      await browser.electron.execute((electron, winId) => {
-        const win = electron.BrowserWindow.getAllWindows().find(
-          (w) => w.id === winId
-        );
-        if (win && !win.isDestroyed()) {
-          win.close();
-        }
-      }, secondWindowId);
-
-      await browser.pause(1000);
-
-      // Verify the first window still works
-      const firstWindowState = await browser.electron.execute(
-        (electron, winId) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
-          const ctx = wm.getWindowContext(winId);
+          // Verify first window still intact
+          const ctx = wm.getWindowContext(initialWinId);
           const win = electron.BrowserWindow.getAllWindows().find(
-            (w) => w.id === winId
+            (w) => w.id === initialWinId
           );
           return {
             exists: !!win,
@@ -454,14 +222,14 @@ describe('Task 10.4: Window close resource cleanup', () => {
             hasServices: ctx?.services !== null,
           };
         },
-        initialWindowId
+        PROJECT_B_PATH
       );
 
-      expect(firstWindowState.exists).toBe(true);
-      expect(firstWindowState.isDestroyed).toBe(false);
-      expect(firstWindowState.hasContext).toBe(true);
-      expect(firstWindowState.projectPath).toContain('multi-window-test-a');
-      expect(firstWindowState.hasServices).toBe(true);
+      expect(result.exists).toBe(true);
+      expect(result.isDestroyed).toBe(false);
+      expect(result.hasContext).toBe(true);
+      expect(result.projectPath).toContain('multi-window-test-a');
+      expect(result.hasServices).toBe(true);
     });
   });
 

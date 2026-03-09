@@ -99,13 +99,25 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
 export async function ensureProjectSelected(projectPath: string, timeout: number = 15000): Promise<boolean> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
-    const state = await browser.execute(() => {
-      const stores = (window as any).__STORES__;
-      return {
-        currentProject: stores?.project?.getState()?.currentProject,
-        kiroValidation: stores?.project?.getState()?.kiroValidation
-      };
-    });
+    let state: { currentProject: string | null; kiroValidation: any } | null = null;
+    try {
+      state = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return {
+          currentProject: stores?.project?.getState()?.currentProject ?? null,
+          kiroValidation: stores?.project?.getState()?.kiroValidation ?? null
+        };
+      });
+    } catch (e) {
+      // Window may have been destroyed or not ready yet
+      await browser.pause(500);
+      continue;
+    }
+
+    if (!state) {
+      await browser.pause(500);
+      continue;
+    }
 
     // Strict check: Must match the requested path AND have valid .kiro directory
     if (state.currentProject === projectPath && state.kiroValidation?.exists) {
@@ -345,63 +357,54 @@ export async function selectSpecViaStore(specId: string): Promise<boolean> {
 export async function setAutoExecutionPermissions(
   permissions: Record<string, boolean>
 ): Promise<boolean> {
-  return browser.executeAsync(async (perms: Record<string, boolean>, done: (result: boolean) => void) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.spec?.getState) {
-        console.error('[E2E] setAutoExecutionPermissions: specStore not available');
-        done(false);
-        return;
-      }
+  // Get spec name and project path from Renderer store (synchronous read, no tRPC)
+  const specInfo = await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.spec?.getState || !stores?.project?.getState) return null;
+    const specStore = stores.spec.getState();
+    const projectStore = stores.project.getState();
+    const specName = specStore.specDetail?.metadata?.name;
+    const projectPath = projectStore.currentProject;
+    if (!specName || !projectPath) return null;
+    return { specName, projectPath };
+  });
 
-      const specStore = stores.spec.getState();
-      const specDetail = specStore.specDetail;
-      if (!specDetail?.metadata?.name) {
-        console.error('[E2E] setAutoExecutionPermissions: no spec selected');
-        done(false);
-        return;
-      }
+  if (!specInfo) {
+    console.error('[E2E] setAutoExecutionPermissions: no spec selected or no project');
+    return false;
+  }
 
-      // Convert permission keys: 'documentReview' -> 'document-review' for spec.json
-      const normalizedPerms: Record<string, boolean> = {};
-      for (const [key, value] of Object.entries(perms)) {
-        const normalizedKey = key === 'documentReview' ? 'document-review' : key;
-        normalizedPerms[normalizedKey] = value;
-      }
-      // Default document-review to true if not explicitly provided
-      if (!('document-review' in normalizedPerms)) {
-        normalizedPerms['document-review'] = true;
-      }
+  // Convert permission keys: 'documentReview' -> 'document-review' for spec.json
+  const normalizedPerms: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(permissions)) {
+    const normalizedKey = key === 'documentReview' ? 'document-review' : key;
+    normalizedPerms[normalizedKey] = value;
+  }
+  // Default document-review to true if not explicitly provided
+  if (!('document-review' in normalizedPerms)) {
+    normalizedPerms['document-review'] = true;
+  }
 
-      // Update spec.json via tRPC (SSOT)
-      const trpc = (window as any).__TRPC__;
-      if (!trpc?.spec?.updateSpecJson?.mutate) {
-        console.error('[E2E] setAutoExecutionPermissions: __TRPC__.spec.updateSpecJson not available');
-        done(false);
-        return;
-      }
+  // Directly write to spec.json via filesystem (avoids tRPC IPC anti-pattern in executeAsync)
+  const fs = await import('fs');
+  const path = await import('path');
+  const specJsonPath = path.join(specInfo.projectPath, '.kiro/specs', specInfo.specName, 'spec.json');
 
-      await trpc.spec.updateSpecJson.mutate({
-        specName: specDetail.metadata.name,
-        updates: {
-          autoExecution: {
-            enabled: true,
-            permissions: normalizedPerms,
-          },
-        },
-      });
+  try {
+    const specJson = JSON.parse(fs.readFileSync(specJsonPath, 'utf-8'));
+    specJson.autoExecution = {
+      enabled: true,
+      permissions: normalizedPerms,
+    };
+    fs.writeFileSync(specJsonPath, JSON.stringify(specJson, null, 2));
 
-      // Wait for file watcher to detect spec.json change and update specStore
-      // refreshSpecs was removed (File Watcher handles updates automatically)
-      // Use a small delay to allow the file watcher event to propagate
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      done(true);
-    } catch (e) {
-      console.error('[E2E] setAutoExecutionPermissions error:', e);
-      done(false);
-    }
-  }, permissions);
+    // Wait for file watcher to detect spec.json change and update specStore
+    await browser.pause(2000);
+    return true;
+  } catch (e) {
+    console.error('[E2E] setAutoExecutionPermissions error:', e);
+    return false;
+  }
 }
 
 /**

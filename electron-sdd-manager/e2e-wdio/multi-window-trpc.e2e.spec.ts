@@ -21,22 +21,20 @@ describe('Task 10.3: Per-window tRPC operations', () => {
   let createdWindowIds: number[] = [];
 
   afterEach(async () => {
-    for (const windowId of createdWindowIds) {
-      try {
-        await browser.electron.execute((electron, winId) => {
-          const win = electron.BrowserWindow.getAllWindows().find(
-            (w) => w.id === winId
-          );
-          if (win && !win.isDestroyed()) {
-            win.close();
-          }
-        }, windowId);
-      } catch {
-        // Window may already be closed
-      }
+    try {
+      await browser.electron.execute((electron) => {
+        const windows = electron.BrowserWindow.getAllWindows();
+        if (windows.length > 1) {
+          const sorted = [...windows].sort((a, b) => a.id - b.id);
+          sorted.slice(1).forEach((w) => {
+            if (!w.isDestroyed()) w.destroy();
+          });
+        }
+      });
+    } catch {
+      // Session may be in a bad state
     }
     createdWindowIds = [];
-    await browser.pause(500);
   });
 
   // ============================================================
@@ -48,13 +46,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
 
       const context = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.getWindowByProject(projA);
           if (!win) return null;
           const ctx = wm.getWindowContext(win.id);
@@ -82,13 +74,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
       // Create a second window with project B
       const windowBId = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
           wm.setWindowProject(win.id, projB);
           return win.id;
@@ -102,13 +88,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
       // Get contexts for both windows
       const contexts = await browser.electron.execute(
         (electron, projA) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const ids = wm.getAllWindowIds();
           return ids.map((id) => {
             const ctx = wm.getWindowContext(id);
@@ -138,13 +118,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
       await ensureProjectSelected(PROJECT_A_PATH, 15000);
 
       const mappingResult = await browser.electron.execute((electron) => {
-        const { getWindowManager } = require(
-          require('path').join(
-            __dirname,
-            '../src/main/services/windowManager'
-          )
-        );
-        const wm = getWindowManager();
+        const wm = (global as any).__WINDOW_MANAGER__;
         const windows = electron.BrowserWindow.getAllWindows();
 
         return windows.map((w) => ({
@@ -170,13 +144,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
       // Create second window with project B
       const windowBId = await browser.electron.execute(
         (electron, projB) => {
-          const { getWindowManager } = require(
-            require('path').join(
-              __dirname,
-              '../src/main/services/windowManager'
-            )
-          );
-          const wm = getWindowManager();
+          const wm = (global as any).__WINDOW_MANAGER__;
           const win = wm.createWindow();
           wm.setWindowProject(win.id, projB);
           return win.id;
@@ -189,13 +157,7 @@ describe('Task 10.3: Per-window tRPC operations', () => {
 
       // Check that both windows have their own services
       const servicesInfo = await browser.electron.execute((electron) => {
-        const { getWindowManager } = require(
-          require('path').join(
-            __dirname,
-            '../src/main/services/windowManager'
-          )
-        );
-        const wm = getWindowManager();
+        const wm = (global as any).__WINDOW_MANAGER__;
         const ids = wm.getAllWindowIds();
         return ids.map((id) => {
           const services = wm.getWindowServices(id);
@@ -205,7 +167,6 @@ describe('Task 10.3: Per-window tRPC operations', () => {
             hasServices: services !== null,
             hasSpecManager: services?.specManagerService !== undefined,
             hasSpecsWatcher: services?.specsWatcherService !== undefined,
-            hasBugsWatcher: services?.bugsWatcherService !== undefined,
             hasAgentRecordWatcher:
               services?.agentRecordWatcherService !== undefined,
             hasMetricsService: services?.metricsService !== undefined,
@@ -225,7 +186,6 @@ describe('Task 10.3: Per-window tRPC operations', () => {
         expect(svc.hasServices).toBe(true);
         expect(svc.hasSpecManager).toBe(true);
         expect(svc.hasSpecsWatcher).toBe(true);
-        expect(svc.hasBugsWatcher).toBe(true);
         expect(svc.hasAgentRecordWatcher).toBe(true);
         expect(svc.hasMetricsService).toBe(true);
         expect(svc.hasAutoExecutionCoordinator).toBe(true);

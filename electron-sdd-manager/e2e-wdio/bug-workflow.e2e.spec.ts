@@ -33,14 +33,14 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('Bugsタブが存在する', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const exists = await bugsTab.isExisting();
       expect(typeof exists).toBe('boolean');
     });
 
     it('タブのaria-selected属性が正しく設定される', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await specsTab.isExisting()) {
         const specsSelected = await specsTab.getAttribute('aria-selected');
@@ -54,7 +54,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('タブ切り替えでパネルが切り替わる', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
@@ -86,7 +86,7 @@ describe('Bug Workflow UI E2E', () => {
   // ============================================================
   describe('BugListコンポーネント', () => {
     it('BugListコンポーネントがBugsタブで表示される', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
@@ -100,7 +100,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('フェーズフィルターが存在する', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
@@ -114,7 +114,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('空状態メッセージまたはバグリストが表示される', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
@@ -144,7 +144,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('Bugsタブで新規作成ボタンをクリックするとダイアログが開く', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -170,7 +170,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('説明入力フィールドが存在する', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -193,7 +193,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('説明が空の場合は作成ボタンが無効化される', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -219,7 +219,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('説明を入力すると作成ボタンが有効化される', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -250,7 +250,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('キャンセルボタンでダイアログが閉じる', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -273,7 +273,7 @@ describe('Bug Workflow UI E2E', () => {
     });
 
     it('バックドロップクリックでダイアログが閉じる', async () => {
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       const createButton = await $('[data-testid="create-button"]');
 
       if ((await bugsTab.isExisting()) && (await createButton.isExisting())) {
@@ -315,7 +315,7 @@ describe('Bug Workflow UI E2E', () => {
     it('アクションボタンコンテナの構造が正しい', async () => {
       // BugActionButtons は選択されたバグがある場合に表示される
       // data-testid="bug-action-buttons" で識別
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
@@ -373,7 +373,7 @@ describe('Bug Workflow UI E2E', () => {
 
     it('タブ切り替え後も選択状態が維持される', async () => {
       const specsTab = await $('[data-testid="tab-specs"]');
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
 
       if ((await specsTab.isExisting()) && (await bugsTab.isExisting())) {
         // Bugsタブに切り替え

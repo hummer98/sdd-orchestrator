@@ -166,7 +166,8 @@ describe('File Watcher Root Monitoring E2E', () => {
       // Create Worktree spec directory
       specDir = createSpecDirectory(specId, true);
       // Wait for file watcher to register the new directory
-      await browser.pause(3000);
+      // macOS FSEvents may need extra time to register new subdirectories
+      await browser.pause(5000);
     });
 
     after(async () => {
@@ -190,8 +191,8 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        15000,
-        200,
+        30000,
+        300,
         'Worktree spec.json updated_at change'
       );
 
@@ -213,8 +214,8 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        15000,
-        200,
+        30000,
+        300,
         'design.md detection'
       );
 
@@ -233,8 +234,8 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        15000,
-        200,
+        30000,
+        300,
         'tasks.md detection'
       );
 
@@ -333,8 +334,8 @@ describe('File Watcher Root Monitoring E2E', () => {
           const currentUpdatedAt = getSpecUpdatedAt(specDir);
           return currentUpdatedAt !== null && currentUpdatedAt !== initialUpdatedAt;
         },
-        15000,
-        200,
+        30000,
+        300,
         'Normal path spec.json updated_at change'
       );
 

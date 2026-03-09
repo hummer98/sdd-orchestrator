@@ -126,12 +126,13 @@ describe('Startup Project Selection', () => {
       expect(hasApplyFunction).toBe(true);
     });
 
-    it('should have onProjectSelected in electronAPI', async () => {
-      const hasListener = await browser.execute(() => {
-        return typeof (window as any).electronAPI?.onProjectSelected === 'function';
+    // trpc-full-migration: electronAPI removed, tRPC IPC bridge used instead
+    it('should have electronTRPC IPC bridge available', async () => {
+      const hasElectronTRPC = await browser.execute(() => {
+        return typeof (window as any).electronTRPC !== 'undefined';
       });
 
-      expect(hasListener).toBe(true);
+      expect(hasElectronTRPC).toBe(true);
     });
   });
 

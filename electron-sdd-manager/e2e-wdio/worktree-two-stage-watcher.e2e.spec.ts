@@ -411,7 +411,8 @@ describe('Worktree Two-Stage Watcher E2E', () => {
   // Scenario 10.3: bug.json update inside worktree triggers UI update
   // Requirements: 3.1, 3.5 (bug.json更新→UI更新)
   // ============================================================
-  describe('Scenario 10.3: bug.json update inside worktree triggers UI update', () => {
+  // SKIPPED: Bug UI (bug-item-*, BugList) removed in github-issue-integration.
+  describe.skip('Scenario 10.3: bug.json update inside worktree triggers UI update', () => {
     beforeEach(async () => {
       resetFixtures();
 
@@ -425,7 +426,7 @@ describe('Worktree Two-Stage Watcher E2E', () => {
       await browser.pause(1000);
 
       // Switch to Bugs tab (bug items are only visible when Bugs tab is active)
-      const bugsTab = await $('[data-testid="tab-bugs"]');
+      const bugsTab = await $('[data-testid="tab-issues"]');
       if (await bugsTab.isExisting()) {
         await bugsTab.click();
         await browser.pause(500);

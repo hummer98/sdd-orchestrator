@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.74.0] - 2026-03-09
+
+### Added
+- E2Eテストランナーskillとレポートコマンドの追加
+
+### Fixed
+- multi-window初期化順序の修正（Window作成をselectProject前に移動）
+- tRPC windowContextFactoryのスナップショットクロージャを動的ルックアップに変更
+- tRPCウィンドウ解決のプライマリパスをgetWindowIdByWebContentsに変更
+- E2Eテスト時にmacOSでElectronプロセスがDockに残留する問題を修正（app.dock.hide()）
+- E2Eテスト全80件パス達成（dock.hide対応・IPC直列化・testid修正）
+- テスト間のfixture汚染をgit checkout/cleanで防止
+- autoExecution楽観的更新で既にterminal状態の場合はスキップ
+
+### Changed
+- CLAUDE.mdとTaskfile.ymlの更新
+
 ## [0.73.0] - 2026-03-06
 
 ### Added

@@ -120,6 +120,7 @@ Custom files are supported (managed via `/kiro:steering-custom`)
 |-------|------|----------|
 | `investigation-mode` | `.claude/skills/` | 「調査して」「デバッグして」「エラーの原因は？」等 |
 | `e2e-test-writer` | `.claude/skills/` | 「E2Eテストを書いて」「テストシナリオを作成」等 |
+| `e2e-test-runner` | `.claude/skills/` | 「E2Eテストを実行」「E2Eを通して」「E2E失敗」等 |
 | `gemini-cli` | `~/.claude/skills/` | WebFetch/WebSearch失敗時のウェブ調査代行 |
 
 ## Development Commands

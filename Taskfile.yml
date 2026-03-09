@@ -86,6 +86,16 @@ tasks:
     cmds:
       - npm run test:e2e
 
+  electron:test:e2e:report:
+    desc: Run E2E tests and generate markdown report (docs/e2e-report/)
+    cmds:
+      - ./scripts/run-e2e-report.sh {{.CLI_ARGS}}
+
+  electron:test:e2e:report:nobuild:
+    desc: Run E2E tests without rebuild and generate report
+    cmds:
+      - ./scripts/run-e2e-report.sh --no-build {{.CLI_ARGS}}
+
   electron:test:e2e:remote:
     desc: Run E2E tests on remote machine (requires REMOTE_E2E_HOST and REMOTE_E2E_USER)
     cmds:

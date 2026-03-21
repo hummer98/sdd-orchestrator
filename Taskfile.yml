@@ -97,17 +97,33 @@ tasks:
       - ./scripts/run-e2e-report.sh --no-build {{.CLI_ARGS}}
 
   electron:test:e2e:remote:
-    desc: Run E2E tests on remote machine (requires REMOTE_E2E_HOST and REMOTE_E2E_USER)
+    desc: Run full E2E tests on remote machine (requires REMOTE_E2E_HOST and REMOTE_E2E_USER)
     cmds:
       - ./scripts/run-remote-e2e.sh
     env:
       REMOTE_E2E_HOST: "{{.REMOTE_E2E_HOST}}"
       REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
 
+  electron:test:e2e:remote:smoke:
+    desc: Run smoke test only on remote machine (build + startup check)
+    cmds:
+      - ./scripts/run-remote-e2e.sh --smoke
+    env:
+      REMOTE_E2E_HOST: "{{.REMOTE_E2E_HOST}}"
+      REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
+
   electron:test:e2e:remote:kdg069:
-    desc: Run E2E tests on KDG-069 (yuji@172.25.76.196)
+    desc: Run full E2E tests on KDG-069 (yuji@172.25.76.196)
     cmds:
       - ./scripts/run-remote-e2e.sh
+    env:
+      REMOTE_E2E_HOST: "172.25.76.196"
+      REMOTE_E2E_USER: "yuji"
+
+  electron:test:e2e:remote:kdg069:smoke:
+    desc: Run smoke test on KDG-069 (yuji@172.25.76.196)
+    cmds:
+      - ./scripts/run-remote-e2e.sh --smoke
     env:
       REMOTE_E2E_HOST: "172.25.76.196"
       REMOTE_E2E_USER: "yuji"

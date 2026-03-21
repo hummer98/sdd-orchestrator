@@ -39,28 +39,47 @@ describe('Metrics Display Feature', () => {
     });
 
     it('should display AI time with a valid value', async () => {
-      const aiTime = await $('[data-testid="footer-metrics-ai"]');
-      await aiTime.waitForExist({ timeout: 5000 });
-      const text = await aiTime.getText();
-      // The fixture has AI metrics data, so it should show a real value, not '--'
+      // Use browser.execute to read textContent directly — getText() can return empty
+      // when the element contains nested spans with specific rendering
+      let text = '';
+      await browser.waitUntil(
+        async () => {
+          text = await browser.execute(
+            () => document.querySelector('[data-testid="footer-metrics-ai"]')?.textContent ?? ''
+          );
+          return text.length > 0 && text !== '--';
+        },
+        { timeout: 10000, timeoutMsg: `AI time did not load (last: "${text}")` }
+      );
       expect(text.length).toBeGreaterThan(0);
-      expect(text).not.toBe('--');
     });
 
     it('should display Human time with a valid value', async () => {
-      const humanTime = await $('[data-testid="footer-metrics-human"]');
-      await humanTime.waitForExist({ timeout: 5000 });
-      const text = await humanTime.getText();
+      let text = '';
+      await browser.waitUntil(
+        async () => {
+          text = await browser.execute(
+            () => document.querySelector('[data-testid="footer-metrics-human"]')?.textContent ?? ''
+          );
+          return text.length > 0 && text !== '--';
+        },
+        { timeout: 10000, timeoutMsg: `Human time did not load (last: "${text}")` }
+      );
       expect(text.length).toBeGreaterThan(0);
-      expect(text).not.toBe('--');
     });
 
     it('should display Total time with a valid value', async () => {
-      const totalTime = await $('[data-testid="footer-metrics-total"]');
-      await totalTime.waitForExist({ timeout: 5000 });
-      const text = await totalTime.getText();
+      let text = '';
+      await browser.waitUntil(
+        async () => {
+          text = await browser.execute(
+            () => document.querySelector('[data-testid="footer-metrics-total"]')?.textContent ?? ''
+          );
+          return text.length > 0 && text !== '--';
+        },
+        { timeout: 10000, timeoutMsg: `Total time did not load (last: "${text}")` }
+      );
       expect(text.length).toBeGreaterThan(0);
-      expect(text).not.toBe('--');
     });
   });
 });

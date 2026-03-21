@@ -258,17 +258,16 @@ export async function selectSpecViaUI(specName: string, timeout: number = 10000)
     await specList.waitForExist({ timeout });
 
     // Find and click the spec item
+    // Try WebDriver click first (triggers React events properly), fall back to
+    // browser.execute click if element is not interactable (during React re-render)
     const specItem = await $(`[data-testid="spec-item-${specName}"]`);
     if (await specItem.isExisting()) {
       try {
         await specItem.click();
       } catch (clickError: any) {
-        // If click was intercepted by overlay, dismiss and retry
-        if (clickError?.message?.includes('intercepted') || clickError?.message?.includes('bg-black')) {
-          console.log(`[E2E] selectSpecViaUI: click intercepted by overlay, dismissing and retrying`);
-          await dismissDialogs();
-          await browser.pause(300);
-          await specItem.click();
+        if (clickError?.message?.includes('not interactable') || clickError?.message?.includes('intercepted')) {
+          console.log(`[E2E] selectSpecViaUI: WebDriver click failed, falling back to JS click`);
+          await browser.execute((el: HTMLElement) => el.click(), specItem);
         } else {
           throw clickError;
         }

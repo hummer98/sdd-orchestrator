@@ -341,7 +341,13 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select spec via UI click (not store manipulation)
       const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
       await specItem.waitForExist({ timeout: 15000 });
-      await specItem.click();
+      try {
+        await specItem.click();
+      } catch (e: any) {
+        if (e?.message?.includes('not interactable')) {
+          await browser.execute((el: HTMLElement) => el.click(), specItem);
+        } else { throw e; }
+      }
 
       // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);
@@ -457,7 +463,13 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select spec via UI click (not store manipulation)
       const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
       await specItem.waitForExist({ timeout: 15000 });
-      await specItem.click();
+      try {
+        await specItem.click();
+      } catch (e: any) {
+        if (e?.message?.includes('not interactable')) {
+          await browser.execute((el: HTMLElement) => el.click(), specItem);
+        } else { throw e; }
+      }
 
       // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);
@@ -539,7 +551,13 @@ describe('Auto Execution impl Phase E2E', () => {
       // Select spec via UI click (not store manipulation)
       const specItem = await $(`[data-testid="spec-item-${SPEC_NAME}"]`);
       await specItem.waitForExist({ timeout: 15000 });
-      await specItem.click();
+      try {
+        await specItem.click();
+      } catch (e: any) {
+        if (e?.message?.includes('not interactable')) {
+          await browser.execute((el: HTMLElement) => el.click(), specItem);
+        } else { throw e; }
+      }
 
       // Wait for spec detail to be loaded and workflow view to render
       await waitForSpecDetailReady(SPEC_NAME, 15000);

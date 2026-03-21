@@ -38,7 +38,7 @@ else
 fi
 
 # アプリを起動
-# open -a を使うことでmacOS LaunchServicesの単一インスタンス保証が効く
-# （既に起動中ならフォーカスするだけで新規プロセスは起動しない）
-# --args で引数を渡す
-open -a "$APP_PATH" --args --project="$TARGET_PATH"
+# open -n -a で常に新プロセスを起動し、Electronのsingle-instance lockで
+# 既存インスタンスにargvを転送する（second-instanceイベント経由）
+# -n なしだと起動済みアプリへ --args が渡らない
+open -n -a "$APP_PATH" --args --project="$TARGET_PATH"

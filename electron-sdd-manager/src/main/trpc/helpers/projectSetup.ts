@@ -605,14 +605,17 @@ function setupAgentCompletionListenerWithApproval(service: SpecManagerService, a
       let updatedApprovals: import('../../../renderer/types').SpecJson['approvals'] | undefined;
       if (status === 'completed' && ['requirements', 'design', 'tasks'].includes(phase)) {
         try {
+          // Read current approvals BEFORE writing, then apply the update in memory
+          // Fix: #3 - reading after write can return stale data on slow I/O
+          const specJsonResult = await fileService.readSpecJson(specPath);
           const approveResult = await fileService.updateApproval(specPath, phase as 'requirements' | 'design' | 'tasks', true);
-          if (approveResult.ok) {
+          if (approveResult.ok && specJsonResult.ok) {
             logger.info('[projectSetup] execute-next-phase: auto-approved phase', { specPath, phase });
-            const specJsonResult = await fileService.readSpecJson(specPath);
-            if (specJsonResult.ok) {
-              updatedApprovals = specJsonResult.value.approvals;
-              logger.debug('[projectSetup] Read updated approvals after auto-approve', { specPath, approvals: updatedApprovals });
-            }
+            // Build approvals from pre-read data + the approval we just wrote
+            updatedApprovals = { ...specJsonResult.value.approvals };
+            const phaseKey = phase as 'requirements' | 'design' | 'tasks';
+            updatedApprovals[phaseKey] = { ...updatedApprovals[phaseKey], approved: true };
+            logger.debug('[projectSetup] Updated approvals after auto-approve', { specPath, approvals: updatedApprovals });
           }
         } catch { /* ignore */ }
       }

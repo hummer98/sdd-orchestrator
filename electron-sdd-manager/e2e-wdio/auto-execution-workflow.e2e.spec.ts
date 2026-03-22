@@ -196,6 +196,9 @@ describe('Auto Execution Workflow E2E', () => {
     // specStoreの自動実行状態をリセット
     await resetSpecStoreAutoExecution();
 
+    // specStoreを明示的に更新
+    await refreshSpecStore();
+
     // プロジェクトとspecを選択
     const projectSuccess = await ensureProjectSelected(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);

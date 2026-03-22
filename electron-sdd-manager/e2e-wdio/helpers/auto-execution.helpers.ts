@@ -257,21 +257,18 @@ export async function selectSpecViaUI(specName: string, timeout: number = 10000)
     const specList = await $('[data-testid="spec-list"]');
     await specList.waitForExist({ timeout });
 
-    // Find and click the spec item
-    // Try WebDriver click first (triggers React events properly), fall back to
-    // browser.execute click if element is not interactable (during React re-render)
-    const specItem = await $(`[data-testid="spec-item-${specName}"]`);
-    if (await specItem.isExisting()) {
-      try {
-        await specItem.click();
-      } catch (clickError: any) {
-        if (clickError?.message?.includes('not interactable') || clickError?.message?.includes('intercepted')) {
-          console.log(`[E2E] selectSpecViaUI: WebDriver click failed, falling back to JS click`);
-          await browser.execute((el: HTMLElement) => el.click(), specItem);
-        } else {
-          throw clickError;
-        }
-      }
+    // Find and click the spec item using JS click directly
+    // WebDriver click fails with "element not interactable" during React re-renders
+    // on slower machines. JS click via browser.execute bypasses this reliably.
+    // React 17+ delegates events to the root, so el.click() triggers React handlers.
+    const selector = `[data-testid="spec-item-${specName}"]`;
+    const clicked = await browser.execute((sel: string) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      (el as HTMLElement).click();
+      return true;
+    }, selector);
+    if (clicked) {
       await browser.pause(1000);
       return true;
     }

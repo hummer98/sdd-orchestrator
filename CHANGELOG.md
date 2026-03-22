@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.75.0] - 2026-03-22
+
+### Added
+- リモートPCでのフルE2Eテスト実行機能を復元（`task electron:test:e2e:remote:kdg069`）
+
+### Fixed
+- sdd CLIコマンドで起動済みアプリにプロジェクトパスが渡らない問題（`open -a` → `open -n -a`）
+- auto-execution design phase auto-approveのI/O同期バグ（低速ディスク環境でphaseスキップ）
+- リモート環境でのE2Eテスト安定性改善（selectSpecViaUI JS click化、metrics/layout修正）
+
+### Changed
+- 解決済みバグレポート137件を削除（`.kiro/bugs/` クリーンアップ）
+
 ## [0.74.0] - 2026-03-09
 
 ### Added
